@@ -7,12 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencias y compilaciones
 node_modules
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Archivos de entorno (Crucial para proteger Firebase)
+.env
+.env.*
+!.env.example
+
+# Editores y Sistema Operativo
 .vscode/*
 !.vscode/extensions.json
 .idea
