@@ -1,22 +1,17 @@
 // src/config/firebase.ts
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBwvRB_W4EZjXAdaiownIayYNSOTTpOmAE",
-  authDomain: "valle-pacora-crm.firebaseapp.com",
-  projectId: "valle-pacora-crm",
-  storageBucket: "valle-pacora-crm.firebasestorage.app",
-  messagingSenderId: "1037354265197",
-  appId: "1:1037354265197:web:e9aa3180f09071e3502d64",
-  measurementId: "G-55L6REJ2P6"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Inicializamos la app con el nuevo "cerebro"
 const app = initializeApp(firebaseConfig);
 
-// Exportamos los servicios para que el CRM los use
+// Exportamos la instancia para la bitácora, leads y proformas
 export const db = getFirestore(app);
-export const auth = getAuth(app);
