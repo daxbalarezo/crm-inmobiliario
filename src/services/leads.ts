@@ -15,7 +15,6 @@ const cleanPayload = (data: Partial<Lead>) => {
   return payload;
 };
 
-// --- FUNCIÓN DE IMPORTACIÓN MASIVA ---
 export const importLeadsBatchService = async (
   leads: Partial<Lead>[], 
   activeModule: 'LOTE' | 'DEPA'

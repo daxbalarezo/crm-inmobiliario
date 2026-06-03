@@ -1,3 +1,4 @@
+// src/components/modals/LeadModal.tsx
 import React, { useState } from 'react';
 import { 
   X, Send, AlarmClock, Trash2, Edit3, Grid, 
@@ -24,8 +25,6 @@ interface Props {
   newInteractionType: string;
   setNewInteractionType: (s: string) => void;
   onAddInteraction: () => void;
-  tempTimeString: string;
-  setTempTimeString: (s: string) => void;
   updateDatePart: (s: string) => void;
   updateTimePart: (s: string) => void;
   getDateValue: () => string;
@@ -38,18 +37,16 @@ export default function LeadModal({
   isOpen, onClose, mode, setMode, formData, setFormData, onSave, onDelete, 
   activeModule, activeTab, setActiveTab, onOpenUnitSelector, 
   newInteractionNote, setNewInteractionNote, newInteractionType, setNewInteractionType, 
-  onAddInteraction, tempTimeString, setTempTimeString, updateDatePart, updateTimePart, 
+  onAddInteraction, updateDatePart, updateTimePart, 
   getDateValue, formatDate, onOpenWhatsApp, onOpenProforma 
 }: Props) {
   
-  const [showStrategyScreen, setShowStrategyScreen] = useState(false);
   const [showPasteArea, setShowPasteArea] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
   if (!isOpen) return null;
 
-  // --- LÓGICA DE PEGADO RÁPIDO ---
   const handleProcessPaste = async () => {
     if (!pasteText.trim()) return;
     setIsImporting(true);
@@ -82,9 +79,10 @@ export default function LeadModal({
     }
   };
 
+  // 🔥 AQUÍ AGREGAMOS LA INCUBADORA 🔥
   const STAGES = activeModule === 'LOTE' 
-    ? ['Nuevo', 'Contactado', 'No Contesta', 'Visita Proyecto', 'Separación', 'Vendido', 'No Interesado']
-    : ['Nuevo', 'Contactado', 'No Contesta', 'Visita Piloto', 'Separación', 'Vendido', 'No Interesado'];
+    ? ['Nuevo', 'Contactado', 'No Contesta', 'Visita Proyecto', 'Incubadora', 'Separación', 'Vendido', 'No Interesado']
+    : ['Nuevo', 'Contactado', 'No Contesta', 'Visita Piloto', 'Incubadora', 'Separación', 'Vendido', 'No Interesado'];
 
   const SOURCES = ['Facebook Formularios', 'TikTok Formularios', 'Base de Datos', 'Orgánicos', 'Feria', 'Referidos'];
 
@@ -99,24 +97,25 @@ export default function LeadModal({
       return new Date().toISOString().split('T')[0];
   };
 
+  const getTimeValue = () => {
+      if (!formData.nextFollowUpDate) return '';
+      const d = new Date(formData.nextFollowUpDate);
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 z-[150] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white rounded-2xl w-full max-w-2xl h-[85vh] flex flex-col shadow-2xl overflow-hidden ring-1 ring-gray-200 relative">
         
-        {/* HEADER */}
+        {/* HEADER LIMPIO */}
         <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/80 backdrop-blur-md z-10">
           <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            {showPasteArea ? 'Pegado Rápido' : showStrategyScreen ? 'Estrategia IA' : (mode === 'EDIT' ? (formData.id ? '✏️ Editar Lead' : '✨ Nuevo Cliente') : formData.name)}
+            {showPasteArea ? 'Pegado Rápido' : (mode === 'EDIT' ? (formData.id ? '✏️ Editar Lead' : '✨ Nuevo Cliente') : formData.name)}
           </h3>
           <div className="flex gap-2">
-             {!formData.id && mode === 'EDIT' && !showStrategyScreen && (
+             {!formData.id && mode === 'EDIT' && (
                 <button onClick={() => setShowPasteArea(!showPasteArea)} className="bg-indigo-100 text-indigo-700 px-3 py-2 rounded-full font-bold text-xs flex items-center gap-2 hover:bg-indigo-200 transition-all">
                     <ClipboardPaste size={16}/> {showPasteArea ? 'Volver' : 'Pegar Excel'}
-                </button>
-             )}
-             {!showPasteArea && (
-                <button onClick={() => setShowStrategyScreen(!showStrategyScreen)} className={`flex items-center gap-2 px-3 py-2 rounded-full font-bold text-xs transition-all ${showStrategyScreen ? 'bg-slate-200 text-slate-600' : 'bg-amber-100 text-amber-700'}`}>
-                    {showStrategyScreen ? <><ArrowLeft size={16}/> Volver</> : <><Bot size={18}/> Estrategia</>}
                 </button>
              )}
              {mode === 'VIEW' && (
@@ -131,25 +130,17 @@ export default function LeadModal({
 
         <div className="flex-1 overflow-y-auto bg-slate-50">
           {showPasteArea ? (
-            /* --- PESTAÑA PEGADO RÁPIDO --- */
             <div className="p-6 h-full flex flex-col gap-4 animate-in fade-in">
                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-indigo-800 text-xs flex items-start gap-3 shadow-sm">
                   <AlertCircle size={20} className="shrink-0"/>
-                  <p>Selecciona tus filas en Excel, cópialas y pégalas aquí. Se guardarán automáticamente con estado 'Nuevo'.</p>
+                  <p>Selecciona tus filas en Excel, cópialas y pégalas aquí.</p>
                </div>
                <textarea className="flex-1 w-full p-4 border-2 border-dashed border-indigo-200 rounded-xl outline-none focus:border-indigo-500 font-mono text-xs" placeholder="Pega aquí los datos de Excel..." value={pasteText} onChange={e => setPasteText(e.target.value)} />
                <button onClick={handleProcessPaste} disabled={isImporting || !pasteText} className="bg-indigo-600 text-white w-full py-4 rounded-xl font-bold shadow-lg disabled:opacity-50 hover:bg-indigo-700 transition-all">
                   {isImporting ? 'Importando...' : 'Procesar e Importar Todos'}
                </button>
             </div>
-          ) : showStrategyScreen ? (
-            /* --- PESTAÑA ESTRATEGIA IA --- */
-            <div className="p-6 h-full flex flex-col animate-in fade-in">
-                <textarea className="flex-1 w-full border-2 border-amber-200 rounded-xl p-4 outline-none text-gray-700 leading-relaxed" placeholder="Escribe aquí los pasos a seguir..." value={formData.aiStrategy || ''} onChange={e => setFormData({...formData, aiStrategy: e.target.value})} />
-                <button onClick={(e) => { onSave(e); setShowStrategyScreen(false); }} className="mt-4 bg-amber-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md hover:bg-amber-600 transition-all"><Save size={20}/> Guardar Estrategia</button>
-            </div>
           ) : mode === 'VIEW' ? (
-            /* --- MODO VISTA --- */
             <div className="p-6 space-y-6 animate-in fade-in">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                     <h2 className="text-2xl font-black text-gray-800">{formData.name}</h2>
@@ -186,7 +177,6 @@ export default function LeadModal({
                 </div>
             </div>
           ) : (
-            /* --- MODO EDICIÓN --- */
             <form onSubmit={onSave} className="flex flex-col h-full bg-slate-50 animate-in fade-in">
                 <div className="flex bg-white border-b px-6 pt-2 gap-6">
                     <button type="button" onClick={() => setActiveTab('CLIENTE')} className={`pb-3 text-xs font-black border-b-2 transition-colors ${activeTab === 'CLIENTE' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400'}`}>CLIENTE</button>
@@ -251,10 +241,10 @@ export default function LeadModal({
                                     {formData.nextFollowUpDate && (<button type="button" onClick={() => setFormData({...formData, nextFollowUpDate: null, nextFollowUpNote: ''})} className="text-[10px] text-red-500 hover:text-red-700 font-bold bg-white px-2 py-0.5 rounded border border-red-100">Eliminar</button>)}
                                 </div>
                                 <div className="flex gap-2 mb-2">
-                                    <input type="date" className="flex-1 border rounded-lg p-2 text-sm bg-white" value={getDateValue()} onChange={(e) => updateDatePart(e.target.value)}/>
-                                    <input type="text" placeholder="HH:MM" className="w-20 border rounded-lg p-2 text-sm bg-white text-center" value={tempTimeString} onChange={(e) => { const val = e.target.value; setTempTimeString(val); if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val)) { updateTimePart(val); }}} />
+                                    <input type="date" className="flex-1 border rounded-lg p-2 text-sm bg-white font-bold text-gray-700 outline-none focus:ring-2 focus:ring-orange-400" value={getDateValue()} onChange={(e) => updateDatePart(e.target.value)}/>
+                                    <input type="time" className="w-28 border rounded-lg p-2 text-sm bg-white text-center font-bold text-gray-700 outline-none focus:ring-2 focus:ring-orange-400" value={getTimeValue()} onChange={(e) => updateTimePart(e.target.value)} />
                                 </div>
-                                <input type="text" className="w-full border rounded-lg p-2 text-sm bg-white" placeholder="¿Por qué motivo llamarás?" value={formData.nextFollowUpNote || ''} onChange={(e) => setFormData({...formData, nextFollowUpNote: e.target.value})}/>
+                                <input type="text" className="w-full border rounded-lg p-2 text-sm bg-white outline-none focus:ring-2 focus:ring-orange-400" placeholder="¿Por qué motivo llamarás?" value={formData.nextFollowUpNote || ''} onChange={(e) => setFormData({...formData, nextFollowUpNote: e.target.value})}/>
                             </div>
                         </div>
                     )}
