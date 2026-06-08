@@ -1,102 +1,84 @@
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from '../config/firebase';
 import type { Lead } from '../types/definitions'; 
 
+const COLLECTION_NAME = 'leads'; 
+
 const cleanPayload = (data: Partial<Lead>) => {
   const payload = { ...data };
-  if (payload.nextFollowUpDate === undefined) delete payload.nextFollowUpDate;
-  if (payload.nextFollowUpNote === undefined) delete payload.nextFollowUpNote;
-  
   if (payload.area) payload.area = Number(payload.area);
   if (payload.price) payload.price = Number(payload.price);
-  if (payload.downPayment) payload.downPayment = Number(payload.downPayment);
-  if (payload.floor) payload.floor = Number(payload.floor);
-
   return payload;
 };
 
-export const importLeadsBatchService = async (
-  leads: Partial<Lead>[], 
-  activeModule: 'LOTE' | 'DEPA'
-) => {
-  try {
-    const batch = writeBatch(db);
-    const leadsCollection = collection(db, 'crm_leads');
-
-    leads.forEach((leadData) => {
-      const newDocRef = doc(leadsCollection);
-      const payload = cleanPayload({
-        ...leadData,
-        type: activeModule,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        interactions: []
-      });
-      batch.set(newDocRef, payload);
-    });
-
-    await batch.commit();
-    return { success: true, count: leads.length };
-  } catch (error) {
-    console.error("Error en importación masiva:", error);
-    throw error;
-  }
-};
-
+/**
+ * Servicio de Persistencia SaaS
+ * Obliga al paso de tenantId y projectId para garantizar aislamiento de datos.
+ */
 export const saveLeadService = async (
-  formData: Partial<Lead>, 
-  activeModule: 'LOTE' | 'DEPA', 
-  editingId: string | null
+  formData: any, 
+  editingId: string | null,
+  tenantId: string, 
+  projectId: string,
+  ownerId: string
 ) => {
   try {
-    const payload = cleanPayload({
-      ...formData,
-      type: activeModule,
-      updatedAt: serverTimestamp()
-    });
+    const cleanData = cleanPayload(formData);
+    
+    // El payload ahora es autogestionado por la arquitectura
+    const payload = { 
+      ...cleanData, 
+      tenantId, 
+      projectId,
+      ownerId,
+      updatedAt: serverTimestamp() 
+    };
 
     if (editingId) {
-      const leadRef = doc(db, 'crm_leads', editingId);
-      await updateDoc(leadRef, payload);
-      return { success: true };
+      await updateDoc(doc(db, COLLECTION_NAME, editingId), payload);
     } else {
-      await addDoc(collection(db, 'crm_leads'), {
-        ...payload,
-        createdAt: serverTimestamp()
+      await addDoc(collection(db, COLLECTION_NAME), { 
+        ...payload, 
+        createdAt: serverTimestamp() 
       });
-      return { success: true };
     }
+    return { success: true };
   } catch (error) {
-    console.error("Error al guardar:", error);
+    console.error("🚨 Error crítico en persistencia multi-tenant:", error);
     throw error;
   }
 };
 
 export const deleteLeadService = async (id: string) => {
   try {
-    await deleteDoc(doc(db, 'crm_leads', id));
+    await deleteDoc(doc(db, COLLECTION_NAME, id));
     return { success: true };
   } catch (error) {
+    console.error("🚨 Error al eliminar lead:", error);
     throw error;
   }
 };
 
-export const completeTaskService = async (lead: Lead) => {
+export const completeTaskService = async (lead: Lead, tenantId: string) => {
   try {
     const note = { 
-        id: Date.now().toString(), 
-        date: new Date().toISOString(), 
-        type: 'Sistema', 
-        note: `✅ Completado: ${lead.nextFollowUpNote}` 
+      id: Date.now().toString(), 
+      date: new Date().toISOString(), 
+      type: 'Sistema', 
+      note: `✅ Completado: ${lead.nextFollowUpNote || ''}`,
+      tenantId 
     };
+    
     const updatedInteractions = [note, ...(lead.interactions || [])];
-    await updateDoc(doc(db, 'crm_leads', lead.id), { 
+    
+    await updateDoc(doc(db, COLLECTION_NAME, lead.id!), { 
         interactions: updatedInteractions, 
         nextFollowUpDate: null, 
         nextFollowUpNote: ''    
     });
     return { success: true };
   } catch (error) {
+    console.error("🚨 Error al completar tarea:", error);
     throw error;
   }
 };

@@ -13,7 +13,7 @@ dist
 dist-ssr
 *.local
 
-# Archivos de entorno (Crucial para proteger Firebase)
+# Archivos de entorno 
 .env
 .env.*
 !.env.example

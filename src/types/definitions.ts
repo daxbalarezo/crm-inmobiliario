@@ -1,18 +1,41 @@
-// src/types/definitions.ts
+export type UserRole = 'owner' | 'manager' | 'agent';
 
-export interface Unit {
-  id: string; 
-  customId: string; 
-  group: string; 
-  type: 'VP1' | 'VP2';
-  description?: string;
-  area: number;
-  price: number;
-  price2k?: number;     
-  price5k?: number;     
-  priceCash?: number;   
-  status: 'DISPONIBLE' | 'SEPARADO' | 'VENDIDO' | 'BLOQUEADO';
+export interface UserProfile {
+  uid: string;
+  tenantId: string;
+  role: UserRole;
+  name: string;
+  email: string;
+  assignedProjectIds: string[];
+  createdAt?: any;
 }
+
+export interface Tenant {
+  id: string;
+  name: string;
+  plan: 'starter' | 'pro' | 'enterprise';
+  createdAt?: any;
+}
+
+export type ProductType = 'lote_agricola' | 'departamento' | 'casa_campo' | 'lote_urbano';
+
+export interface Project {
+  id: string;
+  tenantId: string;
+  name: string;
+  productType: ProductType;
+  description?: string;
+  createdAt?: any;
+}
+
+export type LeadStatus =
+  | 'PROSPECTO'
+  | 'SIN_CONTACTAR'
+  | 'EN_NEGOCIACION'
+  | 'VISITA'
+  | 'SEPARACION'
+  | 'VENDIDO'
+  | 'CERRADO';
 
 export interface Interaction {
   id: string;
@@ -23,21 +46,40 @@ export interface Interaction {
 
 export interface Lead {
   id: string;
-  name?: string;
-  phone?: string;
-  type: 'VP1' | 'VP2';
-  project?: string;
-  // Estados para Valle Pacora 1
-  statusVP1?: 'Nuevo' | 'No Contactado' | 'En Negociación' | 'Incubadora' | 'Venta' | 'No Interesado';
-  // Estados para Valle Pacora 2
-  statusVP2?: 'Nuevo' | 'No Contactado' | 'En Negociación' | 'Incubadora' | 'Venta' | 'No Interesado';
+  tenantId: string;
+  projectId: string;
+  assignedTo: string;
+  name: string;
+  phone: string;
+  email?: string;
+  dni?: string;
+  source?: string;
+  status: LeadStatus;
   interestLevel?: 'Alto' | 'Medio' | 'Bajo';
   interactions?: Interaction[];
   nextFollowUpDate?: string;
   nextFollowUpNote?: string;
   lastCampaignDate?: string;
-  updatedAt?: any; // Timestamp de Firebase
+  contactDate?: string;
+  updatedAt?: any;
+  createdAt?: any;
   savedProforma?: any;
+}
+
+export interface Unit {
+  id: string;
+  tenantId: string;
+  projectId: string;
+  customId: string;
+  group: string;
+  type: string;
+  area: number;
+  price: number;
+  price2k?: number;
+  price5k?: number;
+  priceCash?: number;
+  status: 'DISPONIBLE' | 'SEPARADO' | 'VENDIDO' | 'BLOQUEADO' | 'PROMO';
+  description?: string;
 }
 
 export interface ProformaConfig {
@@ -49,7 +91,7 @@ export interface ProformaConfig {
   cashDiscount: number;
   initialPayment: number;
   highInitialDiscount: number;
-  bonusType: string;
+  bonusType: 'ESTATAL' | 'DESCUENTO_INMOBILIARIA' | 'NINGUNO';
   bonusAmount: number;
   extraDiscountName: string;
   extraDiscountAmount: number;
