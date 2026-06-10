@@ -5,7 +5,10 @@ import CorporateLayout from './layouts/CorporateLayout';
 import HomeDashboard from './pages/HomeDashboard';
 import CommercialDashboard from './pages/CommercialDashboard';
 import FollowUpsDashboard from './pages/FollowUpsDashboard';
-import SettingsDashboard from './pages/SettingsDashboard';
+import FinanzasView from './pages/admin/FinanzasView';
+import TenantsView from './pages/admin/TenantsView';
+import UsersView from './pages/admin/UsersView';
+import ProjectsView from './pages/admin/ProjectsView';
 import LoginPage from './pages/LoginPage';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -45,7 +48,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function HomeRoute() {
   const { userProfile } = useCRM();
-  if (userProfile?.role === 'owner') return <Navigate to="/configuracion" replace />;
+  if (userProfile?.role === 'owner') return <Navigate to="/admin/finanzas" replace />;
   return (
     <CorporateLayout>
       <HomeDashboard />
@@ -80,10 +83,31 @@ export default function App() {
               </CorporateLayout>
             </AuthGuard>
           } />
-          <Route path="/configuracion" element={
+          <Route path="/admin/finanzas" element={
             <AuthGuard>
               <CorporateLayout>
-                <SettingsDashboard />
+                <FinanzasView />
+              </CorporateLayout>
+            </AuthGuard>
+          } />
+          <Route path="/admin/inmobiliarias" element={
+            <AuthGuard>
+              <CorporateLayout>
+                <TenantsView />
+              </CorporateLayout>
+            </AuthGuard>
+          } />
+          <Route path="/admin/usuarios" element={
+            <AuthGuard>
+              <CorporateLayout>
+                <UsersView />
+              </CorporateLayout>
+            </AuthGuard>
+          } />
+          <Route path="/admin/proyectos" element={
+            <AuthGuard>
+              <CorporateLayout>
+                <ProjectsView />
               </CorporateLayout>
             </AuthGuard>
           } />

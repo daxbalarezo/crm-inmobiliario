@@ -104,5 +104,12 @@ service cloud.firestore {
         )
       );
     }
+
+    // ---------------------------------------------------------
+    // Colección: CONFIG (Configuración Global del SaaS)
+    // ---------------------------------------------------------
+    match /config/{document=**} {
+      allow read, write: if isAuthenticated() && isOwner();
+    }
   }
 }

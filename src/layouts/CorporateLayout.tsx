@@ -1,7 +1,7 @@
 // src/layouts/CorporateLayout.tsx
 import React, { useState, useEffect } from 'react';
 import LeadModal from '../components/LeadModal';
-import { Home, Briefcase, Package, Map, ChevronDown, Calendar, Bell, CreditCard, BarChart3, Settings, LogOut } from 'lucide-react';
+import { Home, Briefcase, Package, Map, ChevronDown, Calendar, Bell, CreditCard, BarChart3, Settings, LogOut, LineChart, Building2, Users, FolderKanban } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useProjects } from '../hooks/useProjects';
@@ -58,7 +58,10 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
       { name: 'Reporte Comercial', path: '/reportes', icon: BarChart3 }
     ] : []),
     ...(userProfile?.role === 'owner' ? [
-      { name: 'Administración', path: '/configuracion', icon: Settings }
+      { name: 'Finanzas (MRR)', path: '/admin/finanzas', icon: LineChart },
+      { name: 'Inmobiliarias', path: '/admin/inmobiliarias', icon: Building2 },
+      { name: 'Directorio Global', path: '/admin/usuarios', icon: Users },
+      { name: 'Proyectos', path: '/admin/proyectos', icon: FolderKanban }
     ] : [])
   ];
 
