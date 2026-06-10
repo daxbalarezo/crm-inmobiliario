@@ -1,0 +1,108 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función auxiliar: Verifica si el usuario está logueado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Función auxiliar: Obtiene los datos del usuario que está haciendo la petición
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Función auxiliar: Verifica si el usuario actual es el FUNDADOR (SaaS SuperAdmin)
+    function isOwner() {
+      return getUserData().role == 'owner';
+    }
+
+    // ---------------------------------------------------------
+    // Colección: TENANTS (Empresas Inmobiliarias Clientes)
+    // ---------------------------------------------------------
+    match /tenants/{tenantId} {
+      // Un owner (SuperAdmin) puede leer y escribir todas las empresas
+      // Cualquier empleado de la empresa puede leer los datos de SU empresa
+      allow read: if isAuthenticated() && (isOwner() || getUserData().tenantId == tenantId);
+      
+      // SOLO el owner (SuperAdmin Daniel Balarezo) puede crear o editar empresas
+      allow write: if isAuthenticated() && isOwner();
+    }
+
+    // ---------------------------------------------------------
+    // Colección: USERS (Usuarios / Empleados)
+    // ---------------------------------------------------------
+    match /users/{userId} {
+      // LECTURA:
+      // - El owner lee todo
+      // - Un usuario puede ver su propio perfil
+      // - Un manager o agent pueden ver a los usuarios de su propia inmobiliaria
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        request.auth.uid == userId || 
+        getUserData().tenantId == resource.data.tenantId
+      );
+      
+      // ESCRITURA:
+      // - El owner escribe todo (Crear, suspender, borrar)
+      // - El propio usuario puede editar sus datos (ej. cambiar contraseña si alguna vez se permite)
+      allow write: if isAuthenticated() && (
+        isOwner() || 
+        request.auth.uid == userId
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Colección: PROJECTS (Proyectos Inmobiliarios)
+    // ---------------------------------------------------------
+    match /projects/{projectId} {
+      // LECTURA: Owner lee todo. Manager/Agent leen solo los de su empresa.
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        getUserData().tenantId == resource.data.tenantId
+      );
+      
+      // ESCRITURA: Owner escribe todo. Manager puede editar los proyectos de su empresa.
+      allow write: if isAuthenticated() && (
+        isOwner() || 
+        (getUserData().tenantId == request.resource.data.tenantId && getUserData().role == 'manager')
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Colección: LEADS (Prospectos y Cotizaciones)
+    // ---------------------------------------------------------
+    match /leads/{leadId} {
+      // LECTURA: 
+      // - Owner: Lee TODOS los leads de todas las empresas.
+      // - Manager: Lee TODOS los leads de SU empresa.
+      // - Asesor: Lee SOLO los leads asignados a él dentro de su empresa.
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        (
+          getUserData().tenantId == resource.data.tenantId && 
+          (
+            getUserData().role == 'manager' || 
+            resource.data.assignedTo == request.auth.uid
+          )
+        )
+      );
+      
+      // ESCRITURA:
+      // - Owner: Escribe en todos lados.
+      // - Manager: Crea/Edita cualquier lead de su empresa.
+      // - Asesor: Crea leads para sí mismo, o edita los que ya tiene asignados.
+      allow write: if isAuthenticated() && (
+        isOwner() ||
+        (
+          getUserData().tenantId == request.resource.data.tenantId && 
+          (
+            getUserData().role == 'manager' || 
+            request.resource.data.assignedTo == request.auth.uid
+          )
+        )
+      );
+    }
+  }
+}

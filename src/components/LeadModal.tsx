@@ -18,7 +18,7 @@ const SOURCES = [
 ];
 
 export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: Props) {
-  const { tenantId, activeProjectId, userProfile } = useCRM();
+  const { tenantId, activeProjectId, userProfile, tenant } = useCRM();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Lead>>({});
 
@@ -28,7 +28,7 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
       setFormData(lead);
     } else {
       setFormData({
-        status: 'PROSPECTO', // Sincronizado con el nuevo LeadStatus
+        status: tenant?.stages?.[0] || 'PROSPECTO', // Fallback dinámico al 1er stage
         interestLevel: 'Medio',
         tenantId: tenantId ?? '',
         projectId: activeProjectId ?? '',
@@ -36,9 +36,12 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
         contactDate: new Date().toISOString(),
       });
     }
-  }, [isOpen, lead, tenantId, activeProjectId, userProfile]);
+  }, [isOpen, lead, tenantId, activeProjectId, userProfile, tenant]);
 
   if (!isOpen) return null;
+
+  const dynamicSources = tenant?.sources || SOURCES;
+  const dynamicStages = tenant?.stages || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO', 'CERRADO'];
 
   const isEditing = !!lead?.id;
   const update = (patch: Partial<Lead>) => setFormData(p => ({ ...p, ...patch }));
@@ -144,6 +147,20 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
               </div>
             </div>
 
+            {/* Etapa */}
+            <div>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                Etapa del Prospecto
+              </label>
+              <select
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-[#0B2B40] bg-white focus:ring-2 focus:ring-[#4DB6AC] outline-none transition-all"
+                value={formData.status ?? (dynamicStages[0] || 'PROSPECTO')}
+                onChange={e => update({ status: e.target.value })}
+              >
+                {dynamicStages.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
             {/* Interés + Fuente */}
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -170,7 +187,7 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
                   onChange={e => update({ source: e.target.value })}
                 >
                   <option value="">Seleccionar...</option>
-                  {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                  {dynamicSources.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
             </div>

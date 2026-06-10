@@ -14,10 +14,13 @@ export interface Tenant {
   id: string;
   name: string;
   plan: 'starter' | 'pro' | 'enterprise';
+  status?: string;
+  stages?: string[];
+  sources?: string[];
   createdAt?: any;
 }
 
-export type ProductType = 'lote_agricola' | 'departamento' | 'casa_campo' | 'lote_urbano';
+export type ProductType = 'lote' | 'departamento' | 'casa' | 'oficina';
 
 export interface Project {
   id: string;
@@ -28,14 +31,7 @@ export interface Project {
   createdAt?: any;
 }
 
-export type LeadStatus =
-  | 'PROSPECTO'
-  | 'SIN_CONTACTAR'
-  | 'EN_NEGOCIACION'
-  | 'VISITA'
-  | 'SEPARACION'
-  | 'VENDIDO'
-  | 'CERRADO';
+export type LeadStatus = string;
 
 export interface Interaction {
   id: string;

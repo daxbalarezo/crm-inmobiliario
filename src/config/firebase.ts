@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyAclcBM6yVRHFGVhN2WbCaDpQQO-qbQM_o",
   authDomain: "crm-saas-core.firebaseapp.com",
   projectId: "crm-saas-core",

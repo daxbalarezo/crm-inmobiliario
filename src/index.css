@@ -14,14 +14,8 @@
     background-color: #F8FAFC;
   }
 
-  /* Ajuste para que los textos no se vean 'difusos' */
-  h1, h2, h3, h4, th {
-    font-family: 'Poppins', sans-serif;
-    letter-spacing: -0.02em; /* Títulos más compactos pero definidos */
-  }
-
-  /* Mejora de legibilidad para inputs y datos */
-  input, select, textarea {
-    font-family: 'Inter', sans-serif;
+  /* Ajuste de tipografía Enterprise (Salesforce Sans / System) */
+  body, h1, h2, h3, h4, h5, h6, input, select, textarea, button, th, td {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
   }
 }

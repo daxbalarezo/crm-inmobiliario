@@ -40,15 +40,13 @@ export default function FollowUpsDashboard() {
     }
   };
 
-  // 1. CONEXIÓN REAL A FIREBASE
   const { leads, loading } = useCommercialData();
 
-  // 2. MOTOR DE CÁLCULO DE AGENDA
+  // Cálculo de agenda para el usuario
   const agendaData = useMemo(() => {
     if (!leads) return { overdue: [], today: [] };
 
     const today = new Date();
-    // Ajuste estricto a zona horaria de Perú para evitar cruces de días por UTC
     const todayStr = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
     const activeLeads = leads.filter(l => 
@@ -60,21 +58,18 @@ export default function FollowUpsDashboard() {
     const todayTasks: any[] = [];
 
     const projectNames: Record<string, string> = {
-      'valle_pacora': 'Valle Pacora',
-      'tierras_sol': 'Tierras del Sol',
-      'torres_monaco': 'Las Torres de Mónaco'
+      'proyecto_a': 'Proyecto A',
+      'proyecto_b': 'Proyecto B'
     };
 
     activeLeads.forEach(lead => {
-      // FIX CRÍTICO: Normalizamos la fecha aislando solo YYYY-MM-DD
       const leadDateStr = lead.nextFollowUpDate!.split('T')[0];
 
       const isOverdue = leadDateStr < todayStr;
       const isToday = leadDateStr === todayStr;
 
       const projectName = lead.projectId ? projectNames[lead.projectId] || lead.projectId : 'Sin Proyecto';
-      // Mantenemos la distinción estricta de proyectos de lotización vs habilitación urbana
-      const isLot = lead.projectId === 'valle_pacora' || lead.projectId === 'tierras_sol';
+      const isLot = lead.projectId === 'proyecto_a';
 
       const task = {
         id: lead.id,
@@ -96,7 +91,6 @@ export default function FollowUpsDashboard() {
     return { overdue, today: todayTasks };
   }, [leads]);
 
-  // PANTALLA DE CARGA
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -115,7 +109,6 @@ export default function FollowUpsDashboard() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* EL NUEVO BOTÓN */}
           <button 
             onClick={() => setIsLeadModalOpen(true)}
             className="bg-[#4DB6AC] text-[#0B2B40] hover:bg-[#3da096] px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm flex items-center gap-2 active:scale-95"
@@ -124,7 +117,6 @@ export default function FollowUpsDashboard() {
             <span className="hidden sm:inline">Nuevo Prospecto</span>
           </button>
 
-          {/* TUS BOTONES ORIGINALES DE VISTA */}
           <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
             <button 
               onClick={() => setViewMode('list')}
@@ -158,8 +150,8 @@ export default function FollowUpsDashboard() {
             <div className="flex gap-3">
               <select className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 font-medium focus:outline-none">
                 <option value="">Todos los Proyectos</option>
-                <option value="valle_pacora">Valle Pacora</option>
-                <option value="torres_monaco">Las Torres de Mónaco</option>
+                <option value="proyecto_a">Proyecto A</option>
+                <option value="proyecto_b">Proyecto B</option>
               </select>
               <button className="bg-slate-100 text-slate-600 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 border border-slate-200">
                 <Filter size={18} /> Filtros
@@ -191,7 +183,7 @@ export default function FollowUpsDashboard() {
                   {agendaData.overdue.length === 0 ? (
                     <p className="text-center text-slate-500 font-medium py-4">No tienes tareas atrasadas.</p>
                   ) : (
-                    agendaData.overdue.map((task) => <TaskCard key={task.id} task={task} />)
+                    agendaData.overdue.map((task: any) => <TaskCard key={task.id} task={task} />)
                   )}
                 </div>
               </div>
@@ -222,7 +214,7 @@ export default function FollowUpsDashboard() {
                   {agendaData.today.length === 0 ? (
                     <p className="text-center text-slate-500 font-medium py-4">No tienes tareas programadas para hoy.</p>
                   ) : (
-                    agendaData.today.map((task) => <TaskCard key={task.id} task={task} />)
+                    agendaData.today.map((task: any) => <TaskCard key={task.id} task={task} />)
                   )}
                 </div>
               </div>
@@ -244,13 +236,13 @@ export default function FollowUpsDashboard() {
   );
 }
 
-// COMPONENTE SECUNDARIO
+// Componente para visualizar cada tarea en la lista
 function TaskCard({ task }: { task: any }) {
   const isLot = task.unitType.includes('Lote');
   
   const handleWhatsApp = () => {
     if (task.phone) {
-      window.open(`https://api.whatsapp.com/send?phone=${task.phone}&text=Hola ${task.clientName}, te escribo de Ganesha...`, '_blank');
+      window.open(`https://api.whatsapp.com/send?phone=${task.phone}&text=Hola ${task.clientName}, te escribo de la Inmobiliaria...`, '_blank');
     } else {
       alert('Este prospecto no tiene número de teléfono registrado.');
     }

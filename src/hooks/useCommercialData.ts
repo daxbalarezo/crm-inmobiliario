@@ -26,7 +26,7 @@ export function useCommercialData() {
       return;
     }
 
-    const effectiveProjectId = activeProjectId ?? 'valle_pacora';
+    const effectiveProjectId = activeProjectId ?? 'all';
     let cancelled = false;
 
     async function fetchData() {
@@ -34,20 +34,54 @@ export function useCommercialData() {
       try {
         // LEADS
         const leadsRef = collection(db, 'leads');
-        const leadsQ = (userProfile!.role === 'owner' || userProfile!.role === 'manager')
-          ? query(
+        
+        let leadsQ;
+        
+        if (userProfile!.role === 'owner') {
+          // El dueño de la app (SuperAdmin) ve ABSOLUTAMENTE TODO sin filtrar por tenantId
+          if (effectiveProjectId === 'all') {
+            leadsQ = query(leadsRef, orderBy('updatedAt', 'desc'));
+          } else {
+            leadsQ = query(
               leadsRef,
-              where('tenantId',  '==', tenantId),
               where('projectId', '==', effectiveProjectId),
               orderBy('updatedAt', 'desc')
-            )
-          : query(
+            );
+          }
+        } else if (userProfile!.role === 'manager') {
+          if (effectiveProjectId === 'all') {
+            leadsQ = query(
               leadsRef,
-              where('tenantId',   '==', tenantId),
-              where('projectId',  '==', effectiveProjectId),
+              where('tenantId', '==', tenantId),
+              orderBy('updatedAt', 'desc')
+            );
+          } else {
+            leadsQ = query(
+              leadsRef,
+              where('tenantId', '==', tenantId),
+              where('projectId', '==', effectiveProjectId),
+              orderBy('updatedAt', 'desc')
+            );
+          }
+        } else {
+          // agent
+          if (effectiveProjectId === 'all') {
+            leadsQ = query(
+              leadsRef,
+              where('tenantId', '==', tenantId),
               where('assignedTo', '==', userProfile!.uid),
               orderBy('updatedAt', 'desc')
             );
+          } else {
+            leadsQ = query(
+              leadsRef,
+              where('tenantId', '==', tenantId),
+              where('projectId', '==', effectiveProjectId),
+              where('assignedTo', '==', userProfile!.uid),
+              orderBy('updatedAt', 'desc')
+            );
+          }
+        }
 
         const leadsSnap = await getDocs(leadsQ);
         if (!cancelled) {
@@ -60,11 +94,30 @@ export function useCommercialData() {
 
       try {
         // INVENTARIO
-        const inventoryQ = query(
-          collection(db, 'inventory'),
-          where('tenantId',  '==', tenantId),
-          where('projectId', '==', effectiveProjectId)
-        );
+        let inventoryQ;
+        if (userProfile!.role === 'owner') {
+          if (effectiveProjectId === 'all') {
+            inventoryQ = query(collection(db, 'inventory'));
+          } else {
+            inventoryQ = query(
+              collection(db, 'inventory'),
+              where('projectId', '==', effectiveProjectId)
+            );
+          }
+        } else {
+          if (effectiveProjectId === 'all') {
+            inventoryQ = query(
+              collection(db, 'inventory'),
+              where('tenantId', '==', tenantId)
+            );
+          } else {
+            inventoryQ = query(
+              collection(db, 'inventory'),
+              where('tenantId', '==', tenantId),
+              where('projectId', '==', effectiveProjectId)
+            );
+          }
+        }
         const inventorySnap = await getDocs(inventoryQ);
         if (!cancelled) {
           setInventory(inventorySnap.docs.map(d => ({ id: d.id, ...d.data() })) as Unit[]);
