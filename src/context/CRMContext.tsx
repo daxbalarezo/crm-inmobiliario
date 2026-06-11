@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import type { Tenant } from '../types/definitions';
 
@@ -120,6 +120,17 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         if (targetProfile.assignedProjectIds?.length > 0) {
           setActiveProjectId(targetProfile.assignedProjectIds[0]);
         }
+
+        // Auditar el inicio de la suplantación
+        await addDoc(collection(db, 'audit_logs'), {
+          action: 'impersonate_start',
+          actorUid: realUserProfile.uid,
+          actorName: realUserProfile.name,
+          targetUid: targetUid,
+          targetName: targetProfile.name,
+          targetTenant: targetProfile.tenantId,
+          timestamp: serverTimestamp()
+        });
       }
     } catch (e) {
       console.error("Error impersonando:", e);
@@ -131,6 +142,20 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     if (!realUserProfile) return;
     setUserProfile(realUserProfile);
     setIsImpersonating(false);
+
+    // Auditar el fin de la suplantación
+    if (userProfile && userProfile.uid !== realUserProfile.uid) {
+      await addDoc(collection(db, 'audit_logs'), {
+        action: 'impersonate_stop',
+        actorUid: realUserProfile.uid,
+        actorName: realUserProfile.name,
+        targetUid: userProfile.uid,
+        targetName: userProfile.name,
+        targetTenant: userProfile.tenantId,
+        timestamp: serverTimestamp()
+      });
+    }
+
     const fetchedTenant = await fetchTenant(realUserProfile.tenantId, realUserProfile.role);
     setTenant(fetchedTenant);
   };

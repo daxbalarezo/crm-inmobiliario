@@ -111,5 +111,15 @@ service cloud.firestore {
     match /config/{document=**} {
       allow read, write: if isAuthenticated() && isOwner();
     }
+
+    // ---------------------------------------------------------
+    // Colección: AUDIT_LOGS (Registro Inmutable de Actividades)
+    // ---------------------------------------------------------
+    match /audit_logs/{logId} {
+      // Solo el SuperAdmin puede leer o crear los logs. 
+      allow read, create: if isAuthenticated() && isOwner();
+      // Nadie, ni siquiera el SuperAdmin, puede borrar o alterar un log existente desde la web.
+      allow update, delete: if false;
+    }
   }
 }
