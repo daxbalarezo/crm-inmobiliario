@@ -18,6 +18,41 @@ export interface Tenant {
   stages?: string[];
   sources?: string[];
   createdAt?: any;
+  fields?: CustomFieldDefinition[];
+}
+
+export interface ModulePermissions {
+  read: 'all' | 'own' | 'none';
+  create: boolean;
+  update: boolean;
+  delete: boolean;
+}
+
+export interface RolePermission {
+  id?: string;
+  name: string; // e.g. "Líder de Ventas", "Administrativo"
+  tenantId: string;
+  permissions: {
+    leads: ModulePermissions;
+    inventory: ModulePermissions;
+    finance: {
+      read: 'all' | 'own' | 'none';
+      create: boolean;
+      approve: boolean;
+    };
+    settings: {
+      manage: boolean;
+    };
+  };
+}
+
+export interface CustomFieldDefinition {
+  id: string; // e.g. 'presupuesto'
+  label: string; // e.g. 'Presupuesto Máximo'
+  type: 'string' | 'number' | 'boolean' | 'date' | 'select';
+  options?: string[]; // Para tipo 'select'
+  required: boolean;
+  order: number;
 }
 
 export type ProductType = 'lote' | 'departamento' | 'casa' | 'oficina';
@@ -60,6 +95,7 @@ export interface Lead {
   updatedAt?: any;
   createdAt?: any;
   savedProforma?: any;
+  customData?: Record<string, any>; // Dynamic fields
 }
 
 export interface Unit {
@@ -95,4 +131,71 @@ export interface ProformaConfig {
   generatedAt?: string;
   finalPrice?: number;
   totalDiscount?: number;
+}
+
+export interface Payment {
+  id: string;
+  tenantId: string;
+  leadId: string;
+  leadName: string;
+  unitId?: string;
+  unitName?: string;
+  amount: number;
+  currency: 'USD' | 'PEN';
+  reference: string;
+  voucherUrl?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  notes?: string;
+  createdBy: string;
+  approvedBy?: string;
+  createdAt: any;
+  updatedAt?: any;
+}
+
+export interface ContractTemplate {
+  id: string;
+  tenantId: string;
+  name: string;
+  htmlContent: string;
+  createdAt: any;
+  updatedAt?: any;
+}
+
+export interface AuditEvent {
+  id: string;
+  tenantId: string;
+  userId: string;
+  userName: string;
+  action: 'DELETE' | 'APPROVE' | 'REJECT' | 'UPDATE_PERMISSIONS';
+  resource: 'LEAD' | 'PAYMENT' | 'UNIT' | 'PROJECT' | 'ROLE';
+  resourceId: string;
+  details: string;
+  timestamp: any;
+}
+
+export type WorkflowTriggerType = 'lead_created' | 'lead_updated';
+
+export interface WorkflowCondition {
+  field: string;
+  operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
+  value: string | number | boolean;
+}
+
+export type WorkflowActionType = 'assign_to' | 'assign_round_robin' | 'create_task' | 'add_tag' | 'notify';
+
+export interface WorkflowAction {
+  type: WorkflowActionType;
+  payload: any;
+}
+
+export interface Workflow {
+  id: string;
+  tenantId: string;
+  name: string;
+  isActive: boolean;
+  trigger: WorkflowTriggerType;
+  conditions: WorkflowCondition[];
+  actions: WorkflowAction[];
+  createdAt: any;
+  updatedAt?: any;
 }

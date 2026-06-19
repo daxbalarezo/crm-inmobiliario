@@ -1,32 +1,33 @@
 import React, { useMemo } from 'react';
-import { Target, Clock, AlertCircle, PhoneCall, ArrowRight, Wallet, Users, Home as PropIcon } from 'lucide-react';
-// Usamos "import type" para obligar a Vite a compilarlo correctamente
+import { Target, Clock, AlertCircle, PhoneCall, ArrowRight, Wallet, Users, Home as PropIcon, MessageSquare, Calendar, FileText, Activity } from 'lucide-react';
 import type { Lead } from '../types/definitions'; 
 import { useCommercialData } from '../hooks/useCommercialData';
 import { useCRM } from '../context/CRMContext';
+import styles from './HomeDashboard.module.css';
+
+const Sparkline = ({ color }: { color: string }) => (
+  <svg className={styles.sparkline} viewBox="0 0 100 40" preserveAspectRatio="none">
+    <path d="M0,40 C20,20 40,30 60,10 C80,0 100,20 100,20 L100,40 L0,40 Z" fill={color} fillOpacity="0.1" />
+    <path d="M0,40 C20,20 40,30 60,10 C80,0 100,20 100,20" fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+  </svg>
+);
 
 export default function HomeDashboard() {
   const { leads, loading } = useCommercialData();
   const { userProfile } = useCRM();
 
-  // Cálculo de datos en tiempo real
   const data = useMemo(() => {
     if (!leads) return null;
 
     const today = new Date();
-    // Ajuste de zona horaria local (Perú) para evitar cruces UTC
     const todayStr = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
-    // 1. MÉTRICAS DEL EMBUDO
     const nuevos = leads.filter(l => l.status === 'NUEVO').length;
-    // Mapeamos 'EN_NEGOCIACION' como visitas/citas activas
     const enNegociacion = leads.filter(l => l.status === 'EN_NEGOCIACION').length;
     const cierres = leads.filter(l => l.status === 'VENTA_CERRADA').length;
     
-    // Regla de negocio provisional (Ej: S/ 1,500 fijos de comisión por unidad)
     const comisiones = cierres * 1500;
 
-    // 2. GESTIÓN DE TAREAS (Seguimientos)
     const seguimientos = leads.filter(l => l.nextFollowUpDate).map(l => {
       const isAtrasado = l.nextFollowUpDate! < todayStr;
       const isHoy = l.nextFollowUpDate! === todayStr;
@@ -35,14 +36,31 @@ export default function HomeDashboard() {
 
     const atrasados = seguimientos.filter(t => t.isAtrasado);
     const paraHoy = seguimientos.filter(t => t.isHoy);
-    // Unimos y ordenamos para mostrar primero lo más urgente
     const tareasUrgentes = [...atrasados, ...paraHoy].slice(0, 4);
 
-    // 3. CALIDAD DE LEADS
-    const totales = leads.length || 1; // Evitamos división por cero
+    const totales = leads.length || 1; 
     const efectivos = leads.filter(l => ['NUEVO', 'EN_NEGOCIACION', 'SEPARADO', 'VENTA_CERRADA'].includes(l.status)).length;
     const enSeguimiento = leads.filter(l => ['INCUBADORA', 'NO_CONTACTADO'].includes(l.status)).length;
     const noEfectivos = leads.filter(l => l.status === 'NO_INTERESADO').length;
+
+    const getMs = (val: any) => {
+      if (!val) return 0;
+      if (val.toMillis) return val.toMillis();
+      if (val.seconds) return val.seconds * 1000;
+      return new Date(val).getTime();
+    };
+
+    const vistosRecientemente = [...leads]
+      .sort((a, b) => getMs(b.updatedAt) - getMs(a.updatedAt))
+      .slice(0, 4);
+
+    const actividades = leads.flatMap(l => 
+      (l.interactions || []).map(int => ({
+        ...int,
+        leadName: l.name,
+        leadId: l.id
+      }))
+    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 6);
 
     return {
       metricas: {
@@ -61,101 +79,146 @@ export default function HomeDashboard() {
         efectivos: { count: efectivos, pct: Math.round((efectivos / totales) * 100) },
         enSeguimiento: { count: enSeguimiento, pct: Math.round((enSeguimiento / totales) * 100) },
         noEfectivos: { count: noEfectivos, pct: Math.round((noEfectivos / totales) * 100) }
-      }
+      },
+      vistos: vistosRecientemente,
+      actividades
     };
   }, [leads]);
 
   if (loading || !data) {
     return (
-      <div className="flex items-center justify-center h-full min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4DB6AC]"></div>
+      <div className={styles.loaderContainer}>
+        <div className={styles.spinner}></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-10">
-
+    <div className={styles.container}>
 
         {/* CABECERA */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div className={styles.header}>
             <div>
-                <h2 className="text-2xl font-semibold text-[#181818] tracking-tight">
+                <h2 className={styles.title}>
                     Resumen, {userProfile?.name?.split(' ')[0] || 'Usuario'}
                 </h2>
-                <p className="text-[#444444] mt-1 text-sm">Vista general de cartera comercial</p>
+                <p className={styles.subtitle}>Vista general de cartera comercial</p>
             </div>
-            <button className="bg-white border border-[#DDDBDA] text-[#0176D3] px-4 py-2 rounded-sm text-sm font-semibold flex items-center gap-2 hover:bg-slate-50 transition-all">
+            <button className={styles.btnPrimary}>
                 <Target size={16} /> Ver mis metas
             </button>
         </div>
 
         {/* 1. EMBUDO DE CONVERSIÓN */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-sm border border-[#DDDBDA]">
-                <p className="text-[#444444] text-sm font-medium uppercase tracking-wide mb-1">Nuevos Leads</p>
-                <p className="text-3xl font-light text-[#181818]">{data.metricas.nuevos}</p>
+        <div className={styles.metricsGrid}>
+            <div className={`${styles.metricCard} ${styles.cardBlue}`}>
+                <div className={styles.metricHeader}>
+                    <p className={styles.metricLabel}>Nuevos Leads</p>
+                    <div className={`${styles.iconWrapper} ${styles.iconBlue}`}>
+                        <Users size={20} />
+                    </div>
+                </div>
+                <p className={styles.metricValue}>{data.metricas.nuevos}</p>
+                <Sparkline color="#3b82f6" />
             </div>
-            <div className="bg-white p-4 rounded-sm border border-[#DDDBDA]">
-                <p className="text-[#444444] text-sm font-medium uppercase tracking-wide mb-1">Citas Activas</p>
-                <p className="text-3xl font-light text-[#181818]">{data.metricas.visitas}</p>
+            <div className={`${styles.metricCard} ${styles.cardAmber}`}>
+                <div className={styles.metricHeader}>
+                    <p className={styles.metricLabel}>Citas Activas</p>
+                    <div className={`${styles.iconWrapper} ${styles.iconAmber}`}>
+                        <Clock size={20} />
+                    </div>
+                </div>
+                <p className={styles.metricValue}>{data.metricas.visitas}</p>
+                <Sparkline color="#f59e0b" />
             </div>
-            <div className="bg-white p-4 rounded-sm border border-[#DDDBDA]">
-                <p className="text-[#444444] text-sm font-medium uppercase tracking-wide mb-1">Cierres Mes</p>
-                <p className="text-3xl font-light text-[#181818]">{data.metricas.cierres}</p>
+            <div className={`${styles.metricCard} ${styles.cardGreen}`}>
+                <div className={styles.metricHeader}>
+                    <p className={styles.metricLabel}>Cierres Mes</p>
+                    <div className={`${styles.iconWrapper} ${styles.iconGreen}`}>
+                        <Target size={20} />
+                    </div>
+                </div>
+                <p className={styles.metricValue}>{data.metricas.cierres}</p>
+                <Sparkline color="#10b981" />
             </div>
-            <div className="bg-white p-4 rounded-sm border-t-4 border-t-[#0176D3] border-b border-x border-[#DDDBDA]">
-                <p className="text-[#0176D3] text-sm font-bold uppercase tracking-wide mb-1">Comisiones</p>
-                <p className="text-3xl font-semibold text-[#181818]">{data.metricas.comisiones}</p>
+            <div className={`${styles.metricCard} ${styles.cardPurple}`}>
+                <div className={styles.metricHeader}>
+                    <p className={styles.metricLabel}>Comisiones</p>
+                    <div className={`${styles.iconWrapper} ${styles.iconPurple}`}>
+                        <Wallet size={20} />
+                    </div>
+                </div>
+                <p className={`${styles.metricValue} ${styles.metricValueSpecial}`}>{data.metricas.comisiones}</p>
+                <Sparkline color="#8b5cf6" />
             </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* VISTOS RECIENTEMENTE (Quick Access) */}
+        {data.vistos.length > 0 && (
+            <div className={styles.recentlyViewedSection}>
+                <h3 className={styles.sectionTitle}>Vistos recientemente</h3>
+                <div className={styles.recentGrid}>
+                    {data.vistos.map(lead => (
+                        <div key={lead.id} className={styles.recentCard}>
+                            <div className={styles.recentAvatar}>{lead.name.charAt(0).toUpperCase()}</div>
+                            <div className={styles.recentInfo}>
+                                <p className={styles.recentName}>{lead.name}</p>
+                                <p className={styles.recentStatus}>{lead.status.replace('_', ' ')}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        <div className={styles.secondaryGrid}>
             
             {/* 2. CENTRO DE COMANDO (Tareas Pendientes) */}
-            <div className="xl:col-span-2 bg-white rounded-sm border border-[#DDDBDA] flex flex-col">
-                <div className="px-4 py-3 border-b border-[#DDDBDA] flex items-center justify-between bg-[#F3F3F3]/50">
-                    <h3 className="font-semibold text-sm text-[#181818] uppercase tracking-wide">
-                        Próximos Seguimientos
-                    </h3>
-                    <div className="flex gap-2">
+            <div className={styles.panelCard}>
+                <div className={styles.panelHeader}>
+                    <h3 className={styles.panelTitle}>Próximos Seguimientos</h3>
+                    <div className={styles.badgesGroup}>
                         {data.tareas.atrasadosCount > 0 && (
-                          <span className="text-[13px] font-bold px-2 py-0.5 rounded-sm bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className={`${styles.badge} ${styles.badgeDanger}`}>
                               Atrasados: {data.tareas.atrasadosCount}
                           </span>
                         )}
-                        <span className="text-[13px] font-bold px-2 py-0.5 rounded-sm bg-white text-[#444444] border border-[#DDDBDA]">
+                        <span className={`${styles.badge} ${styles.badgeNeutral}`}>
                             Hoy: {data.tareas.paraHoyCount}
                         </span>
                     </div>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto">
+                <div className={styles.tableContainer}>
                     {data.tareas.lista.length === 0 ? (
-                        <div className="p-6 text-center text-[#444444] text-sm">
-                            No hay seguimientos urgentes en cola.
+                        <div className={styles.emptyState}>
+                            No hay seguimientos urgentes en cola. ¡Excelente trabajo!
                         </div>
                     ) : (
-                        <table className="w-full text-left text-sm text-[#181818] border-collapse">
-                            <thead className="bg-white border-b border-[#DDDBDA]">
+                        <table className={styles.table}>
+                            <thead>
                                 <tr>
-                                    <th className="px-4 py-2 font-semibold text-[#444444] font-normal w-1/2">Prospecto</th>
-                                    <th className="px-4 py-2 font-semibold text-[#444444] font-normal">Nota</th>
-                                    <th className="px-4 py-2 font-semibold text-[#444444] font-normal text-right w-16">Acción</th>
+                                    <th className={styles.th}>Prospecto</th>
+                                    <th className={styles.th}>Nota</th>
+                                    <th className={`${styles.th} ${styles.thRight}`}>Acción</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#DDDBDA]">
+                            <tbody>
                                 {data.tareas.lista.map((tarea, index) => (
-                                    <tr key={tarea.id || index} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-4 py-2 font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-1 h-3 rounded-full ${tarea.isAtrasado ? 'bg-rose-500' : 'bg-[#0176D3]'}`}></div>
+                                    <tr key={tarea.id || index} className={styles.tr}>
+                                        <td className={styles.td}>
+                                            <div className={styles.taskProspect}>
+                                                <div className={`${styles.statusDot} ${tarea.isAtrasado ? styles.dotDanger : styles.dotPrimary}`}></div>
                                                 {tarea.name || 'Prospecto sin nombre'}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-2 text-[#444444] truncate max-w-[200px]">{tarea.nextFollowUpNote || 'Seguimiento programado'}</td>
-                                        <td className="px-4 py-2 text-right">
-                                            <button className="text-[#0176D3] hover:underline font-semibold" title="Llamar">
+                                        <td className={styles.td}>
+                                            <div className={styles.taskNote}>
+                                                {tarea.nextFollowUpNote || 'Seguimiento programado'}
+                                            </div>
+                                        </td>
+                                        <td className={`${styles.td} ${styles.tdRight}`}>
+                                            <button className={styles.actionBtn} title="Llamar">
                                                 Contactar
                                             </button>
                                         </td>
@@ -166,54 +229,58 @@ export default function HomeDashboard() {
                     )}
                 </div>
                 
-                <div className="p-3 border-t border-[#DDDBDA] text-center bg-white">
-                    <button className="text-sm font-semibold text-[#0176D3] hover:underline">Ver todo</button>
+                <div className={styles.panelFooter}>
+                    <button className={styles.actionBtn}>Ver todas las tareas</button>
                 </div>
             </div>
 
-            {/* 3. CALIDAD DE LEADS (Stacked Bar) */}
-            <div className="bg-white rounded-sm border border-[#DDDBDA] flex flex-col justify-between">
-                <div className="px-4 py-3 border-b border-[#DDDBDA] bg-[#F3F3F3]/50">
-                    <h3 className="font-semibold text-sm text-[#181818] uppercase tracking-wide">Desempeño de Leads</h3>
+            {/* 3. FEED DE ACTIVIDAD (Timeline) */}
+            <div className={styles.panelCard}>
+                <div className={styles.panelHeader}>
+                    <h3 className={styles.panelTitle}>
+                        <Activity size={16} style={{display: 'inline', marginRight: '8px'}} />
+                        Actividad Reciente
+                    </h3>
                 </div>
                 
-                <div className="p-5 flex-1">
-                    <div className="flex items-baseline gap-2 mb-4">
-                        <span className="text-4xl font-light text-[#181818]">{data.calidad.totales}</span>
-                        <span className="text-sm text-[#444444] font-medium uppercase tracking-wider">Total</span>
-                    </div>
+                <div className={styles.timelineBody}>
+                    {data.actividades.length === 0 ? (
+                        <div className={styles.emptyState}>No hay actividad reciente.</div>
+                    ) : (
+                        <div className={styles.timeline}>
+                            {data.actividades.map((act, idx) => {
+                                let Icon = FileText;
+                                let iconColor = '#94a3b8';
+                                if (act.type === 'Llamada' || act.type === 'call') {
+                                    Icon = PhoneCall; iconColor = '#3b82f6';
+                                } else if (act.type === 'Reunión' || act.type === 'meeting') {
+                                    Icon = Calendar; iconColor = '#f59e0b';
+                                } else if (act.type === 'Mensaje' || act.type === 'message') {
+                                    Icon = MessageSquare; iconColor = '#10b981';
+                                }
 
-                    <div className="w-full flex h-2 overflow-hidden mb-6 bg-slate-200 rounded-sm">
-                        <div className="bg-[#027E46] h-full transition-all duration-1000" style={{ width: `${data.calidad.efectivos.pct}%` }} title="Efectivos"></div>
-                        <div className="bg-[#0176D3] h-full transition-all duration-1000" style={{ width: `${data.calidad.enSeguimiento.pct}%` }} title="En Seguimiento"></div>
-                        <div className="bg-[#B9B9B9] h-full transition-all duration-1000" style={{ width: `${data.calidad.noEfectivos.pct}%` }} title="No Efectivos"></div>
-                    </div>
-
-                    <table className="w-full text-left text-sm text-[#181818]">
-                        <tbody className="divide-y divide-slate-100">
-                            <tr>
-                                <td className="py-2 flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-sm bg-[#027E46]"></span>
-                                    <span className="font-medium text-[#444444]">Efectivos</span>
-                                </td>
-                                <td className="py-2 text-right font-semibold">{data.calidad.efectivos.count} <span className="text-slate-400 font-normal ml-1">({data.calidad.efectivos.pct}%)</span></td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-sm bg-[#0176D3]"></span>
-                                    <span className="font-medium text-[#444444]">Seguimiento</span>
-                                </td>
-                                <td className="py-2 text-right font-semibold">{data.calidad.enSeguimiento.count} <span className="text-slate-400 font-normal ml-1">({data.calidad.enSeguimiento.pct}%)</span></td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-sm bg-[#B9B9B9]"></span>
-                                    <span className="font-medium text-[#444444]">Pérdida</span>
-                                </td>
-                                <td className="py-2 text-right font-semibold">{data.calidad.noEfectivos.count} <span className="text-slate-400 font-normal ml-1">({data.calidad.noEfectivos.pct}%)</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                return (
+                                    <div key={act.id || idx} className={styles.timelineItem}>
+                                        <div className={styles.timelineIcon} style={{color: iconColor, backgroundColor: `${iconColor}15`}}>
+                                            <Icon size={14} />
+                                        </div>
+                                        <div className={styles.timelineContent}>
+                                            <p className={styles.timelineText}>
+                                                <strong>{act.leadName}</strong> - {act.type || 'Nota'}
+                                            </p>
+                                            <p className={styles.timelineNote}>{act.note}</p>
+                                            <p className={styles.timelineTime}>
+                                                {new Date(act.date).toLocaleDateString()} {new Date(act.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+                <div className={styles.panelFooter}>
+                    <button className={styles.actionBtn}>Ver todo el historial</button>
                 </div>
             </div>
             

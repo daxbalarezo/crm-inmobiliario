@@ -28,6 +28,16 @@ service cloud.firestore {
       
       // SOLO el owner (SuperAdmin Daniel Balarezo) puede crear o editar empresas
       allow write: if isAuthenticated() && isOwner();
+
+      match /schema_lead/{fieldId} {
+        allow read: if isAuthenticated() && (isOwner() || getUserData().tenantId == tenantId);
+        allow write: if isAuthenticated() && (isOwner() || (getUserData().tenantId == tenantId && getUserData().role == 'manager'));
+      }
+
+      match /roles/{roleId} {
+        allow read: if isAuthenticated() && (isOwner() || getUserData().tenantId == tenantId);
+        allow write: if isAuthenticated() && (isOwner() || (getUserData().tenantId == tenantId && getUserData().role == 'manager'));
+      }
     }
 
     // ---------------------------------------------------------
@@ -46,10 +56,16 @@ service cloud.firestore {
       
       // ESCRITURA:
       // - El owner escribe todo (Crear, suspender, borrar)
-      // - El propio usuario puede editar sus datos (ej. cambiar contraseña si alguna vez se permite)
+      // - El propio usuario puede editar sus datos
+      // - Un manager puede crear/editar usuarios de su misma empresa
       allow write: if isAuthenticated() && (
         isOwner() || 
-        request.auth.uid == userId
+        request.auth.uid == userId ||
+        (
+          getUserData().role == 'manager' &&
+          (resource == null || getUserData().tenantId == resource.data.tenantId) &&
+          (request.resource == null || getUserData().tenantId == request.resource.data.tenantId)
+        )
       );
     }
 
@@ -93,7 +109,7 @@ service cloud.firestore {
       // - Owner: Escribe en todos lados.
       // - Manager: Crea/Edita cualquier lead de su empresa.
       // - Asesor: Crea leads para sí mismo, o edita los que ya tiene asignados.
-      allow write: if isAuthenticated() && (
+      allow create: if isAuthenticated() && (
         isOwner() ||
         (
           getUserData().tenantId == request.resource.data.tenantId && 
@@ -102,6 +118,130 @@ service cloud.firestore {
             request.resource.data.assignedTo == request.auth.uid
           )
         )
+      );
+
+      allow update: if isAuthenticated() && (
+        isOwner() ||
+        (
+          getUserData().tenantId == resource.data.tenantId && 
+          getUserData().tenantId == request.resource.data.tenantId && // Evita que lo transfieran a otra empresa
+          (
+            getUserData().role == 'manager' || 
+            resource.data.assignedTo == request.auth.uid
+          )
+        )
+      );
+
+      allow delete: if isAuthenticated() && (
+        isOwner() ||
+        (
+          getUserData().tenantId == resource.data.tenantId && 
+          (
+            getUserData().role == 'manager' || 
+            resource.data.assignedTo == request.auth.uid
+          )
+        )
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Colección: INVENTORY (Unidades / Lotes)
+    // ---------------------------------------------------------
+    match /inventory/{unitId} {
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        getUserData().tenantId == resource.data.tenantId
+      );
+      
+      allow write: if isAuthenticated() && (
+        isOwner() || 
+        (getUserData().tenantId == request.resource.data.tenantId && getUserData().role == 'manager') ||
+        (getUserData().tenantId == resource.data.tenantId && getUserData().role == 'manager')
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Colección: PAYMENTS (Pagos y Vouchers)
+    // ---------------------------------------------------------
+    match /payments/{paymentId} {
+      // LECTURA: Owner lee todo. Usuarios de la empresa leen los pagos de su empresa.
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        (resource == null) ||
+        getUserData().tenantId == resource.data.tenantId
+      );
+      
+      // ESCRITURA: 
+      allow write: if isAuthenticated() && (
+        isOwner() || 
+        (getUserData().tenantId == request.resource.data.tenantId)
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Colección: CONTRACT TEMPLATES (Plantillas)
+    // ---------------------------------------------------------
+    match /contract_templates/{templateId} {
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        (resource == null) ||
+        getUserData().tenantId == resource.data.tenantId
+      );
+      allow write: if isAuthenticated() && (
+        isOwner() || 
+        (getUserData().tenantId == request.resource.data.tenantId && getUserData().role == 'manager') ||
+        (getUserData().tenantId == resource.data.tenantId && getUserData().role == 'manager')
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Colección: AUDIT LOGS (Registro de Auditoría)
+    // ---------------------------------------------------------
+    match /audit_logs/{logId} {
+      // LECTURA: Owner lee todo. Managers leen los de su empresa.
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        (getUserData().tenantId == resource.data.tenantId && getUserData().role == 'manager')
+      );
+      
+      // CREACIÓN: Cualquier usuario autenticado de la empresa puede crear un log.
+      allow create: if isAuthenticated() && (
+        isOwner() || 
+        getUserData().tenantId == request.resource.data.tenantId
+      );
+
+      // INMUTABILIDAD: Nadie puede actualizar ni eliminar un registro de auditoría.
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Colección: WORKFLOWS (Automatizaciones)
+    // ---------------------------------------------------------
+    match /workflows/{workflowId} {
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        getUserData().tenantId == resource.data.tenantId
+      );
+      // Solo owner o manager pueden crear/modificar workflows
+      allow write: if isAuthenticated() && (
+        isOwner() || 
+        (getUserData().tenantId == request.resource.data.tenantId && getUserData().role == 'manager') ||
+        (getUserData().tenantId == resource.data.tenantId && getUserData().role == 'manager')
+      );
+    }
+    // ---------------------------------------------------------
+    // Colección: METADATA (Datos internos del sistema, ej. índices Round Robin)
+    // ---------------------------------------------------------
+    match /metadata/{tenantId} {
+      // Todos los de la empresa pueden leer para ejecutar lógica
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        getUserData().tenantId == tenantId
+      );
+      // Todos los de la empresa pueden escribir para actualizar índices como el Round Robin
+      allow write: if isAuthenticated() && (
+        isOwner() || 
+        getUserData().tenantId == tenantId
       );
     }
   }

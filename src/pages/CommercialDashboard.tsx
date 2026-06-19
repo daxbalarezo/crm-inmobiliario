@@ -4,15 +4,20 @@ import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from '
 import { db } from '../config/firebase';
 import { useCommercialData } from '../hooks/useCommercialData';
 import { useCRM } from '../context/CRMContext';
+import { useAuditTrail } from '../hooks/useAuditTrail';
+import { useWorkflows } from '../hooks/useWorkflows';
 import LeadModal from '../components/LeadModal';
+import KanbanBoard from '../components/KanbanBoard';
 import type { Lead } from '../types/definitions';
-
+import styles from './CommercialDashboard.module.css';
 export default function CommercialDashboard() {
   const { leads, inventory, loading } = useCommercialData();
-  const { tenantId, activeProjectId, userProfile } = useCRM();
+  const { tenantId, activeProjectId, userProfile, userPermissions } = useCRM();
+  const { logEvent } = useAuditTrail(tenantId || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [editingLead, setEditingLead]     = useState<Lead | null>(null);
+  const [viewMode, setViewMode]           = useState<'board' | 'list'>('board');
 
   const filteredLeads = useMemo(() => {
     if (!searchTerm) return leads;
@@ -22,14 +27,20 @@ export default function CommercialDashboard() {
     );
   }, [leads, searchTerm]);
 
+  const { executeWorkflows } = useWorkflows();
+
   const handleSave = async (data: Partial<Lead>) => {
+    if (!tenantId) return;
+    
     if (editingLead?.id) {
       await updateDoc(doc(db, 'leads', editingLead.id), {
         ...data,
         updatedAt: serverTimestamp(),
       });
+      // Exec workflows for UPDATE
+      executeWorkflows(tenantId, 'lead_updated', { id: editingLead.id, ...data });
     } else {
-      await addDoc(collection(db, 'leads'), {
+      const docRef = await addDoc(collection(db, 'leads'), {
         ...data,
         tenantId,
         projectId: activeProjectId,
@@ -37,82 +48,126 @@ export default function CommercialDashboard() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      // Exec workflows for CREATE
+      executeWorkflows(tenantId, 'lead_created', { id: docRef.id, ...data, assignedTo: userProfile?.uid });
     }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteDoc(doc(db, 'leads', id));
+    try {
+      const leadName = leads.find(l => l.id === id)?.name || 'Desconocido';
+      await deleteDoc(doc(db, 'leads', id));
+      if (userProfile) {
+        await logEvent(userProfile.uid, userProfile.name, 'DELETE', 'LEAD', id, `Prospecto eliminado: ${leadName}`);
+      }
+      alert(`El prospecto ${leadName} ha sido eliminado correctamente.`);
+    } catch (error: any) {
+      console.error("Error al eliminar prospecto:", error);
+      alert(`No se pudo eliminar el prospecto. Error: ${error.message}`);
+    }
+  };
+
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    await updateDoc(doc(db, 'leads', leadId), {
+      status: newStatus,
+      updatedAt: serverTimestamp(),
+    });
   };
 
   const openNew = () => { setEditingLead(null); setShowLeadModal(true); };
   const openEdit = (lead: Lead) => { setEditingLead(lead); setShowLeadModal(true); };
 
   if (loading) return (
-    <div className="flex items-center justify-center h-[60vh]">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4DB6AC]"/>
+    <div className={styles.loaderContainer}>
+      <div className={styles.spinner}/>
     </div>
   );
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-end">
+    <div className={styles.container}>
+      <div className={styles.header}>
         <div>
-          <h2 className="text-3xl font-[Poppins] font-extrabold text-[#0B2B40]">Gestión Comercial</h2>
-          <p className="text-slate-500 font-medium mt-1">Administra prospectos y cierra ventas.</p>
+          <h2 className={styles.title}>Gestión Comercial</h2>
+          <p className={styles.subtitle}>Administra prospectos y cierra ventas.</p>
         </div>
-        <button onClick={openNew}
-          className="bg-[#F2A900] text-[#0B2B40] px-6 py-3 rounded-2xl font-bold hover:bg-[#d99700] transition-all flex items-center gap-2 shadow-md">
-          <Plus size={18}/> Nuevo Prospecto
-        </button>
+        {userPermissions.leads.create && (
+          <button onClick={openNew} className={styles.btnPrimary}>
+            <Plus size={18}/> Nuevo Prospecto
+          </button>
+        )}
       </div>
 
-      {/* Buscador */}
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-        <div className="relative">
-          <Search className="absolute left-4 top-3.5 text-slate-400" size={20}/>
-          <input type="text" placeholder="Buscar prospecto..."
-            className="w-full pl-12 p-3.5 bg-slate-50 rounded-2xl outline-none border border-slate-200 focus:ring-2 focus:ring-[#4DB6AC] font-medium transition-all"
-            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
+      {/* Buscador y Controles */}
+      <div className={styles.controlsBar}>
+        <div className={styles.searchCard}>
+          <div className={styles.searchWrapper}>
+            <Search className={styles.searchIcon} size={20}/>
+            <input type="text" placeholder="Buscar prospecto..."
+              className={styles.searchInput}
+              value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
+          </div>
+        </div>
+        <div className={styles.viewToggles}>
+          <button 
+            className={`${styles.toggleBtn} ${viewMode === 'board' ? styles.toggleActive : ''}`}
+            onClick={() => setViewMode('board')}
+          >
+            Tablero
+          </button>
+          <button 
+            className={`${styles.toggleBtn} ${viewMode === 'list' ? styles.toggleActive : ''}`}
+            onClick={() => setViewMode('list')}
+          >
+            Lista
+          </button>
         </div>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div className={styles.kpiGrid}>
+        <div className={styles.kpiCard}>
           <div>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Activos</p>
-            <p className="text-3xl font-[Poppins] font-black text-[#0B2B40] mt-1">{filteredLeads.length}</p>
+            <p className={styles.kpiLabel}>Activos</p>
+            <p className={styles.kpiValue}>{filteredLeads.length}</p>
           </div>
-          <div className="bg-slate-50 p-3 rounded-2xl"><Users className="text-[#0B2B40]"/></div>
+          <div className={styles.kpiIconWrapper}><Users /></div>
         </div>
       </div>
 
-      {/* Lista */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        {filteredLeads.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">No hay prospectos aún.</div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {filteredLeads.map(lead => (
-              <div key={lead.id} onClick={() => openEdit(lead)}
-                className="flex items-center justify-between p-5 hover:bg-slate-50 cursor-pointer transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-[#0B2B40] flex items-center justify-center text-white font-bold">
-                    {lead.name?.charAt(0).toUpperCase() ?? '?'}
+      {/* Tablero / Lista */}
+      {viewMode === 'board' ? (
+        <KanbanBoard 
+          leads={filteredLeads} 
+          onLeadStatusChange={handleStatusChange}
+          onLeadClick={openEdit}
+          isAdminMode={userProfile?.role === 'owner' || userProfile?.role === 'manager'}
+        />
+      ) : (
+        <div className={styles.listCard}>
+          {filteredLeads.length === 0 ? (
+            <div className={styles.emptyState}>No hay prospectos aún.</div>
+          ) : (
+            <div className={styles.listBody}>
+              {filteredLeads.map(lead => (
+                <div key={lead.id} onClick={() => openEdit(lead)} className={styles.listItem}>
+                  <div className={styles.itemLeft}>
+                    <div className={styles.itemAvatar}>
+                      {lead.name?.charAt(0).toUpperCase() ?? '?'}
+                    </div>
+                    <div className={styles.itemInfo}>
+                      <p className={styles.itemName}>{lead.name}</p>
+                      <p className={styles.itemPhone}>{lead.phone}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-[#0B2B40]">{lead.name}</p>
-                    <p className="text-sm text-slate-500">{lead.phone}</p>
-                  </div>
+                  <span className={styles.statusBadge}>
+                    {lead.status}
+                  </span>
                 </div>
-                <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-indigo-100 text-indigo-700">
-                  {lead.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <LeadModal
         isOpen={showLeadModal}

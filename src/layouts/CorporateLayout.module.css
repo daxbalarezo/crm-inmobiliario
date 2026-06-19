@@ -1,0 +1,434 @@
+.layoutContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+}
+
+/* Banner de Soporte */
+.supportBanner {
+  background-color: #d97706; /* amber-600 */
+  color: white;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 50;
+  box-shadow: var(--shadow-md);
+}
+
+.supportBannerContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pulseIcon {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.supportBtn {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 4px;
+  color: white;
+  transition: background-color var(--transition-speed);
+}
+
+.supportBtn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Topbar Global */
+.topbar {
+  height: 60px;
+  background-color: #0B1727; /* Un azul marino más profundo y elegante */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 30;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.logoArea {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 240px;
+}
+
+.logoText {
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.globalBadge {
+  background-color: rgba(1, 118, 211, 0.2);
+  color: #6eb8f5;
+  border: 1px solid rgba(1, 118, 211, 0.5);
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 2px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Acciones Globales */
+.globalActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Selector de Proyecto - Estilo Pill */
+.projectSelectorContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.03);
+  padding: 4px 4px 4px 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
+}
+
+.projectSelectorContainer:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.projectLabel {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.selectWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.projectSelect {
+  appearance: none;
+  background-color: transparent;
+  border: none;
+  color: #f8fafc;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 6px 32px 6px 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.projectSelect option {
+  background-color: #0B1727;
+  color: white;
+}
+
+.selectIcon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #94a3b8;
+}
+
+.iconGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.iconBtn {
+  position: relative;
+  color: #cbd5e1;
+  background: transparent;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.iconBtn:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.notificationDot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background-color: #e11d48;
+  border-radius: 50%;
+  border: 2px solid #0B1727;
+}
+
+/* User Profile - Estilo Pill */
+.userProfileGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: rgba(255, 255, 255, 0.03);
+  padding: 6px 16px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.userProfileGroup:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.userName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.userRole {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: -2px;
+}
+
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #0176D3, #005A9E);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.logoutBtn {
+  padding: 6px;
+  color: #94a3b8;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: 4px;
+}
+
+.logoutBtn:hover {
+  color: #fb7185;
+  background-color: rgba(251, 113, 133, 0.1);
+}
+
+/* Contenido Principal (Sidebar + Main) */
+.bodyContainer {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 250px;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid #DDDBDA;
+  z-index: 20;
+}
+
+.navMenu {
+  flex: 1;
+  padding: 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.navItemContainer {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+
+.navBtn, .navLink {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Mantener para el chevron */
+  padding: 10px 14px;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px; /* Estilo pill / redondeado */
+  background: transparent;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+}
+
+.navLink {
+  justify-content: flex-start; /* Los enlaces sin chevron se alinean a la izquierda */
+  gap: 12px;
+}
+
+.navBtnActive, .navLinkActive {
+  background-color: #f0f7ff; /* Fondo azul suave */
+  color: #0176D3;
+  font-weight: 600;
+}
+
+.navBtnInactive, .navLinkInactive {
+  color: #475569; /* Gris más oscuro y legible */
+}
+
+.navBtnInactive:hover, .navLinkInactive:hover {
+  background-color: #f1f5f9; /* Fondo gris suave al hacer hover */
+  color: #0f172a;
+}
+
+.navIconLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconActive {
+  color: #0176D3;
+}
+
+.iconInactive {
+  color: #64748b; /* Gris medio para iconos inactivos */
+}
+
+.chevron {
+  transition: transform 0.2s ease;
+  color: #94a3b8;
+}
+
+.chevronExpanded {
+  transform: rotate(180deg);
+}
+
+/* Submenu Acordeón */
+.submenuWrapper {
+  display: grid;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.submenuExpanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 4px;
+}
+
+.submenuCollapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.submenuInner {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 18px; /* Reducido para la línea guía */
+  margin-left: 20px; /* Desplazamiento para alinear con el icono */
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-left: 1px solid #e2e8f0; /* Línea guía visual */
+}
+
+.subNavLink {
+  padding: 8px 12px 8px 16px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: block;
+}
+
+.subNavLinkActive {
+  color: #0176D3;
+  font-weight: 600;
+  background-color: #f0f7ff;
+}
+
+.subNavLinkInactive {
+  color: #64748b;
+}
+
+.subNavLinkInactive:hover {
+  color: #0f172a;
+  background-color: #f1f5f9;
+}
+
+/* Main Area */
+.mainArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.contentScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background-color: var(--bg-color);
+}
+
+.contentWrapper {
+  max-width: 1600px;
+  margin: 0 auto;
+}

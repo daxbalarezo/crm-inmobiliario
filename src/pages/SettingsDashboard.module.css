@@ -1,0 +1,412 @@
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 4px 0 0 0;
+}
+
+/* Tabs */
+.tabsContainer {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  transition: all var(--transition-speed);
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tabActive {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+/* Panel */
+.panelCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  animation: slideUp 0.4s ease-out;
+  overflow: hidden;
+}
+
+.panelHeader {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panelTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.btnPrimary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--primary-color);
+  color: white;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background-color var(--transition-speed);
+}
+
+.btnPrimary:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Table */
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+}
+
+.table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.th {
+  padding: 12px 24px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.thRight { text-align: right; }
+
+.tr {
+  transition: background-color var(--transition-speed);
+}
+.tr:hover {
+  background-color: var(--bg-color);
+}
+
+.td {
+  padding: 12px 24px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+.tr:last-child .td {
+  border-bottom: none;
+}
+
+.tdRight { text-align: right; }
+
+.textMuted { color: var(--text-secondary); }
+.fontMono { font-family: monospace; font-size: 13px; }
+.fontSemibold { font-weight: 600; }
+.textPrimary { color: var(--primary-color); font-weight: 700; }
+
+/* Status Badges */
+.badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badgeActive { background-color: #d1fae5; color: #047857; border: 1px solid transparent; cursor: pointer; }
+.badgeActive:hover { background-color: #a7f3d0; }
+
+.badgeSuspended { background-color: #fee2e2; color: #b91c1c; border: 1px solid transparent; cursor: pointer; }
+.badgeSuspended:hover { background-color: #fecaca; }
+
+.badgeSuperadmin { background-color: #f3e8ff; color: #7e22ce; }
+.badgeManager { background-color: #fef3c7; color: #b45309; }
+.badgeAgent { background-color: #f1f5f9; color: #475569; }
+
+/* Select Plan */
+.selectPlan {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  outline: none;
+}
+
+.planStarter { background-color: #dbeafe; color: #1d4ed8; }
+.planPro { background-color: #e0e7ff; color: #4338ca; }
+.planEnterprise { background-color: #ffe4e6; color: #be123c; }
+
+/* Actions */
+.btnAction {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+.btnAction:hover {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+/* Finanzas Grid */
+.financesGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+  animation: slideUp 0.5s ease-out;
+}
+
+@media (min-width: 768px) {
+  .financesGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.financeCard {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.financeCardDark {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: white;
+  border: none;
+}
+
+.financeCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.financeLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.financeCardDark .financeLabel {
+  color: #94a3b8;
+}
+
+.financeValue {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 8px 0 0 0;
+  color: var(--text-primary);
+}
+
+.financeCardDark .financeValue {
+  color: white;
+}
+
+.financeIcon {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-color);
+}
+.financeCardDark .financeIcon {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #38bdf8;
+}
+
+.financeFooter {
+  margin-top: 24px;
+  font-size: 13px;
+  color: #dc2626;
+  font-weight: 500;
+}
+.financeCardDark .financeFooter {
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Modals */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+  backdrop-filter: blur(2px);
+}
+
+.modalContent {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  animation: modalScale 0.3s ease-out;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.btnClose:hover {
+  color: var(--text-primary);
+}
+
+.modalBody {
+  padding: 24px;
+}
+
+.formGroup {
+  margin-bottom: 16px;
+}
+
+.formLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.formInput, .formSelect {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  outline: none;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  transition: border-color var(--transition-speed);
+}
+
+.formInput:focus, .formSelect:focus {
+  border-color: var(--primary-color);
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btnCancel {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 16px;
+}
+
+.btnCancel:hover {
+  color: var(--text-primary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}

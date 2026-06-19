@@ -1,14 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
-import type { Tenant } from '../types/definitions';
+import type { Tenant, RolePermission } from '../types/definitions';
+
+const DEFAULT_PERMISSIONS: RolePermission['permissions'] = {
+  leads: { read: 'own', create: true, update: true, delete: false },
+  inventory: { read: 'all', create: false, update: false, delete: false },
+  finance: { read: 'own', create: true, approve: false },
+  settings: { manage: false }
+};
+
+const MANAGER_PERMISSIONS: RolePermission['permissions'] = {
+  leads: { read: 'all', create: true, update: true, delete: true },
+  inventory: { read: 'all', create: true, update: true, delete: true },
+  finance: { read: 'all', create: true, approve: true },
+  settings: { manage: true }
+};
 
 export interface UserProfile {
   uid: string;
   tenantId: string;
-  role: 'owner' | 'manager' | 'agent';
+  role: 'owner' | 'manager' | 'agent' | string;
+  roleId?: string;
   name: string;
   email: string;
   assignedProjectIds: string[];
@@ -23,6 +38,7 @@ interface CRMContextType {
   tenant: Tenant | null;
   tenantId: string | null;
   activeProjectId: string | null;
+  userPermissions: RolePermission['permissions'];
   setActiveProjectId: (id: string) => void;
   authReady: boolean;
   logout: () => Promise<void>;
@@ -40,6 +56,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string>('valle_pacora');
+  const [userPermissions, setUserPermissions] = useState<RolePermission['permissions']>(DEFAULT_PERMISSIONS);
   const [authReady, setAuthReady] = useState(false);
 
   const fetchTenant = async (tenantId: string, role: string) => {
@@ -57,6 +74,28 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       console.error("Error cargando tenant:", e);
     }
     return { id: tenantId, name: 'Empresa no encontrada', plan: 'starter' } as Tenant;
+  };
+
+  const fetchPermissions = async (tenantId: string, roleName: string, roleId?: string) => {
+    if (roleName === 'owner' || roleName === 'manager') return MANAGER_PERMISSIONS;
+    if (!tenantId) return DEFAULT_PERMISSIONS;
+    try {
+      if (roleId) {
+        const roleSnap = await getDoc(doc(db, `tenants/${tenantId}/roles`, roleId));
+        if (roleSnap.exists()) {
+          return (roleSnap.data() as RolePermission).permissions;
+        }
+      } else {
+        const q = query(collection(db, `tenants/${tenantId}/roles`), where('name', '==', roleName));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          return (snap.docs[0].data() as RolePermission).permissions;
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching permissions:", e);
+    }
+    return DEFAULT_PERMISSIONS; // fallback
   };
 
   useEffect(() => {
@@ -85,6 +124,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           const fetchedTenant = await fetchTenant(profile.tenantId, profile.role);
           setTenant(fetchedTenant);
 
+          const permissions = await fetchPermissions(profile.tenantId, profile.role, profile.roleId);
+          setUserPermissions(permissions);
+
           if (profile.assignedProjectIds?.length > 0) {
             setActiveProjectId(profile.assignedProjectIds[0]);
           }
@@ -96,6 +138,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         setUserProfile(null);
         setRealUserProfile(null);
         setTenant(null);
+        setUserPermissions(DEFAULT_PERMISSIONS);
         setIsImpersonating(false);
       }
       setAuthReady(true);
@@ -117,6 +160,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         const fetchedTenant = await fetchTenant(targetProfile.tenantId, targetProfile.role);
         setTenant(fetchedTenant);
 
+        const permissions = await fetchPermissions(targetProfile.tenantId, targetProfile.role, targetProfile.roleId);
+        setUserPermissions(permissions);
+
         if (targetProfile.assignedProjectIds?.length > 0) {
           setActiveProjectId(targetProfile.assignedProjectIds[0]);
         }
@@ -133,6 +179,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     setIsImpersonating(false);
     const fetchedTenant = await fetchTenant(realUserProfile.tenantId, realUserProfile.role);
     setTenant(fetchedTenant);
+
+    const permissions = await fetchPermissions(realUserProfile.tenantId, realUserProfile.role, realUserProfile.roleId);
+    setUserPermissions(permissions);
   };
 
   const logout = async () => {
@@ -152,6 +201,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       tenant,
       tenantId: userProfile?.tenantId ?? null,
       activeProjectId,
+      userPermissions,
       setActiveProjectId,
       authReady,
       logout,
