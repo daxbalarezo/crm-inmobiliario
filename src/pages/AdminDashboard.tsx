@@ -6,7 +6,7 @@ import AdminCharts from '../components/admin/AdminCharts';
 
 export default function AdminDashboard() {
   const [timeRange, setTimeRange] = useState<string>('this_month');
-  const { loading, globalStats, funnelData, sourceData, workloadData } = useAdminMetrics(timeRange);
+  const { loading, globalStats, funnelData, sourceData, workloadData, lossReasonData, activityData } = useAdminMetrics(timeRange);
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Cargando métricas...</div>;
@@ -41,6 +41,8 @@ export default function AdminDashboard() {
           funnelData={funnelData} 
           sourceData={sourceData} 
           workloadData={workloadData} 
+          lossReasonData={lossReasonData}
+          activityData={activityData}
         />
       </div>
     </div>

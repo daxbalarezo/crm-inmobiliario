@@ -74,8 +74,8 @@ export default function FinanceDashboard() {
   const renderCard = (payment: Payment) => (
     <div key={payment.id} className={styles.card}>
       <div className={styles.cardHeader}>
-        <div className={styles.amount}>
-          {payment.currency === 'USD' ? '$' : 'S/.'} {payment.amount.toLocaleString()}
+        <div className={styles.paymentAmount}>
+          S/ {payment.amount.toLocaleString('en-PE')}
         </div>
         <span className={`${styles.badge} ${payment.status === 'PENDING' ? styles.badgePending : payment.status === 'APPROVED' ? styles.badgeApproved : styles.badgeRejected}`}>
           {payment.status}

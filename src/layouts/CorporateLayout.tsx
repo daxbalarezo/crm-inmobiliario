@@ -99,6 +99,8 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
         icon: BarChart3,
         subItems: [
           { name: 'Visión General', path: '/' },
+          { name: 'Reportes Avanzados', path: '/reportes-avanzados' },
+          { name: 'Reporte por Agente', path: '/analitica-agentes' },
           { name: 'Rendimiento Comercial', path: '/rendimiento' },
           { name: 'Tiempos de Respuesta', path: '/sla' }
         ]
@@ -131,7 +133,7 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     navItems.forEach(item => {
-      if (item.subItems?.some(sub => location.pathname === sub.path) && !expandedMenus.includes(item.name)) {
+      if (item.subItems?.some(sub => location.pathname === sub.path.split('?')[0]) && !expandedMenus.includes(item.name)) {
         setExpandedMenus(prev => [...prev, item.name]);
       }
     });
@@ -256,8 +258,8 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
             {navItems.map((item) => {
               const isExpanded = expandedMenus.includes(item.name);
 
-              const isExactActive = item.path ? location.pathname === item.path : false;
-              const isChildActive = item.subItems?.some(sub => location.pathname === sub.path) ?? false;
+              const isExactActive = item.path ? location.pathname === item.path.split('?')[0] : false;
+              const isChildActive = item.subItems?.some(sub => location.pathname === sub.path.split('?')[0]) ?? false;
               const isActive = isExactActive || isChildActive;
 
               const Icon = item.icon;
@@ -292,7 +294,12 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
                     <div className={`${styles.submenuWrapper} ${isExpanded ? styles.submenuExpanded : styles.submenuCollapsed}`}>
                       <div className={styles.submenuInner}>
                         {item.subItems.map(subItem => {
-                          const isSubActive = location.pathname + location.search === subItem.path;
+                          const subItemPath = subItem.path.split('?')[0];
+                          const hasQueryParams = subItem.path.includes('?');
+                          const isSubActive = hasQueryParams 
+                            ? location.pathname + location.search === subItem.path 
+                            : location.pathname === subItemPath;
+                          
                           return (
                             <Link
                               key={subItem.name}

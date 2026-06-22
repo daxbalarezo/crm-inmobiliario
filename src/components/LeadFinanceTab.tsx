@@ -177,7 +177,7 @@ export default function LeadFinanceTab({ lead }: Props) {
                 </div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '14px' }}>
-                    {payment.currency === 'USD' ? '$' : 'S/.'} {payment.amount.toLocaleString()}
+                    S/ {payment.amount.toLocaleString('en-PE')}
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748b' }}>
                     Ref: {payment.reference} • {payment.createdAt?.toDate ? payment.createdAt.toDate().toLocaleDateString() : 'N/A'}

@@ -14,6 +14,8 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .title {
@@ -30,11 +32,13 @@
   margin: 0;
 }
 
-.filterGroup {
-  margin-top: 16px;
+.filtersRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.timeFilter {
+.filterSelect {
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
@@ -43,70 +47,15 @@
   font-size: 14px;
   outline: none;
   cursor: pointer;
-  transition: border-color 0.2s;
+  min-width: 180px;
 }
 
-.timeFilter:focus {
-  border-color: var(--primary-color);
-}
-
-/* Tabs */
-.tabsContainer {
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.tabsList {
-  display: flex;
-  gap: 24px;
-}
-
-.tabButton {
-  padding: 12px 0;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tabButton:hover {
-  color: var(--text-primary);
-}
-
-.activeTab {
-  color: var(--primary-color);
-  border-bottom-color: var(--primary-color);
-}
-
-.tabContent {
-  animation: fadeIn 0.3s ease-out;
-}
-
-/* Metrics Grid */
 .metricsGrid {
   display: flex;
   flex-wrap: nowrap;
   gap: 20px;
   overflow-x: auto;
-  padding-bottom: 8px; /* Espacio para el scrollbar */
-  /* Ocultar scrollbar en navegadores webkit si se desea, o dejarlo nativo */
-}
-
-.metricsGrid::-webkit-scrollbar {
-  height: 6px;
-}
-
-.metricsGrid::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.metricsGrid::-webkit-scrollbar-thumb {
-  background-color: var(--border-color);
-  border-radius: 4px;
+  padding-bottom: 8px;
 }
 
 .metricCard {
@@ -115,15 +64,9 @@
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
   flex: 1;
   min-width: 220px;
   flex-shrink: 0;
-}
-
-.metricCard:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
 }
 
 .metricHeader {
@@ -138,7 +81,6 @@
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   margin: 0;
 }
 
@@ -163,27 +105,52 @@
   color: var(--primary-color);
 }
 
-/* Panel & Table */
-.panelCard {
+.chartsContainer {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+.chartCard {
   background-color: var(--bg-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
+  padding: 24px;
+}
+
+.cardHeader {
+  margin-bottom: 24px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+
+.cardSubtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.chartWrapper {
+  height: 300px;
+}
+
+.tableCard {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
   overflow: hidden;
 }
 
-.panelHeader {
+.tableHeader {
   padding: 20px 24px;
   border-bottom: 1px solid var(--border-color);
-}
-
-.panelTitle {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .tableContainer {
@@ -202,14 +169,13 @@
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   border-bottom: 1px solid var(--border-color);
   background-color: #f8fafc;
 }
 
 .tr {
   border-bottom: 1px solid var(--border-color);
-  transition: background-color var(--transition-speed);
+  cursor: pointer;
 }
 
 .tr:hover {
@@ -220,44 +186,15 @@
   padding: 16px 24px;
   font-size: 14px;
   color: var(--text-primary);
-  vertical-align: middle;
 }
 
-.agentInfo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.agentAvatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background-color: #e2e8f0;
-  color: #475569;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
+.badge {
+  padding: 4px 8px;
+  border-radius: 9999px;
   font-size: 12px;
-}
-
-.agentName {
   font-weight: 500;
 }
 
-.rankBadge {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 13px;
-  color: white;
-}
-
-.rank1 { background-color: #f59e0b; box-shadow: 0 2px 4px rgba(245,158,11,0.3); } /* Oro */
-.rank2 { background-color: #94a3b8; } /* Plata */
-.rank3 { background-color: #b45309; } /* Bronce */
+.badgeAlto { background-color: #ecfdf5; color: #10b981; }
+.badgeMedio { background-color: #fffbeb; color: #f59e0b; }
+.badgeBajo { background-color: #fef2f2; color: #ef4444; }

@@ -117,13 +117,13 @@ export default function ContractGeneratorModal({ isOpen, onClose, payment }: Pro
           PARCELA_AREA: unitData?.area ? `${unitData.area} m2` : '[Área Parcela]',
           PROYECTO_PARTIDA: '[Nro Partida Registral]',
           
-          PAGO_ADELANTO: `${payment.currency === 'USD' ? '$' : 'S/.'} ${payment.amount}`,
+          PAGO_ADELANTO: `S/ ${payment.amount}`,
           PAGO_OPERACION: payment.reference || '[Nro Operación]',
           PAGO_DIA: opDate.getDate().toString().padStart(2, '0'),
           PAGO_MES: opDate.toLocaleString('es-ES', { month: 'long' }),
           PAGO_ANO: opDate.getFullYear().toString(),
           
-          SALDO_RESTANTE: unitData?.price ? `${payment.currency === 'USD' ? '$' : 'S/.'} ${unitData.price - payment.amount}` : '[Saldo Restante]',
+          SALDO_RESTANTE: unitData?.price ? `S/ ${unitData.price - payment.amount}` : '[Saldo Restante]',
           CUOTAS_CANTIDAD: leadData?.customData?.numeroCuotas || '[Número de Cuotas]',
           CUOTAS_MONTO: leadData?.customData?.montoCuota || '[Monto de Cuota]',
           CUENTA_BANCARIA: '[Número de Cuenta Constructora]',
@@ -191,7 +191,7 @@ export default function ContractGeneratorModal({ isOpen, onClose, payment }: Pro
                 <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#475569', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <li><strong>Cliente:</strong> {payment.leadName}</li>
                   <li><strong>Unidad:</strong> {payment.unitName || payment.unitId}</li>
-                  <li><strong>Monto:</strong> {payment.currency} {payment.amount}</li>
+                  <li><strong>Monto:</strong> S/ {payment.amount}</li>
                   <li><strong>Fecha:</strong> {new Date().toLocaleDateString()}</li>
                 </ul>
               </div>

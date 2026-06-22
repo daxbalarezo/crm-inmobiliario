@@ -111,6 +111,7 @@ export interface Lead {
   updatedAt?: any;
   createdAt?: any;
   savedProforma?: any;
+  lossReason?: string; // Motivo de pérdida para analítica
   customData?: Record<string, any>; // Dynamic fields
 }
 

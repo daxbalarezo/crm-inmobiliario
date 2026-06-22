@@ -189,8 +189,33 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
                 onChange={e => update({ status: e.target.value })}
               >
                 {dynamicStages.map(s => <option key={s} value={s}>{s}</option>)}
+                {!dynamicStages.includes('PERDIDO') && <option value="PERDIDO">PERDIDO</option>}
               </select>
             </div>
+
+            {/* Motivo de Pérdida (Condicional) */}
+            {formData.status === 'PERDIDO' && (
+              <div className={styles.formGroup} style={{ marginTop: 12 }}>
+                <label className={styles.label} style={{ color: '#ef4444' }}>
+                  Motivo de Pérdida *
+                </label>
+                <select
+                  required
+                  className={styles.select}
+                  value={formData.lossReason ?? ''}
+                  onChange={e => update({ lossReason: e.target.value })}
+                  style={{ borderColor: '#ef4444' }}
+                >
+                  <option value="">Seleccionar motivo...</option>
+                  <option value="Precio/Presupuesto">Precio/Presupuesto insuficiente</option>
+                  <option value="Competencia">Compró a la competencia</option>
+                  <option value="Crédito Rechazado">Crédito hipotecario rechazado</option>
+                  <option value="Incontactable">No contesta / Incontactable</option>
+                  <option value="Proyecto no encaja">El proyecto no encaja con lo que busca</option>
+                  <option value="Otro">Otro motivo</option>
+                </select>
+              </div>
+            )}
 
             {/* Interés + Fuente */}
             <div className={styles.formRow}>

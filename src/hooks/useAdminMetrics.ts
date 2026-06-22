@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useCRM } from '../context/CRMContext';
-import type { Lead, UserProfile } from '../types/definitions';
+import type { Lead, UserProfile, LeadActivity } from '../types/definitions';
 
 export interface AgentStats {
   uid: string;
@@ -21,6 +21,17 @@ export interface GlobalStats {
   totalReservations: number;
   avgConv: number;
   topAgent: string;
+  projectedRevenue: number;
+}
+
+export interface LossReasonData {
+  reason: string;
+  count: number;
+}
+
+export interface ActivityData {
+  name: string;
+  activities: number;
 }
 
 export interface FunnelData {
@@ -47,14 +58,18 @@ export function useAdminMetrics(timeRange: string) {
     totalClosed: 0,
     totalReservations: 0,
     avgConv: 0,
-    topAgent: ''
+    topAgent: '',
+    projectedRevenue: 0
   });
   
   const [funnelData, setFunnelData] = useState<FunnelData[]>([]);
   const [sourceData, setSourceData] = useState<SourceData[]>([]);
   const [workloadData, setWorkloadData] = useState<WorkloadData[]>([]);
+  const [lossReasonData, setLossReasonData] = useState<LossReasonData[]>([]);
+  const [activityData, setActivityData] = useState<ActivityData[]>([]);
 
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const [allActivities, setAllActivities] = useState<LeadActivity[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
 
   useEffect(() => {
@@ -64,41 +79,51 @@ export function useAdminMetrics(timeRange: string) {
 
   useEffect(() => {
     if (!loading) {
-      computeStats(allLeads, users, timeRange);
+      computeStats(allLeads, users, allActivities, timeRange);
     }
-  }, [timeRange, allLeads, users, loading]);
+  }, [timeRange, allLeads, users, allActivities, loading]);
 
   const loadData = async () => {
     setLoading(true);
     try {
       let usersSnap;
       let leadsSnap;
+      let actsSnap;
 
       if (userProfile?.role === 'owner') {
         usersSnap = await getDocs(collection(db, 'users'));
         leadsSnap = await getDocs(collection(db, 'leads'));
+        actsSnap = await getDocs(collection(db, 'lead_activities'));
       } else {
         usersSnap = await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId)));
         leadsSnap = await getDocs(query(collection(db, 'leads'), where('tenantId', '==', tenantId)));
+        actsSnap = await getDocs(query(collection(db, 'lead_activities'), where('tenantId', '==', tenantId)));
       }
 
-      const fetchedUsers = usersSnap.docs.map(d => ({ ...(d.data() as UserProfile), uid: d.id })).filter(u => u.role === 'agent');
+      const fetchedUsers = usersSnap.docs.map(d => {
+        const data = d.data() as UserProfile;
+        return { ...data, uid: d.id, name: String(data.name || '').toUpperCase() };
+      }).filter(u => u.role === 'agent');
       setUsers(fetchedUsers);
       
       const fetchedLeads = leadsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Lead));
       setAllLeads(fetchedLeads);
+
+      const fetchedActivities = actsSnap.docs.map(d => ({ id: d.id, ...d.data() } as LeadActivity));
+      setAllActivities(fetchedActivities);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
   };
 
-  const computeStats = (leadsData: Lead[], usersData: UserProfile[], range: string) => {
+  const computeStats = (leadsData: Lead[], usersData: UserProfile[], activitiesData: LeadActivity[], range: string) => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
     let filteredLeads = leadsData;
+    let filteredActivities = activitiesData;
 
     if (range !== 'all') {
       filteredLeads = leadsData.filter(l => {
@@ -118,6 +143,27 @@ export function useAdminMetrics(timeRange: string) {
           return leadDate >= sixMonthsAgo;
         } else if (range === 'this_year') {
           return leadDate.getFullYear() === currentYear;
+        }
+        return true;
+      });
+
+      filteredActivities = activitiesData.filter(a => {
+        if (!a.createdAt) return false;
+        const actDate = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        if (isNaN(actDate.getTime())) return false;
+
+        if (range === 'this_month') {
+          return actDate.getFullYear() === currentYear && actDate.getMonth() === currentMonth;
+        } else if (range === 'last_month') {
+          const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+          const year = currentMonth === 0 ? currentYear - 1 : currentYear;
+          return actDate.getFullYear() === year && actDate.getMonth() === lastMonth;
+        } else if (range === 'last_6_months') {
+          const sixMonthsAgo = new Date();
+          sixMonthsAgo.setMonth(now.getMonth() - 6);
+          return actDate >= sixMonthsAgo;
+        } else if (range === 'this_year') {
+          return actDate.getFullYear() === currentYear;
         }
         return true;
       });
@@ -142,6 +188,7 @@ export function useAdminMetrics(timeRange: string) {
 
     const ttfcSums = new Map<string, { totalHours: number; count: number }>();
     const sourceCounts = new Map<string, number>();
+    const lossReasonCounts = new Map<string, number>();
     const stageCounts = {
       'NUEVO': 0,
       'CONTACTADO': 0,
@@ -150,6 +197,8 @@ export function useAdminMetrics(timeRange: string) {
       'VENDIDO/CERRADO': 0
     };
     
+    let projectedRevenue = 0;
+
     const workloadCounts = new Map<string, number>(); // agent uid -> active leads
     usersData.forEach(u => workloadCounts.set(u.uid, 0));
 
@@ -204,10 +253,28 @@ export function useAdminMetrics(timeRange: string) {
         sourceCounts.set('Desconocido', (sourceCounts.get('Desconocido') || 0) + 1);
       }
 
+      // Projected Revenue Logic (Leads in Negotiation or Separation)
+      if (l.status === 'EN NEGOCIACION' || l.status === 'SEPARACION') {
+        const val = l.savedProforma?.finalPrice || Number(l.customData?.presupuesto) || 0;
+        projectedRevenue += val;
+      }
+
+      // Loss Reason Logic
+      if (l.status === 'PERDIDO') {
+        const reason = l.lossReason || 'No especificado';
+        lossReasonCounts.set(reason, (lossReasonCounts.get(reason) || 0) + 1);
+      }
+
       // Workload Logic (Active leads: not VENDIDO, not PERDIDO, not CERRADO)
       if (l.status !== 'VENDIDO' && l.status !== 'CERRADO' && l.status !== 'PERDIDO') {
         workloadCounts.set(l.assignedTo, (workloadCounts.get(l.assignedTo) || 0) + 1);
       }
+    });
+
+    // Productivity Logic
+    const activityCounts = new Map<string, number>();
+    filteredActivities.forEach(a => {
+      activityCounts.set(a.userId, (activityCounts.get(a.userId) || 0) + 1);
     });
 
     let maxConv = -1;
@@ -241,7 +308,8 @@ export function useAdminMetrics(timeRange: string) {
       totalClosed,
       totalReservations,
       avgConv: totalLeads > 0 ? (totalClosed / totalLeads) * 100 : 0,
-      topAgent: topAgt
+      topAgent: topAgt,
+      projectedRevenue
     });
 
     // Format Data for Charts
@@ -265,7 +333,19 @@ export function useAdminMetrics(timeRange: string) {
     }).sort((a, b) => b.activeLeads - a.activeLeads).slice(0, 10);
     setWorkloadData(formattedWorkloadData);
 
+    const formattedLossReasons = Array.from(lossReasonCounts.entries()).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
+    setLossReasonData(formattedLossReasons);
+
+    const formattedActivityData = Array.from(activityCounts.entries()).map(([uid, activities]) => {
+      const agent = usersData.find(u => u.uid === uid);
+      return {
+        name: agent ? agent.name.split(' ')[0] : 'Unknown',
+        activities
+      };
+    }).sort((a, b) => b.activities - a.activities).slice(0, 10);
+    setActivityData(formattedActivityData);
+
   };
 
-  return { loading, stats, globalStats, funnelData, sourceData, workloadData };
+  return { loading, stats, globalStats, funnelData, sourceData, workloadData, lossReasonData, activityData, allLeads, users };
 }

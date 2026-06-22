@@ -29,7 +29,7 @@ export default function LeaderboardTable({ stats }: LeaderboardTableProps) {
         >
           <option value="conversion">Ordenar por % Conversión</option>
           <option value="closures">Ordenar por Cierres Totales</option>
-          <option value="volume">Ordenar por Monto Vendido ($)</option>
+          <option value="volume">Ordenar por Monto Vendido (S/)</option>
         </select>
       </div>
       <div className={styles.tableContainer}>
@@ -51,8 +51,8 @@ export default function LeaderboardTable({ stats }: LeaderboardTableProps) {
             ) : sortedStats.map((stat, i) => (
               <tr key={`lb-${stat.uid}`} className={styles.tr}>
                 <td className={styles.td}>
-                  <div className={`${styles.rankBadge} ${i === 0 ? styles.rank1 : i === 1 ? styles.rank2 : i === 2 ? styles.rank3 : ''}`}>
-                    {i + 1}
+                  <div style={{ color: '#64748b', fontWeight: 600, fontSize: '14px' }}>
+                    #{i + 1}
                   </div>
                 </td>
                 <td className={styles.td}>
@@ -68,7 +68,7 @@ export default function LeaderboardTable({ stats }: LeaderboardTableProps) {
                 </td>
                 <td className={styles.td}>
                   <span style={{ fontWeight: sortBy === 'volume' ? 700 : 400, color: stat.totalVolume > 0 ? '#059669' : 'inherit' }}>
-                    ${stat.totalVolume.toLocaleString('en-US')}
+                    S/ {stat.totalVolume.toLocaleString('en-PE')}
                   </span>
                 </td>
                 <td className={styles.td}>

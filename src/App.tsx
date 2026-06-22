@@ -8,6 +8,8 @@ import CommercialDashboard from './pages/CommercialDashboard';
 import FollowUpsDashboard from './pages/FollowUpsDashboard';
 import SettingsDashboard from './pages/SettingsDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import AgentAnalyticsDashboard from './pages/AgentAnalyticsDashboard';
+import AdvancedReportsDashboard from './pages/AdvancedReportsDashboard';
 import FinanceDashboard from './pages/FinanceDashboard';
 import LoginPage from './pages/LoginPage';
 import CompaniesDashboard from './pages/CompaniesDashboard';
@@ -113,6 +115,20 @@ export default function App() {
             <AuthGuard>
               <CorporateLayout>
                 <CompaniesDashboard />
+              </CorporateLayout>
+            </AuthGuard>
+          } />
+          <Route path="/analitica-agentes" element={
+            <AuthGuard>
+              <CorporateLayout>
+                <AgentAnalyticsDashboard />
+              </CorporateLayout>
+            </AuthGuard>
+          } />
+          <Route path="/reportes-avanzados" element={
+            <AuthGuard>
+              <CorporateLayout>
+                <AdvancedReportsDashboard />
               </CorporateLayout>
             </AuthGuard>
           } />

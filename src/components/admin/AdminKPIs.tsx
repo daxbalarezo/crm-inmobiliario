@@ -12,8 +12,17 @@ export default function AdminKPIs({ globalStats }: AdminKPIsProps) {
     <div className={styles.metricsGrid}>
       <div className={styles.metricCard}>
         <div className={styles.metricHeader}>
+          <p className={styles.metricLabel}>Proyección de Ventas</p>
+          <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
+            <TrendingUp size={20} />
+          </div>
+        </div>
+        <p className={styles.metricValue}>S/ {globalStats.projectedRevenue.toLocaleString('en-PE')}</p>
+      </div>
+      <div className={styles.metricCard}>
+        <div className={styles.metricHeader}>
           <p className={styles.metricLabel}>Total Agentes</p>
-          <div className={`${styles.iconWrapper} ${styles.iconBlue}`}>
+          <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
             <Users size={20} />
           </div>
         </div>
@@ -22,7 +31,7 @@ export default function AdminKPIs({ globalStats }: AdminKPIsProps) {
       <div className={styles.metricCard}>
         <div className={styles.metricHeader}>
           <p className={styles.metricLabel}>Ventas Cerradas</p>
-          <div className={`${styles.iconWrapper} ${styles.iconGreen}`}>
+          <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
             <TrendingUp size={20} />
           </div>
         </div>
@@ -31,7 +40,7 @@ export default function AdminKPIs({ globalStats }: AdminKPIsProps) {
       <div className={styles.metricCard}>
         <div className={styles.metricHeader}>
           <p className={styles.metricLabel}>Total Separaciones</p>
-          <div className={`${styles.iconWrapper} ${styles.iconPurple}`}>
+          <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
             <Award size={20} />
           </div>
         </div>
@@ -40,7 +49,7 @@ export default function AdminKPIs({ globalStats }: AdminKPIsProps) {
       <div className={styles.metricCard}>
         <div className={styles.metricHeader}>
           <p className={styles.metricLabel}>Conversión Global</p>
-          <div className={`${styles.iconWrapper} ${styles.iconPurple}`}>
+          <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
             <Activity size={20} />
           </div>
         </div>
@@ -49,7 +58,7 @@ export default function AdminKPIs({ globalStats }: AdminKPIsProps) {
       <div className={styles.metricCard}>
         <div className={styles.metricHeader}>
           <p className={styles.metricLabel}>Mejor Agente</p>
-          <div className={`${styles.iconWrapper} ${styles.iconAmber}`}>
+          <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
             <Award size={20} />
           </div>
         </div>
