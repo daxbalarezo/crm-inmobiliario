@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, getDocs, getDoc, doc, setDoc, updateDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, getDoc, doc, setDoc, updateDoc, serverTimestamp, onSnapshot, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Payment } from '../types/definitions';
 import { useAuditTrail } from './useAuditTrail';
@@ -116,25 +116,61 @@ export function useFinance(tenantId?: string) {
     }
   };
 
-  // Obtener plantilla de contrato
+  // Obtener plantilla por defecto (o la única existente por retrocompatibilidad)
   const getContractTemplate = async () => {
     if (!tenantId) return null;
     try {
-      console.log('Fetching contract template for tenant:', tenantId);
-      const docRef = doc(db, 'contract_templates', tenantId);
-      const snap = await getDoc(docRef);
-      console.log('Fetched template:', snap.exists());
-      if (snap.exists()) {
-        return { id: snap.id, ...snap.data() } as any;
-      }
-      return null;
+      const q = query(collection(db, 'contract_templates'), where('tenantId', '==', tenantId));
+      const snap = await getDocs(q);
+      const templates = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+      if (templates.length === 0) return null;
+      return templates.find(t => t.isDefault) || templates[0];
     } catch (e) {
       console.error("Error fetching template:", e);
       return null;
     }
   };
 
-  // Guardar plantilla de contrato
+  // Obtener todas las plantillas
+  const getContractTemplates = async () => {
+    if (!tenantId) return [];
+    try {
+      const q = query(collection(db, 'contract_templates'), where('tenantId', '==', tenantId));
+      const snap = await getDocs(q);
+      const templates = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+      // Ordenar para que la default aparezca primero
+      return templates.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
+    } catch (e) {
+      console.error("Error fetching templates:", e);
+      return [];
+    }
+  };
+
+  // Subir nueva plantilla
+  const uploadContractTemplate = async (name: string, docxBase64: string, size: number) => {
+    if (!tenantId) return;
+    try {
+      const existing = await getContractTemplates();
+      if (existing.length >= 5) {
+        throw new Error("Límite alcanzado: Máximo 5 plantillas.");
+      }
+      const isDefault = existing.length === 0;
+      await addDoc(collection(db, 'contract_templates'), {
+        tenantId,
+        name,
+        docxBase64,
+        size,
+        isDefault,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.error("Error uploading template:", e);
+      throw e;
+    }
+  };
+
+  // Guardar/Actualizar plantilla antigua (retrocompatibilidad)
   const saveContractTemplate = async (docxBase64: string) => {
     if (!tenantId) return;
     try {
@@ -144,10 +180,54 @@ export function useFinance(tenantId?: string) {
         tenantId,
         name: 'Plantilla Principal',
         docxBase64,
+        isDefault: true,
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (e) {
       console.error("Error saving template:", e);
+      throw e;
+    }
+  };
+
+  // Eliminar plantilla
+  const deleteContractTemplate = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'contract_templates', id));
+    } catch (e) {
+      console.error("Error deleting template:", e);
+      throw e;
+    }
+  };
+
+  // Renombrar plantilla
+  const renameContractTemplate = async (id: string, newName: string) => {
+    try {
+      await updateDoc(doc(db, 'contract_templates', id), {
+        name: newName,
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.error("Error renaming template:", e);
+      throw e;
+    }
+  };
+
+  // Marcar como predeterminada
+  const setDefaultContractTemplate = async (id: string) => {
+    if (!tenantId) return;
+    try {
+      const existing = await getContractTemplates();
+      const batchUpdate = existing.map(async (tpl) => {
+        const ref = doc(db, 'contract_templates', tpl.id);
+        if (tpl.id === id) {
+          await updateDoc(ref, { isDefault: true, updatedAt: serverTimestamp() });
+        } else if (tpl.isDefault) {
+          await updateDoc(ref, { isDefault: false, updatedAt: serverTimestamp() });
+        }
+      });
+      await Promise.all(batchUpdate);
+    } catch (e) {
+      console.error("Error setting default template:", e);
       throw e;
     }
   };
@@ -160,6 +240,11 @@ export function useFinance(tenantId?: string) {
     approvePayment,
     rejectPayment,
     getContractTemplate,
-    saveContractTemplate
+    getContractTemplates,
+    saveContractTemplate,
+    uploadContractTemplate,
+    deleteContractTemplate,
+    renameContractTemplate,
+    setDefaultContractTemplate
   };
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { db } from '../config/firebase';
-import { collection, query, getDocs, where, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, where, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import styles from './SettingsDashboard.module.css';
 
 export default function ProjectsDashboard() {
@@ -85,6 +85,7 @@ export default function ProjectsDashboard() {
       const projectData = {
         name: newProject.name.trim(),
         tenantId: newProject.tenantId,
+        status: 'active',
         createdAt: serverTimestamp()
       };
       await setDoc(projRef, projectData);
@@ -96,6 +97,16 @@ export default function ProjectsDashboard() {
       setCreateProjectError('Error al crear el proyecto.');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleUpdateProjectStatus = async (projectId: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'projects', projectId), { status: newStatus });
+      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: newStatus } : p));
+    } catch (e) {
+      console.error('Error updating project status', e);
+      alert('Error actualizando el estado del proyecto');
     }
   };
 
@@ -134,7 +145,16 @@ export default function ProjectsDashboard() {
                   )}
                   <td className={`${styles.td} ${styles.fontSemibold}`}>{p.name}</td>
                   <td className={styles.td}>
-                    <span className={`${styles.badge} ${styles.badgeActive}`}>Activo</span>
+                    <select 
+                      value={p.status || 'active'}
+                      onChange={(e) => handleUpdateProjectStatus(p.id, e.target.value)}
+                      className={`${styles.selectPlan} ${(!p.status || p.status === 'active') ? styles.statusActive : p.status === 'sold_out' ? styles.statusSold : styles.statusInactive}`}
+                      style={{ fontSize: '12px', padding: '4px 8px', width: 'auto' }}
+                    >
+                      <option value="active">ACTIVO</option>
+                      <option value="inactive">INACTIVO</option>
+                      <option value="sold_out">VENDIDO</option>
+                    </select>
                   </td>
                   <td className={`${styles.td} ${styles.textMuted}`}>--</td>
                   <td className={`${styles.td} ${styles.tdRight}`}>--</td>

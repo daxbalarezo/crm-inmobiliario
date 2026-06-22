@@ -7,6 +7,8 @@ export interface UserProfile {
   name: string;
   email: string;
   assignedProjectIds: string[];
+  status?: 'active' | 'suspended';
+  outOfOffice?: boolean;
   createdAt?: any;
 }
 
@@ -62,6 +64,7 @@ export interface Project {
   tenantId: string;
   name: string;
   productType: ProductType;
+  status?: 'active' | 'inactive' | 'sold_out';
   description?: string;
   createdAt?: any;
 }
@@ -73,6 +76,18 @@ export interface Interaction {
   date: string;
   type: string;
   note: string;
+}
+
+export interface LeadActivity {
+  id?: string;
+  tenantId: string;
+  leadId: string;
+  userId: string;
+  userName: string;
+  actionType: 'stage_change' | 'note_added' | 'task_completed' | 'email_sent' | 'contract_generated' | 'lead_created' | 'lead_assigned';
+  description: string;
+  metadata?: any;
+  createdAt: any;
 }
 
 export interface Lead {
@@ -92,6 +107,7 @@ export interface Lead {
   nextFollowUpNote?: string;
   lastCampaignDate?: string;
   contactDate?: string;
+  firstContactAt?: any; // Para métricas SLA (Time to First Contact)
   updatedAt?: any;
   createdAt?: any;
   savedProforma?: any;

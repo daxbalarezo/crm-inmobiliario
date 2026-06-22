@@ -255,12 +255,44 @@ export default function WorkflowsDashboard() {
                 </select>
 
                 {actionType === 'assign_to' ? (
-                  <select required value={actionPayload} onChange={e => setActionPayload(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1' }}>
-                    <option value="">-- Selecciona el Asesor --</option>
-                    {users.filter(u => u.role === 'agent').map(u => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: 6, maxHeight: 180, overflowY: 'auto' }}>
+                    <div style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>Selecciona los Asesores</span>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          const agents = users.filter(u => u.role === 'agent').map(u => u.id);
+                          if (actionPayload.split(',').filter(Boolean).length === agents.length) {
+                            setActionPayload(''); // Deseleccionar todos
+                          } else {
+                            setActionPayload(agents.join(',')); // Seleccionar todos
+                          }
+                        }}
+                        style={{ fontSize: 12, color: '#0176D3', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        {actionPayload.split(',').filter(Boolean).length === users.filter(u => u.role === 'agent').length ? 'Deseleccionar Todos' : 'Seleccionar Todos'}
+                      </button>
+                    </div>
+                    {users.filter(u => u.role === 'agent').map(u => {
+                      const isSelected = actionPayload.split(',').includes(u.id);
+                      return (
+                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', margin: 0 }}>
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected}
+                            onChange={(e) => {
+                              let current = actionPayload.split(',').filter(Boolean);
+                              if (e.target.checked) current.push(u.id);
+                              else current = current.filter(id => id !== u.id);
+                              setActionPayload(current.join(','));
+                            }}
+                            style={{ margin: 0, width: 16, height: 16, cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: 14 }}>{u.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 ) : actionType === 'assign_round_robin' ? (
                   <div style={{ padding: '8px 12px', backgroundColor: '#f1f5f9', borderRadius: 6, fontSize: 13, color: '#475569' }}>
                     Los prospectos se asignarán de forma rotativa entre todos los asesores disponibles automáticamente.

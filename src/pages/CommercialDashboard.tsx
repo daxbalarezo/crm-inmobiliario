@@ -6,6 +6,7 @@ import { useCommercialData } from '../hooks/useCommercialData';
 import { useCRM } from '../context/CRMContext';
 import { useAuditTrail } from '../hooks/useAuditTrail';
 import { useWorkflows } from '../hooks/useWorkflows';
+import { logActivityService } from '../services/activities';
 import LeadModal from '../components/LeadModal';
 import KanbanBoard from '../components/KanbanBoard';
 import type { Lead } from '../types/definitions';
@@ -18,14 +19,32 @@ export default function CommercialDashboard() {
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [editingLead, setEditingLead]     = useState<Lead | null>(null);
   const [viewMode, setViewMode]           = useState<'board' | 'list'>('board');
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
+  const [agents, setAgents] = useState<{id: string, name: string}[]>([]);
+
+  React.useEffect(() => {
+    if (userProfile?.role === 'owner' || userProfile?.role === 'manager') {
+      import('firebase/firestore').then(({ collection, getDocs, query, where }) => {
+        getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId))).then(snap => {
+          setAgents(snap.docs.map(d => ({ id: d.id, name: d.data().name })));
+        });
+      });
+    }
+  }, [tenantId, userProfile?.role]);
 
   const filteredLeads = useMemo(() => {
-    if (!searchTerm) return leads;
-    const lower = searchTerm.toLowerCase();
-    return leads.filter(l =>
-      l.name?.toLowerCase().includes(lower) || l.phone?.includes(lower)
-    );
-  }, [leads, searchTerm]);
+    let result = leads;
+    if (selectedAgentId !== 'all') {
+      result = result.filter(l => l.assignedTo === selectedAgentId);
+    }
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      result = result.filter(l =>
+        l.name?.toLowerCase().includes(lower) || l.phone?.includes(lower)
+      );
+    }
+    return result;
+  }, [leads, searchTerm, selectedAgentId]);
 
   const { executeWorkflows } = useWorkflows();
 
@@ -48,6 +67,18 @@ export default function CommercialDashboard() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      
+      if (userProfile) {
+        await logActivityService(
+          tenantId,
+          docRef.id,
+          userProfile.uid,
+          userProfile.name,
+          'lead_created',
+          `Prospecto creado y asignado a ${userProfile.name}`
+        );
+      }
+      
       // Exec workflows for CREATE
       executeWorkflows(tenantId, 'lead_created', { id: docRef.id, ...data, assignedTo: userProfile?.uid });
     }
@@ -68,10 +99,30 @@ export default function CommercialDashboard() {
   };
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
-    await updateDoc(doc(db, 'leads', leadId), {
+    const lead = leads.find(l => l.id === leadId);
+    
+    const updates: any = {
       status: newStatus,
       updatedAt: serverTimestamp(),
-    });
+    };
+    
+    // SLA tracking: if it's the first time changing status from default
+    if (lead && !lead.firstContactAt && newStatus !== 'PROSPECTO') {
+      updates.firstContactAt = serverTimestamp();
+    }
+
+    await updateDoc(doc(db, 'leads', leadId), updates);
+    
+    if (userProfile && tenantId) {
+      await logActivityService(
+        tenantId,
+        leadId,
+        userProfile.uid,
+        userProfile.name,
+        'stage_change',
+        `Cambió la etapa a: ${newStatus}`
+      );
+    }
   };
 
   const openNew = () => { setEditingLead(null); setShowLeadModal(true); };
@@ -107,6 +158,18 @@ export default function CommercialDashboard() {
               value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
           </div>
         </div>
+
+        {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
+          <select 
+            value={selectedAgentId} 
+            onChange={e => setSelectedAgentId(e.target.value)}
+            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none' }}
+          >
+            <option value="all">Todos los Asesores</option>
+            {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        )}
+
         <div className={styles.viewToggles}>
           <button 
             className={`${styles.toggleBtn} ${viewMode === 'board' ? styles.toggleActive : ''}`}

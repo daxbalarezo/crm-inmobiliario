@@ -186,6 +186,11 @@
 .planPro { background-color: #e0e7ff; color: #4338ca; }
 .planEnterprise { background-color: #ffe4e6; color: #be123c; }
 
+/* Status Colors for Select */
+.statusActive { background-color: #d1fae5; color: #047857; }
+.statusInactive { background-color: #f3f4f6; color: #4b5563; }
+.statusSold { background-color: #fee2e2; color: #b91c1c; }
+
 /* Actions */
 .btnAction {
   background-color: #fffbeb;

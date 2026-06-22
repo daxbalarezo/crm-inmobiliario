@@ -5,6 +5,7 @@ import type { Lead, CustomFieldDefinition } from '../types/definitions';
 import { useCRM } from '../context/CRMContext';
 import { useTenantSchema } from '../hooks/useTenantSchema';
 import LeadFinanceTab from './LeadFinanceTab';
+import LeadTimeline from './LeadTimeline';
 import styles from './LeadModal.module.css';
 
 interface Props {
@@ -277,6 +278,12 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
             )}
 
           </div>
+
+          {isEditing && lead && (
+            <div style={{ padding: '0 24px' }}>
+              <LeadTimeline lead={lead as Lead} />
+            </div>
+          )}
 
           {/* ── FOOTER ── */}
           <div className={styles.footer}>

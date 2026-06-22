@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import styles from './AdminDashboard.module.css';
 import { useAdminMetrics } from '../hooks/useAdminMetrics';
-import AdminKPIs from '../components/admin/AdminKPIs';
-import AdminCharts from '../components/admin/AdminCharts';
+import LeaderboardTable from '../components/admin/LeaderboardTable';
 
-export default function AdminDashboard() {
+export default function LeaderboardPage() {
   const [timeRange, setTimeRange] = useState<string>('this_month');
-  const { loading, globalStats, funnelData, sourceData, workloadData } = useAdminMetrics(timeRange);
+  const { loading, stats } = useAdminMetrics(timeRange);
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Cargando métricas...</div>;
@@ -16,8 +15,8 @@ export default function AdminDashboard() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h2 className={styles.title}>Visión General</h2>
-          <p className={styles.subtitle}>KPIs globales del equipo</p>
+          <h2 className={styles.title}>Rendimiento Comercial</h2>
+          <p className={styles.subtitle}>Clasificación de asesores por cierre de ventas</p>
         </div>
         
         <div className={styles.filterGroup}>
@@ -36,12 +35,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className={styles.tabContent}>
-        <AdminKPIs globalStats={globalStats} />
-        <AdminCharts 
-          funnelData={funnelData} 
-          sourceData={sourceData} 
-          workloadData={workloadData} 
-        />
+        <LeaderboardTable stats={stats} />
       </div>
     </div>
   );

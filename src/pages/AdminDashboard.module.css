@@ -30,6 +30,62 @@
   margin: 0;
 }
 
+.filterGroup {
+  margin-top: 16px;
+}
+
+.timeFilter {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.timeFilter:focus {
+  border-color: var(--primary-color);
+}
+
+/* Tabs */
+.tabsContainer {
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tabsList {
+  display: flex;
+  gap: 24px;
+}
+
+.tabButton {
+  padding: 12px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tabButton:hover {
+  color: var(--text-primary);
+}
+
+.activeTab {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.tabContent {
+  animation: fadeIn 0.3s ease-out;
+}
+
 /* Metrics Grid */
 .metricsGrid {
   display: grid;
@@ -45,7 +101,7 @@
 
 @media (min-width: 1024px) {
   .metricsGrid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 

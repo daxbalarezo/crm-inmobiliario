@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, CheckCircle2 } from 'lucide-react';
+import { Plus, X, CheckCircle2, MoreVertical, Power, PowerOff, CalendarOff, Edit, LogIn } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useRoles } from '../hooks/useRoles';
 import { db, firebaseConfig } from '../config/firebase';
-import { collection, query, getDocs, where, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, where, orderBy, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import styles from './SettingsDashboard.module.css';
@@ -39,6 +39,9 @@ export default function TeamDashboard() {
   const [createError, setCreateError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState<{username: string, password: string} | null>(null);
+
+  // Dropdown menus
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userProfile) return;
@@ -164,6 +167,28 @@ export default function TeamDashboard() {
     }
   };
 
+  const handleToggleStatus = async (userId: string, currentStatus: string | undefined) => {
+    const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
+    try {
+      await updateDoc(doc(db, 'users', userId), { status: newStatus });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+    } catch (e) {
+      console.error(e);
+    }
+    setActiveDropdown(null);
+  };
+
+  const handleToggleOoo = async (userId: string, currentOoo: boolean | undefined) => {
+    const newOoo = !currentOoo;
+    try {
+      await updateDoc(doc(db, 'users', userId), { outOfOffice: newOoo });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, outOfOffice: newOoo } : u));
+    } catch (e) {
+      console.error(e);
+    }
+    setActiveDropdown(null);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -200,20 +225,60 @@ export default function TeamDashboard() {
                   <td className={`${styles.td} ${styles.fontSemibold}`}>{u.name}</td>
                   <td className={`${styles.td} ${styles.textPrimary}`}>{u.username || u.email}</td>
                   <td className={styles.td}>
-                    <span className={`${styles.badge} ${u.role === 'owner' ? styles.badgeSuperadmin : u.role === 'manager' ? styles.badgeManager : styles.badgeAgent}`}>
-                      {u.role === 'owner' ? 'SUPERADMIN' : u.role}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className={`${styles.badge} ${u.role === 'owner' ? styles.badgeSuperadmin : u.role === 'manager' ? styles.badgeManager : styles.badgeAgent}`}>
+                        {u.role === 'owner' ? 'DUEÑO' : u.role === 'manager' ? 'GERENTE' : u.role === 'agent' ? 'ASESOR' : u.role.toUpperCase()}
+                      </span>
+                      {u.status === 'suspended' && (
+                        <span className={`${styles.badge} ${styles.badgeSuspended}`}>
+                          SUSPENDIDO
+                        </span>
+                      )}
+                      {u.outOfOffice && (
+                        <span className={`${styles.badge} ${styles.badgeActive}`} style={{ backgroundColor: '#fef3c7', color: '#b45309' }}>
+                          <Palmtree size={12} style={{ display: 'inline', marginRight: '4px' }}/> OOO
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className={`${styles.td} ${styles.tdRight}`}>
-                    {u.role !== 'owner' && userProfile?.role === 'owner' && (
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      {u.role !== 'owner' && userProfile?.role === 'owner' && (
+                        <button 
+                          onClick={() => impersonateUser(u.id)}
+                          className={styles.btnAction}
+                          title="Ver el sistema como este usuario"
+                          style={{ marginRight: '8px' }}
+                        >
+                          <LogIn size={14} style={{ display: 'inline', marginRight: '4px' }} /> Login As
+                        </button>
+                      )}
                       <button 
-                        onClick={() => impersonateUser(u.id)}
+                        onClick={() => setActiveDropdown(activeDropdown === u.id ? null : u.id)}
                         className={styles.btnAction}
-                        title="Ver el sistema como este usuario"
+                        style={{ backgroundColor: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
                       >
-                        👁️ Login As
+                        <MoreVertical size={16} />
                       </button>
-                    )}
+
+                      {activeDropdown === u.id && (
+                        <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '4px', backgroundColor: 'white', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', zIndex: 100, boxShadow: 'var(--shadow-lg)', minWidth: '180px', overflow: 'hidden', textAlign: 'left' }}>
+                          <button style={{ width: '100%', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--text-primary)' }} onClick={() => setActiveDropdown(null)}>
+                            <Edit size={14} /> Editar Perfil
+                          </button>
+                          <button style={{ width: '100%', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--text-primary)' }} onClick={() => handleToggleOoo(u.id, u.outOfOffice)}>
+                            <CalendarOff size={14} color="#64748b" /> {u.outOfOffice ? 'Desactivar Ausencia' : 'Vacaciones/Ausencia'}
+                          </button>
+                          
+                          <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '4px 0' }}></div>
+                          
+                          <button style={{ width: '100%', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px', color: u.status === 'suspended' ? '#059669' : '#dc2626' }} onClick={() => handleToggleStatus(u.id, u.status)}>
+                            {u.status === 'suspended' ? <Power size={14} /> : <PowerOff size={14} />} 
+                            {u.status === 'suspended' ? 'Activar Acceso' : 'Suspender Acceso'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

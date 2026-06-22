@@ -30,9 +30,10 @@ const base64ToArrayBuffer = (base64: string) => {
 
 export default function ContractGeneratorModal({ isOpen, onClose, payment }: Props) {
   const { tenantId } = useCRM();
-  const { getContractTemplate } = useFinance(tenantId!);
+  const { getContractTemplates } = useFinance(tenantId!);
   
-  const [docxBase64, setDocxBase64] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   
   const [leadData, setLeadData] = useState<Lead | null>(null);
@@ -44,10 +45,12 @@ export default function ContractGeneratorModal({ isOpen, onClose, payment }: Pro
     const loadTemplateAndData = async () => {
       setLoading(true);
       try {
-        // Cargar plantilla
-        const tpl = await getContractTemplate();
-        if (tpl?.docxBase64) {
-          setDocxBase64(tpl.docxBase64);
+        // Cargar plantillas
+        const tpls = await getContractTemplates();
+        setTemplates(tpls);
+        if (tpls.length > 0) {
+          const defTpl = tpls.find((t: any) => t.isDefault) || tpls[0];
+          setSelectedTemplateId(defTpl.id);
         }
 
         // Cargar Lead
@@ -73,9 +76,11 @@ export default function ContractGeneratorModal({ isOpen, onClose, payment }: Pro
   if (!isOpen) return null;
 
   const handleDownloadWord = () => {
-    if (!docxBase64) return;
+    const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+    if (!selectedTemplate?.docxBase64) return;
     
     try {
+      const docxBase64 = selectedTemplate.docxBase64;
       const base64Data = docxBase64.includes(',') ? docxBase64.split(',')[1] : docxBase64;
       const arrayBuffer = base64ToArrayBuffer(base64Data);
       
@@ -161,13 +166,26 @@ export default function ContractGeneratorModal({ isOpen, onClose, payment }: Pro
           
           {loading ? (
             <p style={{ textAlign: 'center', color: '#64748b', fontSize: '14px' }}>Cargando plantilla...</p>
-          ) : !docxBase64 ? (
+          ) : templates.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px', backgroundColor: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
               <p style={{ margin: 0, color: '#ef4444', fontWeight: 500, fontSize: '14px' }}>No hay ninguna plantilla Word configurada.</p>
               <p style={{ margin: '8px 0 0 0', color: '#991b1b', fontSize: '13px' }}>Ve a "Configuración &gt; Plantillas de Contratos" para subir tu archivo .docx original.</p>
             </div>
           ) : (
             <div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>Seleccionar Plantilla</label>
+                <select 
+                  value={selectedTemplateId || ''} 
+                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontFamily: 'inherit', fontSize: '14px', color: '#1e293b', backgroundColor: 'white' }}
+                >
+                  {templates.map(tpl => (
+                    <option key={tpl.id} value={tpl.id}>{tpl.name} {tpl.isDefault ? '(Predeterminada)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+
               <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
                 <p style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Datos que se van a inyectar:</p>
                 <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#475569', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -195,8 +213,8 @@ export default function ContractGeneratorModal({ isOpen, onClose, payment }: Pro
           </button>
           <button 
             onClick={handleDownloadWord} 
-            disabled={!docxBase64 || loading}
-            style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', backgroundColor: (!docxBase64 || loading) ? '#cbd5e1' : 'var(--primary-color)', color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', cursor: (!docxBase64 || loading) ? 'not-allowed' : 'pointer' }}
+            disabled={!selectedTemplateId || loading}
+            style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', backgroundColor: (!selectedTemplateId || loading) ? '#cbd5e1' : 'var(--primary-color)', color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', cursor: (!selectedTemplateId || loading) ? 'not-allowed' : 'pointer' }}
           >
             <Download size={16} /> Descargar Word
           </button>

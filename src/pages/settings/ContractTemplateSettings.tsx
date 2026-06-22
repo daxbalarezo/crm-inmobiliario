@@ -1,84 +1,151 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { useFinance } from '../../hooks/useFinance';
-import { Save, Upload, FileText } from 'lucide-react';
+import { Save, Upload, FileText, Copy, Check, Trash2, Star, AlertCircle, Edit2, X } from 'lucide-react';
 import styles from '../SettingsDashboard.module.css';
+
+const CopyableVariable = ({ code, label }: { code: string, label: string }) => {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <li style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+      <button 
+        type="button"
+        onClick={handleCopy}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          background: copied ? '#dcfce7' : 'white',
+          color: copied ? '#166534' : '#0f172a',
+          border: '1px solid',
+          borderColor: copied ? '#bbf7d0' : '#cbd5e1',
+          padding: '4px 8px', borderRadius: '6px', cursor: 'pointer',
+          fontFamily: 'monospace', fontSize: '12px', transition: 'all 0.2s ease',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        }}
+        title="Copiar al portapapeles"
+      >
+        {code}
+        {copied ? <Check size={14} /> : <Copy size={14} color="#94a3b8" />}
+      </button>
+      <span style={{ fontSize: '13px', color: '#64748b' }}>{label}</span>
+    </li>
+  );
+};
 
 export default function ContractTemplateSettings() {
   const { tenantId, userPermissions } = useCRM();
-  const { getContractTemplate, saveContractTemplate } = useFinance(tenantId || undefined);
+  const { getContractTemplates, uploadContractTemplate, deleteContractTemplate, setDefaultContractTemplate, renameContractTemplate } = useFinance(tenantId || undefined);
   
-  const [docxBase64, setDocxBase64] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
-        const tpl: any = await Promise.race([getContractTemplate(), timeoutPromise]);
-        
-        if (isMounted && tpl) {
-          if (tpl.docxBase64) setDocxBase64(tpl.docxBase64);
-        }
-      } catch (err) {
-        console.error('ContractTemplateSettings: Error during loadData:', err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    
-    if (tenantId) loadData();
-    else setLoading(false);
-
-    return () => { isMounted = false; };
-  }, [tenantId]);
-
-  const handleSave = async () => {
-    if (!userPermissions?.settings?.manage) return;
-    if (!docxBase64) {
-      alert('Por favor sube un archivo de Word primero');
-      return;
-    }
-    setSaving(true);
+  const loadData = async () => {
     try {
-      await saveContractTemplate(docxBase64);
-      alert('Plantilla guardada exitosamente');
-    } catch (e) {
-      alert('Error al guardar plantilla');
+      setLoading(true);
+      const data = await getContractTemplates();
+      setTemplates(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    setSaving(false);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (tenantId) loadData();
+    else setLoading(false);
+  }, [tenantId]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!userPermissions?.settings?.manage) {
+      alert("No tienes permiso para gestionar plantillas.");
+      return;
+    }
+
+    if (templates.length >= 5) {
+      alert("Límite alcanzado: Tienes el máximo de 5 plantillas.");
+      return;
+    }
 
     if (!file.name.endsWith('.docx')) {
       alert('El archivo debe ser un documento Word (.docx)');
       return;
     }
 
-    if (file.size > 800 * 1024) {
-      alert('El archivo es muy pesado. El tamaño máximo permitido es 800KB.');
+    // 2 MB limit
+    if (file.size > 2 * 1024 * 1024) {
+      alert('El archivo es muy pesado. El tamaño máximo permitido es 2MB.');
       return;
     }
 
-    setFileName(file.name);
-
+    setUploading(true);
     const reader = new FileReader();
-    reader.onload = (event) => {
-      setDocxBase64(event.target?.result as string);
+    reader.onload = async (event) => {
+      try {
+        const base64 = event.target?.result as string;
+        await uploadContractTemplate(file.name, base64, file.size);
+        await loadData();
+      } catch (err: any) {
+        alert(err.message || "Error al subir la plantilla.");
+      } finally {
+        setUploading(false);
+      }
     };
     reader.readAsDataURL(file);
+    
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  if (loading) return <div style={{padding: 24}}>Cargando plantilla...</div>;
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("¿Seguro que deseas eliminar esta plantilla?")) return;
+    try {
+      await deleteContractTemplate(id);
+      await loadData();
+    } catch (e) {
+      alert("Error eliminando plantilla.");
+    }
+  };
+
+  const handleSetDefault = async (id: string) => {
+    try {
+      await setDefaultContractTemplate(id);
+      await loadData();
+    } catch (e) {
+      alert("Error estableciendo como predeterminado.");
+    }
+  };
+
+  const handleEditClick = (tpl: any) => {
+    setEditingTemplateId(tpl.id);
+    setEditName(tpl.name);
+  };
+
+  const handleRenameSubmit = async (id: string) => {
+    if (!editName.trim()) return;
+    try {
+      await renameContractTemplate(id, editName.trim());
+      setEditingTemplateId(null);
+      await loadData();
+    } catch (e) {
+      alert("Error renombrando plantilla.");
+    }
+  };
+
+  if (loading) return <div style={{padding: 24}}>Cargando plantillas...</div>;
 
   return (
     <div className={styles.panelCard}>
@@ -87,56 +154,113 @@ export default function ContractTemplateSettings() {
           <h2 className={styles.panelTitle}>Plantilla de Contrato (.docx)</h2>
           <p className={styles.panelSubtitle}>Configura el formato por defecto para los contratos de esta inmobiliaria.</p>
         </div>
-        {userPermissions.settings?.manage && (
-          <button 
-            onClick={handleSave} 
-            disabled={saving || !docxBase64}
-            className={styles.btnPrimary}
-          >
-            <Save size={18} />
-            {saving ? 'Guardando...' : 'Guardar Plantilla'}
-          </button>
-        )}
+        {/* Botón de guardar removido, el upload guarda directamente */}
       </div>
 
       <div className={styles.panelContent} style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', padding: '24px' }}>
         
-        <div style={{ flex: '0 0 350px', backgroundColor: '#f8fafc', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', margin: '0 0 16px 0' }}>Sube tu Archivo Word</h3>
-          <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px', lineHeight: '1.5' }}>
-            Sube el diseño original de tu contrato en formato <strong>.docx</strong> (Microsoft Word).<br/>
-            Mantendrá tus colores, tablas, marcas de agua y todos los estilos exactamente igual.
-          </p>
+        <div style={{ flex: '0 0 400px', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          <input 
-            type="file" 
-            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleFileUpload}
-          />
-
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            style={{ width: '100%', padding: '16px', backgroundColor: 'white', border: '2px dashed #cbd5e1', borderRadius: '8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#3b82f6', marginBottom: '16px', transition: 'border-color 0.2s' }}
-          >
-            <Upload size={24} />
-            <span style={{ fontSize: '14px', fontWeight: 600 }}>Seleccionar Archivo .docx</span>
-          </button>
-
-          {docxBase64 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', padding: '12px', borderRadius: '6px' }}>
-              <div style={{ backgroundColor: '#10b981', padding: '8px', borderRadius: '4px', color: 'white', display: 'flex' }}>
-                <FileText size={20} />
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#065f46' }}>Plantilla Lista</p>
-                <p style={{ margin: 0, fontSize: '12px', color: '#047857' }}>
-                  {fileName ? fileName : 'Plantilla cargada desde la nube'}
-                </p>
-              </div>
+          <div style={{ backgroundColor: '#f8fafc', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', margin: 0 }}>Tus Plantillas</h3>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: templates.length >= 5 ? '#ef4444' : '#64748b', backgroundColor: templates.length >= 5 ? '#fee2e2' : '#e2e8f0', padding: '2px 8px', borderRadius: '12px' }}>
+                {templates.length} / 5
+              </span>
             </div>
-          )}
+            
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px', lineHeight: '1.5' }}>
+              Sube tus diseños en <strong>.docx</strong>. Máximo 2MB por archivo.
+            </p>
+            
+            <input 
+              type="file" 
+              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleFileUpload}
+            />
+
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || templates.length >= 5 || !userPermissions?.settings?.manage}
+              style={{ width: '100%', padding: '16px', backgroundColor: 'white', border: '2px dashed #cbd5e1', borderRadius: '8px', cursor: (uploading || templates.length >= 5) ? 'not-allowed' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#3b82f6', marginBottom: '16px', transition: 'border-color 0.2s', opacity: (uploading || templates.length >= 5) ? 0.6 : 1 }}
+            >
+              <Upload size={24} />
+              <span style={{ fontSize: '14px', fontWeight: 600 }}>{uploading ? 'Subiendo...' : 'Subir Nueva Plantilla'}</span>
+            </button>
+
+            {templates.length === 0 && !uploading && (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: '#94a3b8' }}>
+                <FileText size={32} style={{ margin: '0 auto 8px auto', opacity: 0.5 }} />
+                <p style={{ fontSize: '13px', margin: 0 }}>No tienes plantillas subidas.</p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {templates.map(tpl => (
+                <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', backgroundColor: tpl.isDefault ? '#ecfdf5' : 'white', border: `1px solid ${tpl.isDefault ? '#a7f3d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '6px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    <div style={{ backgroundColor: tpl.isDefault ? '#10b981' : '#f1f5f9', padding: '8px', borderRadius: '4px', color: tpl.isDefault ? 'white' : '#64748b', display: 'flex' }}>
+                      <FileText size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {editingTemplateId === tpl.id ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input 
+                            type="text" 
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleRenameSubmit(tpl.id); if (e.key === 'Escape') setEditingTemplateId(null); }}
+                            autoFocus
+                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #3b82f6', outline: 'none', fontSize: '13px', width: '100%', fontFamily: 'inherit' }}
+                          />
+                          <button onClick={() => handleRenameSubmit(tpl.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#10b981' }}>
+                            <Check size={16} />
+                          </button>
+                          <button onClick={() => setEditingTemplateId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#94a3b8' }}>
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: tpl.isDefault ? '#065f46' : '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {tpl.name}
+                        </p>
+                      )}
+                      <p style={{ margin: 0, fontSize: '11px', color: tpl.isDefault ? '#047857' : '#64748b' }}>
+                        {tpl.size ? `${(tpl.size / 1024).toFixed(1)} KB` : 'Documento Word'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {userPermissions?.settings?.manage && (
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {!editingTemplateId && (
+                        <button onClick={() => handleEditClick(tpl)} title="Renombrar plantilla" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#64748b', borderRadius: '4px' }}>
+                          <Edit2 size={16} />
+                        </button>
+                      )}
+                      {!tpl.isDefault && !editingTemplateId && (
+                        <button onClick={() => handleSetDefault(tpl.id)} title="Marcar como predeterminada" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#94a3b8', borderRadius: '4px' }}>
+                          <Star size={16} />
+                        </button>
+                      )}
+                      {tpl.isDefault && !editingTemplateId && (
+                        <span title="Plantilla Predeterminada" style={{ padding: '4px', color: '#f59e0b', display: 'flex' }}>
+                          <Star size={16} fill="#f59e0b" />
+                        </span>
+                      )}
+                      {!editingTemplateId && (
+                        <button onClick={() => handleDelete(tpl.id)} title="Eliminar plantilla" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444', borderRadius: '4px' }}>
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div style={{ flex: 1, backgroundColor: 'white', padding: '24px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
@@ -145,56 +269,60 @@ export default function ContractTemplateSettings() {
             Para que el sistema sepa dónde colocar los datos del cliente, debes escribir las siguientes variables exactamente como aparecen aquí, dentro de tu archivo de Word, incluyendo las llaves dobles <strong>{"{{"}</strong> y <strong>{"}}"}</strong>.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-            <div style={{ backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: '12px', display: 'block', color: '#64748b', marginBottom: '4px' }}>Datos Personales y Cónyuge:</span>
-              <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '13px', color: '#0f172a' }}>
-                <li><code>{"{{CLIENTE_NOMBRE}}"}</code> (Nombre)</li>
-                <li><code>{"{{CLIENTE_DNI}}"}</code> (DNI)</li>
-                <li><code>{"{{CLIENTE_ESTADO_CIVIL}}"}</code> (Estado Civil)</li>
-                <li><code>{"{{CLIENTE_OCUPACION}}"}</code> (Ocupación)</li>
-                <li><code>{"{{CLIENTE_NACIONALIDAD}}"}</code> (Nacionalidad)</li>
-                <li><code>{"{{CONYUGE_NOMBRE}}"}</code> (Nombre Cónyuge)</li>
-                <li><code>{"{{CONYUGE_DNI}}"}</code> (DNI Cónyuge)</li>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '12px', display: 'block', color: '#64748b', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Datos Personales y Cónyuge:</span>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                <CopyableVariable code="{{CLIENTE_NOMBRE}}" label="Nombre" />
+                <CopyableVariable code="{{CLIENTE_DNI}}" label="DNI" />
+                <CopyableVariable code="{{CLIENTE_ESTADO_CIVIL}}" label="Estado Civil" />
+                <CopyableVariable code="{{CLIENTE_OCUPACION}}" label="Ocupación" />
+                <CopyableVariable code="{{CLIENTE_NACIONALIDAD}}" label="Nacionalidad" />
+                <CopyableVariable code="{{CONYUGE_NOMBRE}}" label="Nombre Cónyuge" />
+                <CopyableVariable code="{{CONYUGE_DNI}}" label="DNI Cónyuge" />
               </ul>
             </div>
             
-            <div style={{ backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: '12px', display: 'block', color: '#64748b', marginBottom: '4px' }}>Contacto y Domicilio:</span>
-              <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '13px', color: '#0f172a' }}>
-                <li><code>{"{{CLIENTE_CELULAR}}"}</code> (Celular)</li>
-                <li><code>{"{{CLIENTE_EMAIL}}"}</code> (Email)</li>
-                <li><code>{"{{CLIENTE_DOMICILIO}}"}</code> (Domicilio)</li>
-                <li><code>{"{{CLIENTE_DISTRITO}}"}</code> (Distrito)</li>
-                <li><code>{"{{CLIENTE_PROVINCIA}}"}</code> (Provincia)</li>
-                <li><code>{"{{CLIENTE_DEPARTAMENTO}}"}</code> (Departamento)</li>
+            <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '12px', display: 'block', color: '#64748b', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Contacto y Domicilio:</span>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                <CopyableVariable code="{{CLIENTE_CELULAR}}" label="Celular" />
+                <CopyableVariable code="{{CLIENTE_EMAIL}}" label="Email" />
+                <CopyableVariable code="{{CLIENTE_DOMICILIO}}" label="Domicilio" />
+                <CopyableVariable code="{{CLIENTE_DISTRITO}}" label="Distrito" />
+                <CopyableVariable code="{{CLIENTE_PROVINCIA}}" label="Provincia" />
+                <CopyableVariable code="{{CLIENTE_DEPARTAMENTO}}" label="Departamento" />
               </ul>
             </div>
 
-            <div style={{ backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: '12px', display: 'block', color: '#64748b', marginBottom: '4px' }}>Inmueble / Unidad:</span>
-              <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '13px', color: '#0f172a' }}>
-                <li><code>{"{{PROYECTO_PARTIDA}}"}</code> (Nro. Partida Registral)</li>
-                <li><code>{"{{PARCELA_MANZANA}}"}</code> (Manzana)</li>
-                <li><code>{"{{PARCELA_LOTE}}"}</code> (Lote)</li>
-                <li><code>{"{{PARCELA_NUMERO}}"}</code> (Nro. Identificador)</li>
-                <li><code>{"{{PARCELA_AREA}}"}</code> (Área Aprox. m2)</li>
-                <li><code>{"{{PARCELA_PRECIO}}"}</code> (Precio de la Parcela)</li>
+            <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '12px', display: 'block', color: '#64748b', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Inmueble / Unidad:</span>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                <CopyableVariable code="{{PROYECTO_PARTIDA}}" label="Nro. Partida Registral" />
+                <CopyableVariable code="{{PARCELA_MANZANA}}" label="Manzana" />
+                <CopyableVariable code="{{PARCELA_LOTE}}" label="Lote" />
+                <CopyableVariable code="{{PARCELA_NUMERO}}" label="Nro. Identificador" />
+                <CopyableVariable code="{{PARCELA_AREA}}" label="Área Aprox. m2" />
+                <CopyableVariable code="{{PARCELA_PRECIO}}" label="Precio de la Parcela" />
               </ul>
             </div>
 
-            <div style={{ backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: '12px', display: 'block', color: '#64748b', marginBottom: '4px' }}>Pagos, Saldos y Fechas:</span>
-              <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '13px', color: '#0f172a' }}>
-                <li><code>{"{{PAGO_ADELANTO}}"}</code> (Monto Separación)</li>
-                <li><code>{"{{SALDO_RESTANTE}}"}</code> (Saldo Pendiente)</li>
-                <li><code>{"{{CUOTAS_CANTIDAD}}"}</code> (Cantidad de Cuotas)</li>
-                <li><code>{"{{CUOTAS_MONTO}}"}</code> (Monto por Cuota)</li>
-                <li><code>{"{{PAGO_OPERACION}}"}</code> (Nro. Operación)</li>
-                <li><code>{"{{PAGO_DIA}}"}</code> / <code>{"{{PAGO_MES}}"}</code> / <code>{"{{PAGO_ANO}}"}</code></li>
-                <li><code>{"{{FIRMA_DIA}}"}</code> / <code>{"{{FIRMA_MES}}"}</code> / <code>{"{{FIRMA_ANO}}"}</code></li>
-                <li><code>{"{{FECHA_ACTUAL}}"}</code> (Fecha completa de hoy)</li>
-                <li><code>{"{{CUENTA_BANCARIA}}"}</code> (Nro. Cuenta Depósito)</li>
+            <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '12px', display: 'block', color: '#64748b', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Pagos, Saldos y Fechas:</span>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                <CopyableVariable code="{{PAGO_ADELANTO}}" label="Monto Separación" />
+                <CopyableVariable code="{{SALDO_RESTANTE}}" label="Saldo Pendiente" />
+                <CopyableVariable code="{{CUOTAS_CANTIDAD}}" label="Cantidad de Cuotas" />
+                <CopyableVariable code="{{CUOTAS_MONTO}}" label="Monto por Cuota" />
+                <CopyableVariable code="{{PAGO_OPERACION}}" label="Nro. Operación" />
+                <CopyableVariable code="{{PAGO_DIA}}" label="Día de Pago" />
+                <CopyableVariable code="{{PAGO_MES}}" label="Mes de Pago" />
+                <CopyableVariable code="{{PAGO_ANO}}" label="Año de Pago" />
+                <CopyableVariable code="{{FIRMA_DIA}}" label="Día de Firma" />
+                <CopyableVariable code="{{FIRMA_MES}}" label="Mes de Firma" />
+                <CopyableVariable code="{{FIRMA_ANO}}" label="Año de Firma" />
+                <CopyableVariable code="{{FECHA_ACTUAL}}" label="Fecha completa de hoy" />
+                <CopyableVariable code="{{CUENTA_BANCARIA}}" label="Nro. Cuenta Depósito" />
               </ul>
             </div>
           </div>

@@ -1,5 +1,5 @@
 // src/layouts/CorporateLayout.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import LeadModal from '../components/LeadModal';
 import { Home, Briefcase, Package, Map, ChevronDown, Calendar, Bell, CreditCard, BarChart3, Settings, LogOut, FileText, Users, Building2, FolderKanban, LayoutTemplate } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -24,6 +24,42 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
   const { logout, userProfile, userPermissions, isImpersonating, stopImpersonating, tenant, activeProjectId, setActiveProjectId } = useCRM();
   const { projects } = useProjects();
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const hasAutoSelected = useRef(false);
+
+  useEffect(() => {
+    if (projects.length > 0 && !hasAutoSelected.current) {
+      hasAutoSelected.current = true;
+      
+      const firstActive = projects.find(p => !p.status || p.status === 'active');
+      
+      // If no project is selected, or if the current one is inactive/sold out, we override it
+      if (!activeProjectId || activeProjectId === 'all') {
+        if (firstActive) {
+          setActiveProjectId(firstActive.id);
+        }
+      } else {
+        // If a project is selected (e.g. from context default) but it's inactive, we switch to an active one
+        const currentProject = projects.find(p => p.id === activeProjectId);
+        if (currentProject && currentProject.status && currentProject.status !== 'active') {
+          if (firstActive) {
+            setActiveProjectId(firstActive.id);
+          }
+        }
+      }
+    }
+  }, [projects, activeProjectId, setActiveProjectId]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProjectDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['Gestión de Seguimientos']);
 
@@ -57,8 +93,16 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
       { name: 'Gestión de Cobranzas', path: '/cobranzas', icon: CreditCard },
       { name: 'Reporte Comercial', path: '/reportes', icon: BarChart3 }
     ] : []),
-    ...(userProfile?.role === 'owner' || userProfile?.role === 'manager' ? [
-      { name: 'Inicio', path: '/', icon: Home },
+      ...(userProfile?.role === 'owner' || userProfile?.role === 'manager' ? [
+      {
+        name: 'Analítica de Equipo',
+        icon: BarChart3,
+        subItems: [
+          { name: 'Visión General', path: '/' },
+          { name: 'Rendimiento Comercial', path: '/rendimiento' },
+          { name: 'Tiempos de Respuesta', path: '/sla' }
+        ]
+      },
       { name: 'Pipeline Global', path: '/comercial', icon: Briefcase },
       ...(userProfile?.role === 'owner' ? [
         { name: 'Inmobiliarias', path: '/empresas', icon: Building2 }
@@ -121,22 +165,60 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
         </div>
 
         <div className={styles.globalActions}>
-          <div className={styles.projectSelectorContainer}>
+          <div className={styles.projectSelectorContainer} ref={dropdownRef}>
             <label className={styles.projectLabel}>Proyecto:</label>
-            <div className={styles.selectWrapper}>
-              <select
-                className={styles.projectSelect}
-                value={activeProjectId || 'all'}
-                onChange={(e) => setActiveProjectId(e.target.value)}
+            <div className={styles.customSelectWrapper}>
+              <button 
+                className={styles.customSelectBtn}
+                onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
               >
-                <option value="all">Todos los proyectos</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <div className={styles.selectIcon}>
-                <ChevronDown size={14} />
-              </div>
+                <span className={styles.customSelectValue}>
+                  {activeProjectId === 'all' || !activeProjectId 
+                    ? 'Todos los proyectos' 
+                    : projects.find(p => p.id === activeProjectId)?.name || 'Todos los proyectos'}
+                </span>
+                <ChevronDown size={14} className={isProjectDropdownOpen ? styles.iconOpen : ''} />
+              </button>
+              
+              {isProjectDropdownOpen && (
+                <div className={styles.customDropdown}>
+                  <button 
+                    className={`${styles.dropdownItem} ${(!activeProjectId || activeProjectId === 'all') ? styles.dropdownItemActive : ''}`}
+                    onClick={() => { setActiveProjectId('all'); setIsProjectDropdownOpen(false); }}
+                  >
+                    Todos los proyectos
+                  </button>
+                  
+                  <div className={styles.dropdownGroup}>
+                    <div className={styles.dropdownGroupLabel}>Activos</div>
+                    {projects.filter(p => !p.status || p.status === 'active').map(p => (
+                      <button 
+                        key={p.id}
+                        className={`${styles.dropdownItem} ${activeProjectId === p.id ? styles.dropdownItemActive : ''}`}
+                        onClick={() => { setActiveProjectId(p.id); setIsProjectDropdownOpen(false); }}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {projects.some(p => p.status && p.status !== 'active') && (
+                    <div className={styles.dropdownGroup}>
+                      <div className={styles.dropdownGroupLabel}>Inactivos / Vendidos</div>
+                      {projects.filter(p => p.status && p.status !== 'active').map(p => (
+                        <button 
+                          key={p.id}
+                          className={`${styles.dropdownItem} ${activeProjectId === p.id ? styles.dropdownItemActive : ''}`}
+                          onClick={() => { setActiveProjectId(p.id); setIsProjectDropdownOpen(false); }}
+                        >
+                          {p.name}
+                          <span className={styles.statusBadge}>{p.status === 'inactive' ? 'Inactivo' : 'Vendido'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           
@@ -154,7 +236,7 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
             <div className={styles.userInfo}>
               <span className={styles.userName} title={userProfile?.name}>{userProfile?.name || 'Usuario'}</span>
               <span className={styles.userRole}>
-                {userProfile?.role === 'owner' ? 'Admin Global' : userProfile?.role === 'manager' ? 'Administrador' : 'Asesor'}
+                {userProfile?.role === 'owner' ? 'Dueño' : userProfile?.role === 'manager' ? 'Gerente' : userProfile?.role === 'agent' ? 'Asesor' : userProfile?.role}
               </span>
             </div>
             <div className={styles.userAvatar}>

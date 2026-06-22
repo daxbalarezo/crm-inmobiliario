@@ -46,12 +46,41 @@ export function useWorkflows() {
           
           for (const action of wf.actions) {
             if (action.type === 'assign_to') {
-              // Action: Assign to specific user
-              await updateDoc(doc(db, 'leads', payload.id), {
-                assignedTo: action.payload,
-                updatedAt: serverTimestamp()
-              });
-              payload.assignedTo = action.payload; // Update local payload for chained actions
+              // Action: Assign to specific user(s)
+              const targetAgents = action.payload.split(',').filter((id: string) => id.trim() !== '');
+              
+              if (targetAgents.length === 1) {
+                await updateDoc(doc(db, 'leads', payload.id), {
+                  assignedTo: targetAgents[0],
+                  updatedAt: serverTimestamp()
+                });
+                payload.assignedTo = targetAgents[0];
+              } else if (targetAgents.length > 1) {
+                // Round Robin entre asesores seleccionados
+                try {
+                  const metadataRef = doc(db, 'metadata', tenantId);
+                  const metaDoc = await getDoc(metadataRef);
+                  let nextIndex = 0;
+                  const key = `lastAssignedIndex_${wf.id}`; // Índice específico para esta regla
+                  
+                  if (metaDoc.exists() && metaDoc.data()[key] !== undefined) {
+                    const lastIndex = metaDoc.data()[key];
+                    nextIndex = (lastIndex + 1) % targetAgents.length;
+                  }
+
+                  const selectedAgentId = targetAgents[nextIndex];
+
+                  await updateDoc(doc(db, 'leads', payload.id), {
+                    assignedTo: selectedAgentId,
+                    updatedAt: serverTimestamp()
+                  });
+                  payload.assignedTo = selectedAgentId;
+
+                  await setDoc(metadataRef, { [key]: nextIndex }, { merge: true });
+                } catch (err) {
+                  console.error('[Round Robin Group] Error:', err);
+                }
+              }
             } 
             else if (action.type === 'assign_round_robin') {
               // Action: Assign Round Robin

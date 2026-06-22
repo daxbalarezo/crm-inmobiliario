@@ -107,6 +107,11 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           let profile: UserProfile;
           if (snap.exists()) {
             profile = { uid: firebaseUser.uid, ...snap.data() } as UserProfile;
+            if (profile.status === 'suspended') {
+              await signOut(auth);
+              alert('Tu cuenta ha sido suspendida. Contacta a tu administrador.');
+              return;
+            }
           } else {
             profile = {
               uid: firebaseUser.uid,
