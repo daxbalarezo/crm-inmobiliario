@@ -16,11 +16,12 @@ export interface AgentStats {
 }
 
 export interface GlobalStats {
+  totalLeads: number;
   totalAgents: number;
   totalClosed: number;
   totalReservations: number;
   avgConv: number;
-  topAgent: string;
+  topAgent: { name: string; conv: number; sales: number } | null;
   projectedRevenue: number;
 }
 
@@ -54,11 +55,12 @@ export function useAdminMetrics(timeRange: string) {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AgentStats[]>([]);
   const [globalStats, setGlobalStats] = useState<GlobalStats>({
+    totalLeads: 0,
     totalAgents: 0,
     totalClosed: 0,
     totalReservations: 0,
     avgConv: 0,
-    topAgent: '',
+    topAgent: null,
     projectedRevenue: 0
   });
   
@@ -190,11 +192,12 @@ export function useAdminMetrics(timeRange: string) {
     const sourceCounts = new Map<string, number>();
     const lossReasonCounts = new Map<string, number>();
     const stageCounts = {
-      'NUEVO': 0,
-      'CONTACTADO': 0,
-      'EN NEGOCIACION': 0,
+      'PROSPECTO': 0,
+      'SIN_CONTACTAR': 0,
+      'EN_NEGOCIACION': 0,
+      'VISITA': 0,
       'SEPARACION': 0,
-      'VENDIDO/CERRADO': 0
+      'VENDIDO': 0
     };
     
     let projectedRevenue = 0;
@@ -239,11 +242,19 @@ export function useAdminMetrics(timeRange: string) {
       }
 
       // Funnel Logic
-      if (l.status === 'NUEVO') stageCounts['NUEVO']++;
-      if (l.status === 'CONTACTADO') stageCounts['CONTACTADO']++;
-      if (l.status === 'EN NEGOCIACION') stageCounts['EN NEGOCIACION']++;
-      if (l.status === 'SEPARACION') stageCounts['SEPARACION']++;
-      if (l.status === 'VENDIDO' || l.status === 'CERRADO') stageCounts['VENDIDO/CERRADO']++;
+      if (l.status === 'VENDIDO' || l.status === 'CERRADO') {
+        stageCounts['VENDIDO']++;
+      } else if (l.status === 'SEPARACION') {
+        stageCounts['SEPARACION']++;
+      } else if (l.status === 'VISITA') {
+        stageCounts['VISITA']++;
+      } else if (l.status === 'EN_NEGOCIACION' || l.status === 'EN NEGOCIACION') {
+        stageCounts['EN_NEGOCIACION']++;
+      } else if (l.status === 'SIN_CONTACTAR' || l.status === 'SIN CONTACTAR' || l.status === 'CONTACTADO') {
+        stageCounts['SIN_CONTACTAR']++;
+      } else if (l.status === 'PROSPECTO' || l.status === 'NUEVO') {
+        stageCounts['PROSPECTO']++;
+      }
 
       // Source Logic
       if (l.source) {
@@ -278,7 +289,7 @@ export function useAdminMetrics(timeRange: string) {
     });
 
     let maxConv = -1;
-    let topAgt = 'N/A';
+    let topAgt: { name: string; conv: number; sales: number } | null = null;
 
     const finalStats: AgentStats[] = [];
     agentStatsMap.forEach((stat, uid) => {
@@ -291,7 +302,7 @@ export function useAdminMetrics(timeRange: string) {
 
       if (stat.conversionRate > maxConv && stat.totalLeads > 0) {
         maxConv = stat.conversionRate;
-        topAgt = stat.name;
+        topAgt = { name: stat.name, conv: stat.conversionRate, sales: stat.closedLeads };
       }
       
       finalStats.push(stat);
@@ -304,6 +315,7 @@ export function useAdminMetrics(timeRange: string) {
 
     setStats(finalStats);
     setGlobalStats({
+      totalLeads,
       totalAgents: usersData.length,
       totalClosed,
       totalReservations,
@@ -314,11 +326,12 @@ export function useAdminMetrics(timeRange: string) {
 
     // Format Data for Charts
     setFunnelData([
-      { stage: 'Nuevos', count: stageCounts['NUEVO'] },
-      { stage: 'Contactados', count: stageCounts['CONTACTADO'] },
-      { stage: 'En Negociación', count: stageCounts['EN NEGOCIACION'] },
+      { stage: 'Prospectos', count: stageCounts['PROSPECTO'] },
+      { stage: 'Sin Contactar', count: stageCounts['SIN_CONTACTAR'] },
+      { stage: 'Negociación', count: stageCounts['EN_NEGOCIACION'] },
+      { stage: 'Visitas', count: stageCounts['VISITA'] },
       { stage: 'Separaciones', count: stageCounts['SEPARACION'] },
-      { stage: 'Cierres', count: stageCounts['VENDIDO/CERRADO'] }
+      { stage: 'Vendidos', count: stageCounts['VENDIDO'] }
     ]);
 
     const formattedSourceData = Array.from(sourceCounts.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);

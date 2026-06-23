@@ -146,11 +146,13 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
     let projectedRevenue = 0;
 
     const stageCounts = {
-      'NUEVO': 0,
-      'CONTACTADO': 0,
-      'EN NEGOCIACION': 0,
+      'PROSPECTO': 0,
+      'SIN_CONTACTAR': 0,
+      'EN_NEGOCIACION': 0,
+      'VISITA': 0,
       'SEPARACION': 0,
-      'VENDIDO/CERRADO': 0
+      'VENDIDO': 0,
+      'PERDIDO': 0
     };
 
     rangedLeads.forEach(l => {
@@ -162,16 +164,20 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
 
       if (l.status === 'VENDIDO' || l.status === 'CERRADO') {
         totalClosed++;
-        stageCounts['VENDIDO/CERRADO']++;
+        stageCounts['VENDIDO']++;
       } else if (l.status === 'SEPARACION') {
         totalReservations++;
         stageCounts['SEPARACION']++;
-      } else if (l.status === 'PROSPECTO' || l.status === 'NUEVO') {
-        stageCounts['NUEVO']++;
-      } else if (l.status === 'CONTACTADO' || l.status === 'VISITA') {
-        stageCounts['CONTACTADO']++;
+      } else if (l.status === 'VISITA') {
+        stageCounts['VISITA']++;
       } else if (l.status === 'EN_NEGOCIACION' || l.status === 'EN NEGOCIACION') {
-        stageCounts['EN NEGOCIACION']++;
+        stageCounts['EN_NEGOCIACION']++;
+      } else if (l.status === 'SIN_CONTACTAR' || l.status === 'SIN CONTACTAR' || l.status === 'CONTACTADO') {
+        stageCounts['SIN_CONTACTAR']++;
+      } else if (l.status === 'PROSPECTO' || l.status === 'NUEVO') {
+        stageCounts['PROSPECTO']++;
+      } else if (l.status === 'PERDIDO') {
+        stageCounts['PERDIDO']++;
       }
     });
 
@@ -185,18 +191,28 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
     });
 
     setFunnelData([
-      { name: 'Nuevos', value: stageCounts['NUEVO'] },
-      { name: 'Contactados', value: stageCounts['CONTACTADO'] },
-      { name: 'En Negociación', value: stageCounts['EN NEGOCIACION'] },
+      { name: 'Prospectos', value: stageCounts['PROSPECTO'] },
+      { name: 'Sin Contactar', value: stageCounts['SIN_CONTACTAR'] },
+      { name: 'En Negociación', value: stageCounts['EN_NEGOCIACION'] },
+      { name: 'Visitas', value: stageCounts['VISITA'] },
       { name: 'Separaciones', value: stageCounts['SEPARACION'] },
-      { name: 'Cierres', value: stageCounts['VENDIDO/CERRADO'] }
+      { name: 'Vendidos', value: stageCounts['VENDIDO'] },
+      { name: 'Perdidos', value: stageCounts['PERDIDO'] }
     ]);
 
     // Tabla de leads
     if (stageFilter === 'all') {
       setFilteredLeads(rangedLeads);
     } else {
-      setFilteredLeads(rangedLeads.filter(l => l.status === stageFilter));
+      setFilteredLeads(rangedLeads.filter(l => {
+        const s1 = (stageFilter || '').replace(/_/g, ' ').toUpperCase();
+        const s2 = (l.status || '').replace(/_/g, ' ').toUpperCase();
+        
+        if ((s1 === 'PROSPECTO' || s1 === 'NUEVO') && (s2 === 'NUEVO' || s2 === 'PROSPECTO')) return true;
+        if ((s1 === 'SIN CONTACTAR' || s1 === 'CONTACTADO') && (s2 === 'SIN CONTACTAR' || s2 === 'CONTACTADO')) return true;
+        
+        return s1 === s2;
+      }));
     }
   };
 

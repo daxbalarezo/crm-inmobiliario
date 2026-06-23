@@ -51,22 +51,17 @@
 }
 
 .metricsGrid {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 20px;
-  overflow-x: auto;
-  padding-bottom: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
 }
 
 .metricCard {
   background-color: var(--bg-surface);
-  padding: 24px;
+  padding: 16px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
-  flex: 1;
-  min-width: 220px;
-  flex-shrink: 0;
 }
 
 .metricHeader {
@@ -77,7 +72,7 @@
 }
 
 .metricLabel {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -85,8 +80,8 @@
 }
 
 .metricValue {
-  font-size: 36px;
-  font-weight: 300;
+  font-size: 24px;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
@@ -95,9 +90,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
 }
 
 .iconCorporate {
@@ -198,3 +193,168 @@
 .badgeAlto { background-color: #ecfdf5; color: #10b981; }
 .badgeMedio { background-color: #fffbeb; color: #f59e0b; }
 .badgeBajo { background-color: #fef2f2; color: #ef4444; }
+
+.modalOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.listModal {
+  background: var(--bg-surface);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.listModalHeader {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.listModalBody {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+}
+.closeBtn:hover {
+  color: var(--text-primary);
+}
+
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.exportBtn:hover {
+  background-color: #059669;
+}
+
+.openModalBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  background-color: var(--bg-surface);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.openModalBtn:hover {
+  border-color: var(--primary-color);
+  background-color: #f8fafc;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.pageInfo {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pageJumper {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pageInput {
+  width: 50px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 13px;
+  margin: 0 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.pageInput:focus {
+  border-color: var(--primary-color);
+}
+.pageInput::-webkit-inner-spin-button,
+.pageInput::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pageButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.pageBtn {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background-color 0.2s;
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background-color: #f1f5f9;
+}

@@ -12,7 +12,7 @@ interface KanbanBoardProps {
 
 const DEFAULT_PALETTE = ['#3b82f6', '#f59e0b', '#8b5cf6', '#10b981', '#059669', '#ef4444', '#6366f1'];
 
-const FALLBACK_STAGES = ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO', 'CERRADO'];
+const FALLBACK_STAGES = ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
 
 export default function KanbanBoard({ leads, onLeadStatusChange, onLeadClick, isAdminMode }: KanbanBoardProps) {
   const { tenant } = useCRM();

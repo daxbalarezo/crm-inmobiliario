@@ -88,37 +88,23 @@
 
 /* Metrics Grid */
 .metricsGrid {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 20px;
-  overflow-x: auto;
-  padding-bottom: 8px; /* Espacio para el scrollbar */
-  /* Ocultar scrollbar en navegadores webkit si se desea, o dejarlo nativo */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
 }
 
-.metricsGrid::-webkit-scrollbar {
-  height: 6px;
-}
 
-.metricsGrid::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.metricsGrid::-webkit-scrollbar-thumb {
-  background-color: var(--border-color);
-  border-radius: 4px;
-}
 
 .metricCard {
   background-color: var(--bg-surface);
-  padding: 24px;
-  border-radius: var(--radius-lg);
+  padding: 16px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition-speed), box-shadow var(--transition-speed);
-  flex: 1;
-  min-width: 220px;
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .metricCard:hover {
@@ -129,12 +115,12 @@
 .metricHeader {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .metricLabel {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -143,8 +129,8 @@
 }
 
 .metricValue {
-  font-size: 36px;
-  font-weight: 300;
+  font-size: 22px;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
@@ -153,9 +139,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
 }
 
 .iconCorporate {

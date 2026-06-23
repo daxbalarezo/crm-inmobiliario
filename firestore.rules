@@ -145,6 +145,23 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------
+    // Colección: LEAD ACTIVITIES (Actividades de Prospectos)
+    // ---------------------------------------------------------
+    match /lead_activities/{activityId} {
+      allow read: if isAuthenticated() && (
+        isOwner() || 
+        (resource == null) ||
+        getUserData().tenantId == resource.data.tenantId
+      );
+      
+      allow write: if isAuthenticated() && (
+        isOwner() || 
+        (request.resource != null && getUserData().tenantId == request.resource.data.tenantId) ||
+        (resource != null && getUserData().tenantId == resource.data.tenantId)
+      );
+    }
+
+    // ---------------------------------------------------------
     // Colección: INVENTORY (Unidades / Lotes)
     // ---------------------------------------------------------
     match /inventory/{unitId} {
@@ -220,13 +237,14 @@ service cloud.firestore {
     match /workflows/{workflowId} {
       allow read: if isAuthenticated() && (
         isOwner() || 
+        (resource == null) ||
         getUserData().tenantId == resource.data.tenantId
       );
       // Solo owner o manager pueden crear/modificar workflows
       allow write: if isAuthenticated() && (
         isOwner() || 
-        (getUserData().tenantId == request.resource.data.tenantId && getUserData().role == 'manager') ||
-        (getUserData().tenantId == resource.data.tenantId && getUserData().role == 'manager')
+        (request.resource != null && getUserData().tenantId == request.resource.data.tenantId && getUserData().role == 'manager') ||
+        (resource != null && getUserData().tenantId == resource.data.tenantId && getUserData().role == 'manager')
       );
     }
     // ---------------------------------------------------------

@@ -39,7 +39,8 @@ interface AdminChartsProps {
   activityData: ActivityData[];
 }
 
-const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+const CORPORATE_COLORS = ['#1e3a8a', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
+const FUNNEL_COLORS = ['#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1e3a8a'];
 
 export default function AdminCharts({ funnelData, sourceData, workloadData, lossReasonData, activityData }: AdminChartsProps) {
   return (
@@ -65,12 +66,13 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
               <XAxis dataKey="stage" />
               <YAxis />
               <RechartsTooltip 
+                formatter={(value: number) => [value, 'Prospectos']}
                 cursor={{ fill: 'transparent' }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
               <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={60}>
                 {funnelData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={FUNNEL_COLORS[index % FUNNEL_COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>
@@ -106,10 +108,10 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
               >
                 {sourceData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={CORPORATE_COLORS[index % CORPORATE_COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip />
+              <RechartsTooltip formatter={(value: number) => [value, 'Prospectos']} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -136,10 +138,11 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
               <XAxis type="number" />
               <YAxis dataKey="name" type="category" width={80} />
               <RechartsTooltip 
+                formatter={(value: number) => [value, 'Leads Activos']}
                 cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
-              <Bar dataKey="activeLeads" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={20} />
+              <Bar dataKey="activeLeads" fill="#475569" radius={[0, 4, 4, 0]} barSize={20} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -165,10 +168,11 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
               <XAxis type="number" />
               <YAxis dataKey="name" type="category" width={80} />
               <RechartsTooltip 
+                formatter={(value: number) => [value, 'Acciones Registradas']}
                 cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
-              <Bar dataKey="activities" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
+              <Bar dataKey="activities" fill="#1e293b" radius={[0, 4, 4, 0]} barSize={20} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -202,10 +206,10 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
                 label={({ reason, percent }) => `${reason} ${(percent * 100).toFixed(0)}%`}
               >
                 {lossReasonData.map((entry, index) => (
-                  <Cell key={`cell-loss-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                  <Cell key={`cell-loss-${index}`} fill={CORPORATE_COLORS[(index + 2) % CORPORATE_COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip />
+              <RechartsTooltip formatter={(value: number) => [value, 'Casos Perdidos']} />
             </PieChart>
           </ResponsiveContainer>
         </div>

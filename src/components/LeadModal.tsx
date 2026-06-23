@@ -47,7 +47,7 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
   if (!isOpen) return null;
 
   const dynamicSources = tenant?.sources || SOURCES;
-  const dynamicStages = tenant?.stages || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO', 'CERRADO'];
+  const dynamicStages = tenant?.stages || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
 
   const isEditing = !!lead?.id;
   const update = (patch: Partial<Lead>) => setFormData(p => ({ ...p, ...patch }));
