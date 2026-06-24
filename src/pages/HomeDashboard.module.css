@@ -1,5 +1,6 @@
 /* ==========================================================================
    HomeDashboard — Estilo SLDS fusionado con marca corporativa
+   Premium Flat — ultra-clean, dense, professional
    ========================================================================== */
 
 .container {
@@ -35,7 +36,7 @@
 
 
 /* =========================================================================
-   CABECERA — Estilo Page Header SLDS
+   CABECERA — Simplified flat header, no container styling
    ========================================================================= */
 
 .header {
@@ -44,12 +45,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--slds-spacing-md);
-  background-color: var(--bg-surface);
-  padding: var(--slds-spacing-lg);
-  border-radius: var(--slds-radius-lg);
-  border: 1px solid var(--slds-border);
-  box-shadow: var(--slds-shadow-card);
-  animation: slds-fade-in-up 0.4s var(--slds-ease) both;
+  padding: var(--slds-spacing-sm) 0;
 }
 
 @media (min-width: 768px) {
@@ -85,25 +81,24 @@
   font-size: var(--slds-font-size-4);
   font-weight: var(--slds-font-weight-semibold);
   border: none;
-  box-shadow: var(--slds-shadow-sm);
-  transition: all var(--slds-duration-normal) var(--slds-ease);
+  box-shadow: none;
+  transition: background-color var(--slds-duration-normal) var(--slds-ease);
   white-space: nowrap;
 }
 
 .btnPrimary:hover {
   background-color: var(--slds-brand-dark);
-  box-shadow: var(--slds-shadow-md);
-  transform: translateY(-1px);
+  box-shadow: none;
 }
 
 .btnPrimary:active {
-  transform: translateY(0);
-  box-shadow: var(--slds-shadow-xs);
+  background-color: var(--slds-brand-dark);
+  box-shadow: none;
 }
 
 
 /* =========================================================================
-   MÉTRICAS — Cards estilo SLDS con acento superior
+   MÉTRICAS — Flat cards with top accent border
    ========================================================================= */
 
 .metricsGrid {
@@ -120,19 +115,17 @@
 
 .metricCard {
   background-color: var(--bg-surface);
-  padding: var(--slds-spacing-lg);
+  padding: 16px;
   border-radius: var(--slds-radius-lg);
   border: 1px solid var(--slds-border);
-  box-shadow: var(--slds-shadow-card);
+  box-shadow: none;
   position: relative;
   overflow: hidden;
-  transition: all var(--slds-duration-normal) var(--slds-ease);
+  transition: background-color var(--slds-duration-normal) var(--slds-ease);
 }
 
 .metricCard:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--slds-shadow-md);
-  border-color: var(--slds-border-strong);
+  background-color: #f4f6f9;
 }
 
 .metricHeader {
@@ -149,16 +142,11 @@
   width: 42px;
   height: 42px;
   border-radius: var(--slds-radius-md);
-  transition: transform var(--slds-duration-normal) var(--slds-ease);
 }
 
-.metricCard:hover .iconWrapper {
-  transform: scale(1.08);
-}
-
-/* ── Color variants — acento izquierdo estilo SLDS ── */
+/* ── Color variants — top accent border ── */
 .cardBlue {
-  border-left: 4px solid var(--slds-brand);
+  border-top: 2px solid var(--slds-brand);
 }
 .iconBlue {
   background-color: var(--slds-brand-lighter);
@@ -166,7 +154,7 @@
 }
 
 .cardAmber {
-  border-left: 4px solid var(--slds-warning);
+  border-top: 2px solid var(--slds-warning);
 }
 .iconAmber {
   background-color: var(--slds-warning-light);
@@ -174,7 +162,7 @@
 }
 
 .cardGreen {
-  border-left: 4px solid var(--slds-success);
+  border-top: 2px solid var(--slds-success);
 }
 .iconGreen {
   background-color: var(--slds-success-light);
@@ -182,7 +170,7 @@
 }
 
 .cardPurple {
-  border-left: 4px solid #7c3aed;
+  border-top: 2px solid #7c3aed;
 }
 .iconPurple {
   background-color: #f5f3ff;
@@ -211,14 +199,14 @@
   color: #7c3aed;
 }
 
-/* Sparkline */
+/* Sparkline — very subtle */
 .sparkline {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
   height: 40px;
-  opacity: 0.5;
+  opacity: 0.25;
   pointer-events: none;
 }
 
@@ -227,10 +215,7 @@
    VISTOS RECIENTEMENTE — Quick access cards
    ========================================================================= */
 
-.recentlyViewedSection {
-  animation: slds-fade-in-up 0.5s var(--slds-ease) both;
-  animation-delay: 100ms;
-}
+.recentlyViewedSection {}
 
 .sectionTitle {
   font-size: var(--slds-font-size-2);
@@ -262,14 +247,11 @@
   align-items: center;
   gap: var(--slds-spacing-sm);
   cursor: pointer;
-  transition: all var(--slds-duration-normal) var(--slds-ease);
+  transition: background-color var(--slds-duration-normal) var(--slds-ease);
 }
 
 .recentCard:hover {
-  background-color: var(--slds-bg-alt);
-  border-color: var(--slds-brand);
-  box-shadow: var(--slds-shadow-sm);
-  transform: translateY(-2px);
+  background-color: #f4f6f9;
 }
 
 .recentAvatar {
@@ -318,8 +300,6 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--slds-spacing-lg);
-  animation: slds-fade-in-up 0.6s var(--slds-ease) both;
-  animation-delay: 200ms;
 }
 
 @media (min-width: 1280px) {
@@ -330,28 +310,27 @@
 
 
 /* =========================================================================
-   PANEL CARD — Estilo SLDS Card con header destacado
+   PANEL CARD — Flat card with simple header
    ========================================================================= */
 
 .panelCard {
   background-color: var(--bg-surface);
   border-radius: var(--slds-radius-lg);
   border: 1px solid var(--slds-border);
-  box-shadow: var(--slds-shadow-card);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: box-shadow var(--slds-duration-normal) var(--slds-ease);
 }
 
 .panelCard:hover {
-  box-shadow: var(--slds-shadow-sm);
+  box-shadow: none;
 }
 
 .panelHeader {
   padding: var(--slds-spacing-md) var(--slds-spacing-lg);
-  border-bottom: 2px solid var(--slds-brand);
-  background: linear-gradient(180deg, var(--slds-bg-alt), var(--bg-surface));
+  border-bottom: 1px solid #DDDBDA;
+  background: #f4f6f9;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -387,7 +366,6 @@
   background-color: var(--slds-destructive-light);
   color: var(--slds-destructive);
   border-color: #fecaca;
-  animation: slds-pulse 2s ease-in-out infinite;
 }
 
 .badgeNeutral {
@@ -448,7 +426,7 @@
 }
 
 .tr:hover {
-  background-color: var(--slds-bg-row-hover);
+  background-color: #f4f6f9;
 }
 
 .td {
@@ -471,7 +449,6 @@
 
 .dotDanger {
   background-color: var(--slds-destructive);
-  box-shadow: 0 0 6px rgba(186, 5, 23, 0.4);
 }
 
 .dotPrimary {
@@ -498,11 +475,11 @@
   background: transparent;
   padding: 6px 12px;
   border-radius: var(--slds-radius-sm);
-  transition: all var(--slds-duration-fast) var(--slds-ease);
+  transition: color var(--slds-duration-fast) var(--slds-ease);
 }
 
 .actionBtn:hover {
-  background-color: var(--slds-brand-lighter);
+  text-decoration: underline;
   color: var(--slds-brand-dark);
 }
 
@@ -510,7 +487,7 @@
   padding: var(--slds-spacing-sm) var(--slds-spacing-lg);
   border-top: 1px solid var(--slds-border-separator);
   text-align: center;
-  background-color: var(--slds-bg-alt);
+  background-color: #fff;
 }
 
 
@@ -519,7 +496,7 @@
    ========================================================================= */
 
 .timelineBody {
-  padding: var(--slds-spacing-lg);
+  padding: 16px;
   flex: 1;
   overflow-y: auto;
   max-height: 400px;
@@ -537,8 +514,8 @@
   top: 0;
   bottom: 0;
   left: 15px;
-  width: 2px;
-  background: linear-gradient(180deg, var(--slds-brand-lighter), var(--slds-border-separator));
+  width: 1px;
+  background: #DDDBDA;
 }
 
 .timelineItem {
@@ -546,15 +523,7 @@
   gap: var(--slds-spacing-md);
   margin-bottom: var(--slds-spacing-lg);
   position: relative;
-  animation: slds-slide-right 0.3s var(--slds-ease) both;
 }
-
-.timelineItem:nth-child(1) { animation-delay: 0ms; }
-.timelineItem:nth-child(2) { animation-delay: 60ms; }
-.timelineItem:nth-child(3) { animation-delay: 120ms; }
-.timelineItem:nth-child(4) { animation-delay: 180ms; }
-.timelineItem:nth-child(5) { animation-delay: 240ms; }
-.timelineItem:nth-child(6) { animation-delay: 300ms; }
 
 .timelineItem:last-child {
   margin-bottom: 0;
@@ -570,11 +539,6 @@
   z-index: 2;
   box-shadow: 0 0 0 4px var(--bg-surface);
   flex-shrink: 0;
-  transition: transform var(--slds-duration-normal) var(--slds-ease);
-}
-
-.timelineItem:hover .timelineIcon {
-  transform: scale(1.15);
 }
 
 .timelineContent {
@@ -604,36 +568,4 @@
   font-size: var(--slds-font-size-2);
   color: var(--slds-text-placeholder);
   margin-top: 2px;
-}
-
-
-/* =========================================================================
-   ANIMATIONS
-   ========================================================================= */
-
-@keyframes slds-fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slds-slide-right {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slds-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
 }

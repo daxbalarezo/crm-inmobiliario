@@ -29,15 +29,15 @@
   --primary-hover: #0b5cab;
   --secondary-color: #e2e8f0;
 
-  --border-color: #e2e8f0;
+  --border-color: #DDDBDA;
 
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
 
   --shadow-sm: none;
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-md: none; /* Premium flat: separación por bordes, no sombras */
   --transition-speed: 0.2s;
 
 
@@ -71,21 +71,21 @@
 
   /* ── Backgrounds ── */
   --slds-bg: #FFFFFF;
-  --slds-bg-alt: #f8fafc;
-  --slds-bg-wash: #f1f5f9;
+  --slds-bg-alt: #f3f3f3;          /* Salesforce standard gray */
+  --slds-bg-wash: #f4f6f9;         /* Hover / panel headers */
   --slds-bg-inverse: #0B1727;
   --slds-bg-inverse-light: #0f172a;
-  --slds-bg-row-hover: #f8fafc;
+  --slds-bg-row-hover: #f4f6f9;
   --slds-bg-row-selected: #eaf5fe;
   --slds-bg-highlight: #faffbd;
   --slds-bg-modal-header: #0B2B40;
 
   /* ── Borders ── */
-  --slds-border: #e2e8f0;
-  --slds-border-strong: #cbd5e1;
-  --slds-border-input: #cbd5e1;
+  --slds-border: #DDDBDA;          /* Salesforce standard border */
+  --slds-border-strong: #C9C7C5;
+  --slds-border-input: #DDDBDA;
   --slds-border-input-active: #0176D3;
-  --slds-border-separator: #f1f5f9;
+  --slds-border-separator: #ecebea;
 
   /* ── Text ── */
   --slds-text: #1E293B;
