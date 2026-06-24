@@ -58,21 +58,23 @@ export default function LeaderboardTable({ stats }: LeaderboardTableProps) {
                 <td className={styles.td}>
                   <div className={styles.agentInfo}>
                     <div className={styles.agentAvatar}>{stat.name.substring(0, 2).toUpperCase()}</div>
-                    <span className={styles.agentName}>{stat.name}</span>
+                    <span className={styles.agentName} style={{ textTransform: 'capitalize', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+                      {stat.name.toLowerCase()}
+                    </span>
                   </div>
                 </td>
                 <td className={styles.td}>{stat.totalLeads}</td>
                 <td className={styles.td}>{stat.reservations}</td>
                 <td className={styles.td}>
-                  <span style={{ fontWeight: sortBy === 'closures' ? 700 : 400 }}>{stat.closedLeads}</span>
+                  <span style={{ fontWeight: sortBy === 'closures' ? 600 : 500 }}>{stat.closedLeads}</span>
                 </td>
                 <td className={styles.td}>
-                  <span style={{ fontWeight: sortBy === 'volume' ? 700 : 400, color: stat.totalVolume > 0 ? '#059669' : 'inherit' }}>
+                  <span style={{ fontWeight: sortBy === 'volume' ? 600 : 500, color: stat.totalVolume > 0 ? '#059669' : 'inherit' }}>
                     S/ {stat.totalVolume.toLocaleString('en-PE')}
                   </span>
                 </td>
                 <td className={styles.td}>
-                  <span style={{ fontWeight: sortBy === 'conversion' ? 700 : 400, color: stat.conversionRate > 10 ? '#16a34a' : '#475569' }}>
+                  <span style={{ fontWeight: sortBy === 'conversion' ? 600 : 500, color: stat.conversionRate > 10 ? '#16a34a' : '#475569' }}>
                     {stat.conversionRate.toFixed(1)}%
                   </span>
                 </td>

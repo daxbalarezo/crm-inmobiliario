@@ -4,6 +4,9 @@ import { db } from '../config/firebase';
 import { useCRM } from '../context/CRMContext';
 import type { Lead, UserProfile, LeadActivity } from '../types/definitions';
 
+// Extendemos Lead con una propiedad temporal para la vista de SLA
+export type SLALead = Lead & { _ttfcHours?: number };
+
 export interface AgentStats {
   uid: string;
   name: string;
@@ -13,6 +16,14 @@ export interface AgentStats {
   reservations: number;
   conversionRate: number;
   avgTTFC_hours: number;
+  slaCompliantLeads: number;
+  totalContactedLeads: number;
+  uncontactedLeads: number;
+  maxTTFC_hours: number;
+  compliantLeadsList: SLALead[];
+  nonCompliantLeadsList: SLALead[];
+  uncontactedLeadsList: SLALead[];
+  worstLead: SLALead | null;
 }
 
 export interface GlobalStats {
@@ -51,7 +62,8 @@ export interface WorkloadData {
 }
 
 export function useAdminMetrics(timeRange: string) {
-  const { tenantId, userProfile } = useCRM();
+  const { tenantId, userProfile, tenant } = useCRM();
+  const slaTargetHours = tenant?.slaTargetHours || 2;
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AgentStats[]>([]);
   const [globalStats, setGlobalStats] = useState<GlobalStats>({
@@ -184,7 +196,15 @@ export function useAdminMetrics(timeRange: string) {
         totalVolume: 0,
         reservations: 0,
         conversionRate: 0,
-        avgTTFC_hours: 0
+        avgTTFC_hours: 0,
+        slaCompliantLeads: 0,
+        totalContactedLeads: 0,
+        uncontactedLeads: 0,
+        maxTTFC_hours: 0,
+        compliantLeadsList: [],
+        nonCompliantLeadsList: [],
+        uncontactedLeadsList: [],
+        worstLead: null
       });
     });
 
@@ -197,7 +217,8 @@ export function useAdminMetrics(timeRange: string) {
       'EN_NEGOCIACION': 0,
       'VISITA': 0,
       'SEPARACION': 0,
-      'VENDIDO': 0
+      'VENDIDO': 0,
+      'PERDIDO': 0
     };
     
     let projectedRevenue = 0;
@@ -232,11 +253,37 @@ export function useAdminMetrics(timeRange: string) {
         if (!isNaN(created.getTime()) && !isNaN(first.getTime())) {
           const diffHours = (first.getTime() - created.getTime()) / (1000 * 60 * 60);
           if (diffHours >= 0) {
+            stat.totalContactedLeads++;
+            
+            const slaLead: SLALead = { ...l, _ttfcHours: diffHours };
+
+            if (diffHours <= slaTargetHours) {
+              stat.slaCompliantLeads++;
+              stat.compliantLeadsList.push(slaLead);
+            } else {
+              stat.nonCompliantLeadsList.push(slaLead);
+            }
+
+            if (diffHours > stat.maxTTFC_hours) {
+              stat.maxTTFC_hours = diffHours;
+              stat.worstLead = slaLead;
+            }
+
             const current = ttfcSums.get(stat.uid) || { totalHours: 0, count: 0 };
             ttfcSums.set(stat.uid, {
               totalHours: current.totalHours + diffHours,
               count: current.count + 1
             });
+          }
+        }
+      } else {
+        // No contact logged
+        const created = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt || Date.now());
+        if (!isNaN(created.getTime())) {
+          const diffHours = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+          if (diffHours > slaTargetHours) {
+            stat.uncontactedLeads++;
+            stat.uncontactedLeadsList.push({ ...l, _ttfcHours: diffHours });
           }
         }
       }
@@ -254,6 +301,8 @@ export function useAdminMetrics(timeRange: string) {
         stageCounts['SIN_CONTACTAR']++;
       } else if (l.status === 'PROSPECTO' || l.status === 'NUEVO') {
         stageCounts['PROSPECTO']++;
+      } else if (l.status === 'PERDIDO') {
+        stageCounts['PERDIDO']++;
       }
 
       // Source Logic
@@ -331,7 +380,8 @@ export function useAdminMetrics(timeRange: string) {
       { stage: 'Negociación', count: stageCounts['EN_NEGOCIACION'] },
       { stage: 'Visitas', count: stageCounts['VISITA'] },
       { stage: 'Separaciones', count: stageCounts['SEPARACION'] },
-      { stage: 'Vendidos', count: stageCounts['VENDIDO'] }
+      { stage: 'Vendidos', count: stageCounts['VENDIDO'] },
+      { stage: 'Perdidos', count: stageCounts['PERDIDO'] }
     ]);
 
     const formattedSourceData = Array.from(sourceCounts.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);

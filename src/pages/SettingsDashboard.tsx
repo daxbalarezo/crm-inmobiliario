@@ -9,6 +9,7 @@ import DataModelSettings from './settings/DataModelSettings';
 import RolesSettings from './settings/RolesSettings';
 import AuditDashboard from './settings/AuditDashboard';
 import WorkflowsDashboard from './settings/WorkflowsDashboard';
+import BusinessRulesSettings from './settings/BusinessRulesSettings';
 
 import styles from './SettingsDashboard.module.css';
 
@@ -79,6 +80,9 @@ export default function SettingsDashboard() {
 
         {/* WORKFLOWS */}
         {activeTab === 'workflows' && <WorkflowsDashboard />}
+
+        {/* REGLAS DE NEGOCIO */}
+        {activeTab === 'reglas' && <BusinessRulesSettings />}
       </div>
     </div>
   );

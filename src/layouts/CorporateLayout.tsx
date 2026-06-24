@@ -101,8 +101,7 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
           { name: 'Visión General', path: '/' },
           { name: 'Reportes Avanzados', path: '/reportes-avanzados' },
           { name: 'Reporte por Agente', path: '/analitica-agentes' },
-          { name: 'Rendimiento Comercial', path: '/rendimiento' },
-          { name: 'Tiempos de Respuesta', path: '/sla' }
+          { name: 'Rendimiento y SLA', path: '/rendimiento' }
         ]
       },
       { name: 'Pipeline Global', path: '/comercial', icon: Briefcase },
@@ -125,7 +124,8 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
           { name: 'Modelo de Datos', path: '/configuracion?tab=campos' },
           { name: 'Roles y Permisos', path: '/configuracion?tab=roles' },
           { name: 'Automatizaciones', path: '/configuracion?tab=workflows' },
-          { name: 'Registro de Auditoría', path: '/configuracion?tab=auditoria' }
+          { name: 'Registro de Auditoría', path: '/configuracion?tab=auditoria' },
+          { name: 'Reglas de Negocio (SLA)', path: '/configuracion?tab=reglas' }
         ]
       }
     ] : [])

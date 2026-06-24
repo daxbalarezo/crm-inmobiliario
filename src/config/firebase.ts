@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
@@ -14,6 +14,16 @@ export const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db  = getFirestore(app);
+
+// Habilitar caché local y persistencia offline multi-pestaña
+enableMultiTabIndexedDbPersistence(db).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    console.warn('Persistencia: Múltiples pestañas abiertas, la persistencia solo se habilitó en la principal.');
+  } else if (err.code === 'unimplemented') {
+    console.warn('Persistencia: El navegador no soporta IndexedDB local caching.');
+  }
+});
+
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 // ← Sin signInAnonymously: el SaaS usa Email/Password real

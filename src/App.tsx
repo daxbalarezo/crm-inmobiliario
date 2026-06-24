@@ -139,13 +139,6 @@ export default function App() {
               </CorporateLayout>
             </AuthGuard>
           } />
-          <Route path="/sla" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <SLAPage />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
           <Route path="/equipo" element={
             <AuthGuard>
               <CorporateLayout>

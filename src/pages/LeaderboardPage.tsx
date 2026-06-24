@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styles from './AdminDashboard.module.css';
 import { useAdminMetrics } from '../hooks/useAdminMetrics';
 import LeaderboardTable from '../components/admin/LeaderboardTable';
+import SLATable from '../components/admin/SLATable';
 
 export default function LeaderboardPage() {
   const [timeRange, setTimeRange] = useState<string>('this_month');
@@ -15,8 +16,8 @@ export default function LeaderboardPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h2 className={styles.title}>Rendimiento Comercial</h2>
-          <p className={styles.subtitle}>Clasificación de asesores por cierre de ventas</p>
+          <h2 className={styles.title}>Rendimiento y Tiempos de Respuesta (SLA)</h2>
+          <p className={styles.subtitle}>Clasificación de asesores y agilidad en el primer contacto</p>
         </div>
         
         <div className={styles.filterGroup}>
@@ -34,8 +35,9 @@ export default function LeaderboardPage() {
         </div>
       </div>
 
-      <div className={styles.tabContent}>
+      <div className={styles.tabContent} style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
         <LeaderboardTable stats={stats} />
+        <SLATable stats={stats} />
       </div>
     </div>
   );
