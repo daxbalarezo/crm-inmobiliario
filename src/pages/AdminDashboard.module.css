@@ -1,7 +1,8 @@
+/* HMR Trigger */
 .container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px; /* SLDS standard gap */
   animation: fadeIn 0.4s ease-out;
 }
 
@@ -10,151 +11,151 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.header {
+/* ==========================================================================
+   PAGE HEADER (SALESFORCE NATIVE)
+   ========================================================================== */
+.pageHeader {
+  background-color: #FFFFFF;
+  border-bottom: 1px solid #DDDBDA;
+  border-radius: 4px;
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.10);
+  padding: 16px 24px;
+}
+
+.headerTopRow {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.headerTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.headerIcon {
+  width: 32px;
+  height: 32px;
+  background-color: #7F8CE7; /* Salesforce Standard Icon Color */
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.headerTextGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.headerBreadcrumb {
+  font-size: 13px;
+  font-weight: 700;
+  color: #181818;
+  margin: 0 0 2px 0;
 }
 
 .title {
-  font-size: 28px;
+  font-size: 24px; /* SLDS standard for page header */
   font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 4px 0;
-  letter-spacing: -0.02em;
+  color: #181818;
+  margin: 0;
+  line-height: 1.25;
 }
 
-.subtitle {
-  font-size: 15px;
-  color: var(--text-secondary);
+.headerDetailRow {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 16px;
+  border-top: 1px solid #DDDBDA;
+  overflow-x: auto;
+}
+
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Hace que todas las columnas midan exactamente lo mismo y ocupen el 100% */
+  padding: 0 16px;
+  border-right: 1px solid #ECEBEA; /* Línea divisoria súper sutil (opcional en SLDS pero recomendada para espacios anchos) */
+  min-width: max-content;
+}
+
+.detailItem:first-child {
+  padding-left: 0;
+}
+
+.detailItem:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+.detailLabel {
+  font-size: 12px; /* Increased from 11px for legibility */
+  font-weight: 700;
+  color: #706E6B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+
+.detailValue {
+  font-size: 24px; /* Increased from 20px - SLDS Highlight Metric Size */
+  color: #181818;
+  font-weight: 300;
   margin: 0;
 }
 
+.detailValueBrand {
+  font-size: 24px; /* Increased from 20px */
+  color: #0176D3; /* Salesforce Brand Blue */
+  font-weight: 500;
+  margin: 0;
+}
+
+.detailSubtext {
+  font-size: 13px; /* Increased from 11px */
+  color: #706E6B;
+  display: block;
+  margin-top: 2px;
+  font-weight: 400;
+}
+
 .filterGroup {
-  margin-top: 16px;
+  display: flex;
+  align-items: center;
 }
 
 .timeFilter {
   padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #DDDBDA;
+  background-color: #FFFFFF;
+  color: #181818;
+  font-size: 13px;
   outline: none;
   cursor: pointer;
   transition: border-color 0.2s;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .timeFilter:focus {
-  border-color: var(--primary-color);
-}
-
-/* Tabs */
-.tabsContainer {
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.tabsList {
-  display: flex;
-  gap: 24px;
-}
-
-.tabButton {
-  padding: 12px 0;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tabButton:hover {
-  color: var(--text-primary);
-}
-
-.activeTab {
-  color: var(--primary-color);
-  border-bottom-color: var(--primary-color);
+  border-color: #0176D3;
 }
 
 .tabContent {
   animation: fadeIn 0.3s ease-out;
 }
 
-/* Metrics Grid */
-.metricsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-}
-
-
-
-.metricCard {
-  background-color: var(--bg-surface);
-  padding: 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.metricCard:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-}
-
-.metricHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.metricLabel {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0;
-}
-
-.metricValue {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.iconWrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-}
-
-.iconCorporate {
-  background-color: #f1f5f9;
-  color: var(--primary-color);
-}
-
 /* Panel & Table */
 .panelCard {
-  background-color: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+  background-color: #FFFFFF;
+  border-radius: 4px;
+  border: 1px solid #DDDBDA;
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.10);
   display: flex;
   flex-direction: column;
   overflow: hidden;

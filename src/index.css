@@ -17,8 +17,8 @@
 
 :root {
   /* ── Variables originales (NO TOCAR — usadas por todos los .module.css) ── */
-  --bg-color: #FFFFFF;
-  --bg-surface: #FFFFFF;
+  --bg-color: #F4F6F9; /* Fondo Salesforce — gris azulado premium */
+  --bg-surface: #FFFFFF; /* Cards y paneles — blanco que flota sobre el fondo */
   --bg-sidebar: #0f172a;
 
   --text-primary: #1E293B;
@@ -447,4 +447,15 @@ svg {
 @keyframes slds-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ==========================================================================
+   10. CARDS — El look "iPhone" estructurado de Salesforce
+   ========================================================================== */
+.slds-card {
+  background-color: #FFFFFF;
+  border: 1px solid #DDDBDA;
+  border-radius: 4px;
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.10);
+  overflow: hidden;
 }

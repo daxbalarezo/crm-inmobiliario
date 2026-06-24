@@ -50,28 +50,54 @@
 /* Topbar Global */
 .topbar {
   height: 60px;
-  background-color: #0B1727; /* Un azul marino más profundo y elegante */
-  color: white;
+  background-color: #FFFFFF;
+  color: #181818;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
   z-index: 30;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  /* THE SLDS HORIZON LINE: A strong 3px brand border that defines the topbar */
+  border-bottom: 3px solid #0176D3; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.topbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 24px;
 }
 
 .logoArea {
   display: flex;
   align-items: center;
-  gap: 16px;
-  width: 240px;
+  position: relative; /* This is required for the dropdown to attach to it */
+  height: 100%;
+}
+
+.waffleBtn {
+  background: transparent;
+  border: none;
+  color: #706E6B;
+  margin-right: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.waffleBtn:hover {
+  background: #F3F3F3;
+  color: #0176D3;
 }
 
 .logoText {
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
+  color: #181818;
+  font-size: 18px; /* Increased to give it App Name weight */
+  font-weight: 700;
   letter-spacing: 0.05em;
   white-space: nowrap;
   overflow: hidden;
@@ -91,6 +117,44 @@
   text-transform: uppercase;
 }
 
+/* Buscador Global Center */
+.globalSearch {
+  flex: 1;
+  max-width: 600px;
+  margin: 0 32px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+input.searchInput {
+  width: 100%;
+  background-color: #FFFFFF;
+  border: 1px solid #706E6B; /* SLDS default input border */
+  border-radius: 4px;
+  padding: 8px 16px 8px 40px;
+  font-size: 14px;
+  color: #181818;
+  transition: all 0.2s;
+}
+
+input.searchInput::placeholder {
+  color: #706E6B;
+}
+
+input.searchInput:focus {
+  outline: none;
+  border-color: #0176D3;
+  box-shadow: 0 0 3px #0176D3;
+  background-color: #FFFFFF;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  color: #706E6B;
+}
+
 /* Acciones Globales */
 .globalActions {
   display: flex;
@@ -98,27 +162,27 @@
   gap: 16px;
 }
 
-/* Selector de Proyecto - Estilo Pill */
+/* Selector de Proyecto - Estilo Botón SLDS */
 .projectSelectorContainer {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: rgba(255, 255, 255, 0.03);
-  padding: 4px 4px 4px 16px;
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: transparent;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
   transition: all 0.2s ease;
 }
 
 .projectSelectorContainer:hover {
-  background-color: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.15);
+  background-color: #F3F3F3;
+  border-color: #DDDBDA;
 }
 
 .projectLabel {
   font-size: 12px;
-  color: #94a3b8;
-  font-weight: 500;
+  color: #706E6B;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -130,7 +194,7 @@
 .customSelectBtn {
   background: transparent;
   border: none;
-  color: #f8fafc;
+  color: #181818;
   font-weight: 600;
   font-size: 14px;
   padding: 4px 8px;
@@ -157,13 +221,13 @@
 .customDropdown {
   position: absolute;
   top: calc(100% + 12px);
-  right: 0;
+  left: 0;
   width: 260px;
-  background-color: #0f172a;
-  border: 1px solid rgba(255,255,255,0.1);
+  background-color: white;
+  border: 1px solid #DDDBDA;
   border-radius: 8px;
-  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
-  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Stronger shadow so it pops */
+  z-index: 9999; /* Ensure it is above everything */
   padding: 8px;
   animation: slideDown 0.2s ease-out;
 }
@@ -176,7 +240,7 @@
   padding: 8px 12px;
   background: transparent;
   border: none;
-  color: #e2e8f0;
+  color: #181818;
   text-align: left;
   font-size: 13px;
   cursor: pointer;
@@ -186,26 +250,26 @@
 }
 
 .dropdownItem:hover {
-  background-color: rgba(255,255,255,0.08);
-  color: white;
+  background-color: #F3F3F3;
+  color: #0176D3;
 }
 
 .dropdownItemActive {
-  background-color: rgba(1, 118, 211, 0.15);
-  color: #38bdf8;
+  background-color: rgba(1, 118, 211, 0.1);
+  color: #0176D3;
   font-weight: 600;
 }
 
 .dropdownGroup {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid #DDDBDA;
 }
 
 .dropdownGroupLabel {
   font-size: 11px;
   text-transform: uppercase;
-  color: #64748b;
+  color: #706E6B;
   font-weight: 700;
   letter-spacing: 0.05em;
   padding: 4px 12px;
@@ -216,8 +280,8 @@
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 10px;
-  background-color: rgba(255,255,255,0.1);
-  color: #cbd5e1;
+  background-color: #F3F3F3;
+  color: #706E6B;
   font-weight: 600;
 }
 
@@ -235,7 +299,7 @@
 
 .iconBtn {
   position: relative;
-  color: #cbd5e1;
+  color: #706E6B;
   background: transparent;
   width: 36px;
   height: 36px;
@@ -247,8 +311,8 @@
 }
 
 .iconBtn:hover {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.08);
+  color: #0176D3;
+  background-color: #F3F3F3;
 }
 
 .notificationDot {
@@ -259,81 +323,118 @@
   height: 8px;
   background-color: #e11d48;
   border-radius: 50%;
-  border: 2px solid #0B1727;
+  border: 2px solid #FFFFFF;
 }
 
-/* User Profile - Estilo Pill */
-.userProfileGroup {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background-color: rgba(255, 255, 255, 0.03);
-  padding: 6px 16px;
-  border-radius: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
+/* User Profile - Salesforce Compact Style */
+.profileContainer {
+  position: relative;
   margin-left: 8px;
 }
 
-.userProfileGroup:hover {
-  background-color: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.userInfo {
+.avatarBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 50%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
-  flex-direction: column;
-  text-align: right;
 }
 
-.userName {
-  font-size: 14px;
-  font-weight: 600;
-  color: #f8fafc;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 130px;
-}
-
-.userRole {
-  font-size: 11px;
-  color: #94a3b8;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: -2px;
+.avatarBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.2);
 }
 
 .userAvatar {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #0176D3, #005A9E);
+  background-color: #0176D3; /* SLDS flat brand color */
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 14px;
   border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.logoutBtn {
-  padding: 6px;
-  color: #94a3b8;
-  background: transparent;
-  border-radius: 50%;
+.userAvatarLarge {
+  width: 48px;
+  height: 48px;
+  background-color: #0176D3;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  margin-left: 4px;
+  color: white;
+  font-weight: 500;
+  font-size: 20px;
+  border-radius: 50%;
 }
 
-.logoutBtn:hover {
-  color: #fb7185;
-  background-color: rgba(251, 113, 133, 0.1);
+.profileDropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 280px;
+  background-color: white;
+  border: 1px solid #DDDBDA;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 100;
+  animation: slideDown 0.2s ease-out;
+  overflow: hidden;
+}
+
+.profileHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background-color: #F3F3F3;
+  border-bottom: 1px solid #DDDBDA;
+}
+
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.profileName {
+  font-size: 16px;
+  font-weight: 700;
+  color: #181818;
+}
+
+.profileRole {
+  font-size: 13px;
+  color: #706E6B;
+  margin-top: 2px;
+}
+
+.profileActions {
+  padding: 8px;
+}
+
+.dropdownActionBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  color: #d93025;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.dropdownActionBtn:hover {
+  background-color: #FEF0F0;
 }
 
 /* Contenido Principal (Sidebar + Main) */
@@ -515,8 +616,8 @@
 .contentScroll {
   flex: 1;
   overflow-y: auto;
-  padding: var(--slds-spacing-lg);
-  background-color: #F4F6F9;
+  padding: 16px 24px; /* Slightly tighter top padding */
+  background-color: var(--slds-brand-lighter, #eaf5fe); /* SLDS subtle brand tint */
 }
 
 .contentWrapper {

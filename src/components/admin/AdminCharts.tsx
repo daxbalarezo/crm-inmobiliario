@@ -39,40 +39,46 @@ interface AdminChartsProps {
   activityData: ActivityData[];
 }
 
-const CORPORATE_COLORS = ['#1e3a8a', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
-const FUNNEL_COLORS = ['#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e3a8a', '#0f172a'];
+const SLDS_CATEGORICAL_COLORS = ['#52B7D8', '#E16032', '#FFB03B', '#54A77B', '#4FD2D2', '#E287B2', '#0176D3', '#0B5CAB'];
 
 export default function AdminCharts({ funnelData, sourceData, workloadData, lossReasonData, activityData }: AdminChartsProps) {
+  
+  const formatName = (name: string) => {
+    if (!name) return '';
+    const lower = name.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  };
+
   return (
     <div className={styles.chartsContainer}>
       {/* Funnel Chart */}
       <div className={`${styles.chartCard} ${styles.fullWidth}`}>
-        <div className={styles.cardHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className={styles.cardHeader}>
           <div>
             <h3 className={styles.cardTitle}>Embudo de Conversión Comercial</h3>
             <p className={styles.cardSubtitle}>Volumen de prospectos por etapa en el periodo seleccionado</p>
           </div>
           <Link 
             to="/analitica-agentes" 
-            style={{ fontSize: '13px', color: 'var(--primary-color)', fontWeight: 500, textDecoration: 'none', padding: '6px 12px', backgroundColor: '#f1f5f9', borderRadius: '6px', transition: 'background-color 0.2s' }}
+            className={styles.sldsButtonNeutral}
           >
-            Ver detalle por asesor →
+            Ver detalle
           </Link>
         </div>
         <div className={styles.chartWrapper}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={funnelData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="stage" />
-              <YAxis />
+            <BarChart data={funnelData} layout="vertical" margin={{ top: 20, right: 30, left: 80, bottom: 5 }}>
+              <CartesianGrid stroke="#ECEBEA" horizontal={true} vertical={false} />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#706E6B' }} />
+              <YAxis dataKey="stage" type="category" width={110} axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#444444' }} />
               <RechartsTooltip 
                 formatter={(value: number) => [value, 'Prospectos']}
-                cursor={{ fill: 'transparent' }}
+                cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
-              <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={60}>
+              <Bar dataKey="count" radius={[0, 2, 2, 0]} maxBarSize={40}>
                 {funnelData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={FUNNEL_COLORS[index % FUNNEL_COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={SLDS_CATEGORICAL_COLORS[index % SLDS_CATEGORICAL_COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>
@@ -82,16 +88,16 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
 
       {/* Source Pie Chart */}
       <div className={styles.chartCard}>
-        <div className={styles.cardHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className={styles.cardHeader}>
           <div>
             <h3 className={styles.cardTitle}>Fuentes de Adquisición</h3>
             <p className={styles.cardSubtitle}>Top 5 orígenes de prospectos</p>
           </div>
           <Link 
             to="/reportes-avanzados?type=source"
-            style={{ fontSize: '12px', color: 'var(--primary-color)', fontWeight: 500, textDecoration: 'none', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}
+            className={styles.sldsButtonNeutral}
           >
-            Ver detalle →
+            Ver detalle
           </Link>
         </div>
         <div className={styles.chartWrapper}>
@@ -100,18 +106,20 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
               <Pie
                 data={sourceData}
                 cx="50%"
-                cy="50%"
+                cy="45%"
                 innerRadius={60}
                 outerRadius={100}
-                paddingAngle={5}
+                paddingAngle={2}
                 dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                nameKey="name"
+                stroke="none"
               >
                 {sourceData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={CORPORATE_COLORS[index % CORPORATE_COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={SLDS_CATEGORICAL_COLORS[index % SLDS_CATEGORICAL_COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip formatter={(value: number) => [value, 'Prospectos']} />
+              <RechartsTooltip formatter={(value: number) => [value, 'Prospectos']} contentStyle={{ borderRadius: '4px', border: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0,0,0,0.1)' }} />
+              <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#444' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -119,60 +127,60 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
 
       {/* Workload Bar Chart */}
       <div className={styles.chartCard}>
-        <div className={styles.cardHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className={styles.cardHeader}>
           <div>
             <h3 className={styles.cardTitle}>Carga de Trabajo Activa</h3>
             <p className={styles.cardSubtitle}>Leads sin resolver por asesor</p>
           </div>
           <Link 
             to="/reportes-avanzados?type=workload"
-            style={{ fontSize: '12px', color: 'var(--primary-color)', fontWeight: 500, textDecoration: 'none', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}
+            className={styles.sldsButtonNeutral}
           >
-            Ver detalle →
+            Ver detalle
           </Link>
         </div>
         <div className={styles.chartWrapper}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={workloadData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" width={80} />
+            <BarChart data={workloadData} layout="vertical" margin={{ top: 5, right: 30, left: 30, bottom: 5 }}>
+              <CartesianGrid stroke="#ECEBEA" horizontal={true} vertical={false} />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#706E6B' }} />
+              <YAxis dataKey="name" type="category" width={80} axisLine={false} tickLine={false} tickFormatter={formatName} tick={{ fontSize: 13, fill: '#444444' }} />
               <RechartsTooltip 
                 formatter={(value: number) => [value, 'Leads Activos']}
                 cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
-              <Bar dataKey="activeLeads" fill="#475569" radius={[0, 4, 4, 0]} barSize={20} />
+              <Bar dataKey="activeLeads" fill="#52B7D8" radius={[0, 4, 4, 0]} barSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
       {/* Activity Bar Chart */}
       <div className={styles.chartCard}>
-        <div className={styles.cardHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className={styles.cardHeader}>
           <div>
             <h3 className={styles.cardTitle}>Métricas de Productividad</h3>
             <p className={styles.cardSubtitle}>Total de acciones registradas por asesor</p>
           </div>
           <Link 
             to="/reportes-avanzados?type=productivity"
-            style={{ fontSize: '12px', color: 'var(--primary-color)', fontWeight: 500, textDecoration: 'none', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}
+            className={styles.sldsButtonNeutral}
           >
-            Ver detalle →
+            Ver detalle
           </Link>
         </div>
         <div className={styles.chartWrapper}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={activityData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" width={80} />
+            <BarChart data={activityData} layout="vertical" margin={{ top: 5, right: 30, left: 30, bottom: 5 }}>
+              <CartesianGrid stroke="#ECEBEA" horizontal={true} vertical={false} />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#706E6B' }} />
+              <YAxis dataKey="name" type="category" width={80} axisLine={false} tickLine={false} tickFormatter={formatName} tick={{ fontSize: 13, fill: '#444444' }} />
               <RechartsTooltip 
                 formatter={(value: number) => [value, 'Acciones Registradas']}
                 cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
-              <Bar dataKey="activities" fill="#1e293b" radius={[0, 4, 4, 0]} barSize={20} />
+              <Bar dataKey="activities" fill="#E16032" radius={[0, 4, 4, 0]} barSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -180,16 +188,16 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
 
       {/* Loss Reasons Pie Chart */}
       <div className={styles.chartCard}>
-        <div className={styles.cardHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className={styles.cardHeader}>
           <div>
             <h3 className={styles.cardTitle}>Análisis de Ventas Perdidas</h3>
             <p className={styles.cardSubtitle}>Principales motivos de pérdida</p>
           </div>
           <Link 
             to="/reportes-avanzados?type=loss_reasons"
-            style={{ fontSize: '12px', color: 'var(--primary-color)', fontWeight: 500, textDecoration: 'none', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}
+            className={styles.sldsButtonNeutral}
           >
-            Ver detalle →
+            Ver detalle
           </Link>
         </div>
         <div className={styles.chartWrapper}>
@@ -198,18 +206,20 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
               <Pie
                 data={lossReasonData}
                 cx="50%"
-                cy="50%"
+                cy="45%"
                 innerRadius={60}
                 outerRadius={100}
-                paddingAngle={5}
+                paddingAngle={2}
                 dataKey="count"
-                label={({ reason, percent }) => `${reason} ${(percent * 100).toFixed(0)}%`}
+                nameKey="reason"
+                stroke="none"
               >
                 {lossReasonData.map((entry, index) => (
-                  <Cell key={`cell-loss-${index}`} fill={CORPORATE_COLORS[(index + 2) % CORPORATE_COLORS.length]} />
+                  <Cell key={`cell-loss-${index}`} fill={SLDS_CATEGORICAL_COLORS[(index + 4) % SLDS_CATEGORICAL_COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip formatter={(value: number) => [value, 'Casos Perdidos']} />
+              <RechartsTooltip formatter={(value: number) => [value, 'Casos Perdidos']} contentStyle={{ borderRadius: '4px', border: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0,0,0,0.1)' }} />
+              <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#444' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>

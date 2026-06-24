@@ -1,7 +1,7 @@
 // src/layouts/CorporateLayout.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import LeadModal from '../components/LeadModal';
-import { Home, Briefcase, Package, Map, ChevronDown, Calendar, Bell, CreditCard, BarChart3, Settings, LogOut, FileText, Users, Building2, FolderKanban, LayoutTemplate } from 'lucide-react';
+import { Home, Briefcase, Package, Map, ChevronDown, Calendar, Bell, CreditCard, BarChart3, Settings, LogOut, FileText, Users, Building2, FolderKanban, LayoutTemplate, Search, Grip, Star, Plus, HelpCircle } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useProjects } from '../hooks/useProjects';
@@ -25,7 +25,9 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
   const { projects } = useProjects();
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const hasAutoSelected = useRef(false);
 
   useEffect(() => {
@@ -55,6 +57,9 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsProjectDropdownOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -157,96 +162,124 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
 
       <header className={styles.topbar}>
         
-        <div className={styles.logoArea}>
-          <h1 className={styles.logoText}>
-            {tenant?.name || 'INMOBILIARIA'}
-          </h1>
-          {userProfile?.role === 'owner' && (
-            <span className={styles.globalBadge}>Global</span>
-          )}
-        </div>
+        <div className={styles.topbarLeft}>
+          <div className={styles.logoArea} ref={dropdownRef}>
+            <button 
+              className={styles.waffleBtn} 
+              title="App Launcher (Cambiar Proyecto)"
+              onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+            >
+              <Grip size={20} />
+            </button>
+            <h1 className={styles.logoText}>
+              {activeProjectId === 'all' || !activeProjectId 
+                ? 'VISIÓN GLOBAL' 
+                : projects.find(p => p.id === activeProjectId)?.name.toUpperCase() || 'INMOBILIARIA'}
+            </h1>
+            
+            {isProjectDropdownOpen && (
+              <div className={styles.customDropdown}>
+                <button 
+                  className={`${styles.dropdownItem} ${(!activeProjectId || activeProjectId === 'all') ? styles.dropdownItemActive : ''}`}
+                  onClick={() => { setActiveProjectId('all'); setIsProjectDropdownOpen(false); }}
+                >
+                  Visión Global (Todos los proyectos)
+                </button>
+                
+                <div className={styles.dropdownGroup}>
+                  <div className={styles.dropdownGroupLabel}>Proyectos Activos</div>
+                  {projects.filter(p => !p.status || p.status === 'active').map(p => (
+                    <button 
+                      key={p.id}
+                      className={`${styles.dropdownItem} ${activeProjectId === p.id ? styles.dropdownItemActive : ''}`}
+                      onClick={() => { setActiveProjectId(p.id); setIsProjectDropdownOpen(false); }}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
 
-        <div className={styles.globalActions}>
-          <div className={styles.projectSelectorContainer} ref={dropdownRef}>
-            <label className={styles.projectLabel}>Proyecto:</label>
-            <div className={styles.customSelectWrapper}>
-              <button 
-                className={styles.customSelectBtn}
-                onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
-              >
-                <span className={styles.customSelectValue}>
-                  {activeProjectId === 'all' || !activeProjectId 
-                    ? 'Todos los proyectos' 
-                    : projects.find(p => p.id === activeProjectId)?.name || 'Todos los proyectos'}
-                </span>
-                <ChevronDown size={14} className={isProjectDropdownOpen ? styles.iconOpen : ''} />
-              </button>
-              
-              {isProjectDropdownOpen && (
-                <div className={styles.customDropdown}>
-                  <button 
-                    className={`${styles.dropdownItem} ${(!activeProjectId || activeProjectId === 'all') ? styles.dropdownItemActive : ''}`}
-                    onClick={() => { setActiveProjectId('all'); setIsProjectDropdownOpen(false); }}
-                  >
-                    Todos los proyectos
-                  </button>
-                  
+                {projects.some(p => p.status && p.status !== 'active') && (
                   <div className={styles.dropdownGroup}>
-                    <div className={styles.dropdownGroupLabel}>Activos</div>
-                    {projects.filter(p => !p.status || p.status === 'active').map(p => (
+                    <div className={styles.dropdownGroupLabel}>Inactivos / Vendidos</div>
+                    {projects.filter(p => p.status && p.status !== 'active').map(p => (
                       <button 
                         key={p.id}
                         className={`${styles.dropdownItem} ${activeProjectId === p.id ? styles.dropdownItemActive : ''}`}
                         onClick={() => { setActiveProjectId(p.id); setIsProjectDropdownOpen(false); }}
                       >
                         {p.name}
+                        <span className={styles.statusBadge}>{p.status === 'inactive' ? 'Inactivo' : 'Vendido'}</span>
                       </button>
                     ))}
                   </div>
-
-                  {projects.some(p => p.status && p.status !== 'active') && (
-                    <div className={styles.dropdownGroup}>
-                      <div className={styles.dropdownGroupLabel}>Inactivos / Vendidos</div>
-                      {projects.filter(p => p.status && p.status !== 'active').map(p => (
-                        <button 
-                          key={p.id}
-                          className={`${styles.dropdownItem} ${activeProjectId === p.id ? styles.dropdownItemActive : ''}`}
-                          onClick={() => { setActiveProjectId(p.id); setIsProjectDropdownOpen(false); }}
-                        >
-                          {p.name}
-                          <span className={styles.statusBadge}>{p.status === 'inactive' ? 'Inactivo' : 'Vendido'}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
-          
+        </div>
+
+        <div className={styles.globalSearch}>
+          <Search size={16} className={styles.searchIcon} />
+          <input 
+            type="text" 
+            placeholder="Buscar leads, proyectos o contactos..." 
+            className={styles.searchInput}
+          />
+        </div>
+
+        <div className={styles.globalActions}>
           <div className={styles.iconGroup}>
+            <button className={styles.iconBtn} title="Favoritos">
+              <Star size={18} />
+            </button>
+            <button className={styles.iconBtn} title="Creación rápida">
+              <Plus size={18} />
+            </button>
+            <button className={styles.iconBtn} title="Ayuda de Salesforce">
+              <HelpCircle size={18} />
+            </button>
+            <button className={styles.iconBtn} title="Configuración">
+              <Settings size={18} />
+            </button>
             <button className={styles.iconBtn} title="Notificaciones">
-              <Bell size={16} />
+              <Bell size={18} />
               <span className={styles.notificationDot}></span>
             </button>
-            <button className={styles.iconBtn} title="Calendario">
-              <Calendar size={16} />
-            </button>
           </div>
 
-          <div className={styles.userProfileGroup}>
-            <div className={styles.userInfo}>
-              <span className={styles.userName} title={userProfile?.name}>{userProfile?.name || 'Usuario'}</span>
-              <span className={styles.userRole}>
-                {userProfile?.role === 'owner' ? 'Dueño' : userProfile?.role === 'manager' ? 'Gerente' : userProfile?.role === 'agent' ? 'Asesor' : userProfile?.role}
-              </span>
-            </div>
-            <div className={styles.userAvatar}>
-              {userProfile?.name?.charAt(0) || 'U'}
-            </div>
-            <button onClick={logout} className={styles.logoutBtn} title="Cerrar sesión">
-              <LogOut size={14} />
+          <div className={styles.profileContainer} ref={profileRef}>
+            <button 
+              className={styles.avatarBtn} 
+              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+              title="Opciones de usuario"
+            >
+              <div className={styles.userAvatar}>
+                {userProfile?.name?.charAt(0).toUpperCase() || 'U'}
+              </div>
             </button>
+
+            {isProfileDropdownOpen && (
+              <div className={styles.profileDropdown}>
+                <div className={styles.profileHeader}>
+                  <div className={styles.userAvatarLarge}>
+                    {userProfile?.name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div className={styles.profileInfo}>
+                    <div className={styles.profileName}>{userProfile?.name || 'Usuario'}</div>
+                    <div className={styles.profileRole}>
+                      {userProfile?.role === 'owner' ? 'Dueño' : userProfile?.role === 'manager' ? 'Gerente' : userProfile?.role === 'agent' ? 'Asesor' : userProfile?.role}
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.profileActions}>
+                  <button onClick={logout} className={styles.dropdownActionBtn}>
+                    <LogOut size={14} />
+                    Cerrar sesión
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
