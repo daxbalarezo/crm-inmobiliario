@@ -170,7 +170,11 @@
 
 
 /* ==========================================================================
-   3. BASE STYLES
+   3. BASE STYLES — Identidad Premium Salesforce
+   ==========================================================================
+   Regla de oro: Azul (#0176D3) = interactivo | Gris/Negro = estático
+   Fondo: #F4F6F9 (el gris azulado real de Salesforce)
+   Cards: Blancas con borde #DDDBDA sobre el fondo azulado
    ========================================================================== */
 
 *,
@@ -183,41 +187,65 @@ html {
   -webkit-text-size-adjust: 100%;
   -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   padding: 0;
   font-family: var(--font-family);
-  font-size: var(--slds-font-size-4);
-  font-weight: var(--slds-font-weight-regular);
-  line-height: var(--slds-line-height-normal);
-  color: var(--text-primary);
-  background-color: var(--bg-color);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #181818;
+  background-color: #F4F6F9;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-/* ── Links ── */
+/* ── Links — SIEMPRE azul, el único color interactivo ── */
 a {
   text-decoration: none;
-  color: var(--primary-color);
-  transition: color var(--slds-duration-fast) var(--slds-ease);
+  color: #0176D3;
 }
 
 a:hover {
-  color: var(--slds-text-link-hover);
+  text-decoration: underline;
+  color: #014486;
 }
 
-/* ── Buttons base ── */
+/* ── Headings ── */
+h1, h2, h3, h4, h5, h6 {
+  color: #181818;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0;
+}
+
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1rem; }
+h4 { font-size: 0.875rem; }
+h5, h6 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #706E6B; }
+
+p {
+  margin: 0;
+  color: #444444;
+}
+
+
+/* ==========================================================================
+   4. BUTTONS — Nacen premium
+   ========================================================================== */
+
 button {
   cursor: pointer;
   border: none;
   font-family: var(--font-family);
-  font-size: inherit;
-  line-height: inherit;
+  font-size: 13px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: background-color 0.1s ease;
 }
 
 button:disabled {
@@ -225,49 +253,162 @@ button:disabled {
   opacity: 0.5;
 }
 
-/* ── Focus visible (accesibilidad) ── */
+/* ── Focus ring — anillo azul accesible ── */
 :focus-visible {
   outline: none;
-  box-shadow: var(--slds-shadow-focus);
-  border-radius: var(--slds-radius-sm);
+  box-shadow: 0 0 0 3px rgba(1, 118, 211, 0.4);
 }
 
-/* ── Images ── */
+
+/* ==========================================================================
+   5. INPUTS, SELECTS, TEXTAREAS — Estilo SLDS nativo
+   ========================================================================== */
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="search"],
+input[type="date"],
+textarea,
+select {
+  width: 100%;
+  font-family: var(--font-family);
+  font-size: 13px;
+  color: #181818;
+  background-color: #FFFFFF;
+  border: 1px solid #DDDBDA;
+  border-radius: 4px;
+  padding: 7px 12px;
+  line-height: 1.5;
+  transition: border-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #0176D3;
+  box-shadow: 0 0 0 3px rgba(1, 118, 211, 0.25);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #706E6B;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background-color: #ECEBEA;
+  border-color: #DDDBDA;
+  color: #706E6B;
+  cursor: not-allowed;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+select {
+  appearance: none;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23706E6B' d='M3.8 4.4L6 6.6l2.2-2.2c.3-.3.8-.3 1.1 0 .3.3.3.8 0 1.1l-2.8 2.8c-.3.3-.8.3-1.1 0L2.7 5.5c-.3-.3-.3-.8 0-1.1.3-.3.8-.3 1.1 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+}
+
+/* ── Labels — Tiny, uppercase, gris. La firma visual de Salesforce ── */
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: #444444;
+  margin-bottom: 4px;
+}
+
+/* ── Checkbox & Radio ── */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #0176D3;
+  cursor: pointer;
+}
+
+
+/* ==========================================================================
+   6. TABLES — Data table estilo SLDS
+   ========================================================================== */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 13px;
+  background-color: #FFFFFF;
+}
+
+thead th {
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #706E6B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  border-top: 1px solid #DDDBDA;
+  border-bottom: 1px solid #DDDBDA;
+  background-color: #FAFAF9;
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 8px 16px;
+  border-bottom: 1px solid #ECEBEA;
+  color: #181818;
+  vertical-align: middle;
+}
+
+tbody tr:hover {
+  background-color: #F4F6F9;
+}
+
+/* Link dentro de tabla — azul interactivo */
+tbody td a {
+  color: #0176D3;
+  text-decoration: none;
+}
+
+tbody td a:hover {
+  text-decoration: underline;
+  color: #014486;
+}
+
+
+/* ==========================================================================
+   7. IMAGES & MEDIA
+   ========================================================================== */
+
 img,
 svg {
   display: block;
   max-width: 100%;
 }
 
-/* ── Tables ── */
-table {
-  border-collapse: collapse;
-  border-spacing: 0;
-}
-
-/* ── Inputs base ── */
-input,
-textarea,
-select {
-  font-family: var(--font-family);
-  font-size: var(--slds-font-size-4);
-  color: var(--text-primary);
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: var(--slds-text-placeholder);
-}
-
 /* ── Selection highlight ── */
 ::selection {
-  background-color: var(--slds-brand-lighter);
-  color: var(--slds-brand-dark);
+  background-color: #D8EDFF;
+  color: #014486;
 }
 
 
 /* ==========================================================================
-   4. SCROLLBAR (sutil, profesional)
+   8. SCROLLBAR — Sutil, casi invisible
    ========================================================================== */
 
 ::-webkit-scrollbar {
@@ -280,85 +421,30 @@ textarea::placeholder {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #c1c7cd;
+  background-color: #C9C7C5;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #a0a6ac;
+  background-color: #969492;
 }
 
-/* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #c1c7cd transparent;
+  scrollbar-color: #C9C7C5 transparent;
 }
 
 
 /* ==========================================================================
-   5. UTILITY ANIMATIONS
+   9. UTILITY ANIMATIONS (solo las esenciales)
    ========================================================================== */
-
-@keyframes slds-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slds-fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slds-fade-in-down {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slds-scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes slds-slide-right {
-  from {
-    opacity: 0;
-    transform: translateX(-12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
 
 @keyframes slds-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-@keyframes slds-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes slds-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes slds-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
