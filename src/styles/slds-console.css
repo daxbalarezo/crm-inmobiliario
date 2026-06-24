@@ -1,0 +1,870 @@
+/* ==========================================================================
+   Lightning Service Console — Componentes CSS
+   ==========================================================================
+   Réplica de la estética de la Salesforce Lightning Service Console.
+   Usa los tokens definidos en index.css (fusión SLDS + marca corporativa).
+   
+   Componentes incluidos:
+   1. Workspace Tabs (pestañas de registros abiertos)
+   2. Split View Layout (3 columnas: sidebar + feed + knowledge)
+   3. Compact Record Cards (Contact, Case, Product)
+   4. Publisher Bar (Write Email, Log a Call, etc.)
+   5. Scoped Tabs (All Updates, Emails, Calls...)
+   6. Activity Feed / Timeline
+   7. Knowledge Sidebar
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. WORKSPACE TABS — Pestañas de registros abiertos
+   ==========================================================================
+   La barra azul debajo del header con tabs tipo "00014723 × | Katie Miller ×"
+   ========================================================================== */
+
+.console-tabs {
+  display: flex;
+  align-items: center;
+  background-color: var(--slds-brand);
+  padding: 0 var(--slds-spacing-xs);
+  height: 32px;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.console-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.console-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--slds-spacing-xs);
+  padding: 0 var(--slds-spacing-sm);
+  height: 28px;
+  font-size: var(--slds-font-size-2);
+  font-weight: var(--slds-font-weight-medium);
+  color: rgba(255, 255, 255, 0.85);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: var(--slds-radius-sm) var(--slds-radius-sm) 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--slds-duration-fast) var(--slds-ease);
+  border: none;
+  font-family: var(--font-family);
+}
+
+.console-tab:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.console-tab--active {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: var(--slds-font-weight-semibold);
+  box-shadow: 0 -2px 0 0 var(--slds-brand-dark) inset;
+}
+
+.console-tab__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--slds-radius-circle);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 11px;
+  padding: 0;
+  transition: opacity var(--slds-duration-fast);
+}
+
+.console-tab__close:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.console-tab__icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+
+/* ==========================================================================
+   2. SPLIT VIEW LAYOUT — 3 columnas
+   ==========================================================================
+   Left (record detail) | Center (feed) | Right (knowledge)
+   ========================================================================== */
+
+.console-layout {
+  display: flex;
+  height: calc(100vh - 92px); /* header + tabs */
+  overflow: hidden;
+  background-color: var(--slds-bg-alt);
+}
+
+/* ── Panel Izquierdo (Record Detail) ── */
+.console-panel-left {
+  width: 260px;
+  min-width: 220px;
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--slds-border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* ── Panel Central (Feed) ── */
+.console-panel-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Panel Derecho (Knowledge) ── */
+.console-panel-right {
+  width: 280px;
+  min-width: 240px;
+  background-color: var(--bg-surface);
+  border-left: 1px solid var(--slds-border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* Resize handle entre paneles */
+.console-panel-divider {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color var(--slds-duration-fast);
+  flex-shrink: 0;
+}
+
+.console-panel-divider:hover {
+  background-color: var(--slds-brand-lighter);
+}
+
+
+/* ==========================================================================
+   3. COMPACT RECORD CARDS — Contact, Case, Product
+   ==========================================================================
+   Cards colapsables con header con icono y campos en grid 2 columnas
+   ========================================================================== */
+
+.record-card {
+  border-bottom: 1px solid var(--slds-border);
+}
+
+.record-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--slds-spacing-xs) var(--slds-spacing-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--slds-duration-fast) var(--slds-ease);
+}
+
+.record-card__header:hover {
+  background-color: var(--slds-bg-wash);
+}
+
+.record-card__header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-xs);
+}
+
+.record-card__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--slds-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--slds-text-inverse);
+  font-size: 14px;
+}
+
+/* Iconos por tipo de objeto — colores SLDS standard */
+.record-card__icon--contact {
+  background-color: #7f8de1; /* Purple — SLDS standard object contact */
+}
+
+.record-card__icon--case {
+  background-color: #f2cf5b; /* Yellow — SLDS standard object case */
+  color: #5a4e00;
+}
+
+.record-card__icon--product {
+  background-color: #56aadf; /* Blue — SLDS standard object product */
+}
+
+.record-card__icon--lead {
+  background-color: #f88962; /* Orange — SLDS standard object lead */
+}
+
+.record-card__icon--opportunity {
+  background-color: #fcb95b; /* Gold — SLDS standard object opportunity */
+  color: #5a4200;
+}
+
+.record-card__icon--account {
+  background-color: #7f8de1; /* Purple — SLDS standard object account */
+}
+
+.record-card__title {
+  font-size: var(--slds-font-size-4);
+  font-weight: var(--slds-font-weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.record-card__chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--slds-text-placeholder);
+  transition: transform var(--slds-duration-normal) var(--slds-ease);
+}
+
+.record-card__chevron--expanded {
+  transform: rotate(180deg);
+}
+
+/* ── Card body — grid de campos ── */
+.record-card__body {
+  padding: var(--slds-spacing-xs) var(--slds-spacing-sm) var(--slds-spacing-sm);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--slds-spacing-sm) var(--slds-spacing-md);
+  animation: slds-fade-in 0.2s var(--slds-ease);
+}
+
+.record-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0; /* para truncation */
+}
+
+.record-card__field-label {
+  font-size: var(--slds-font-size-1);
+  font-weight: var(--slds-font-weight-medium);
+  color: var(--slds-text-placeholder);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.record-card__field-value {
+  font-size: var(--slds-font-size-3);
+  font-weight: var(--slds-font-weight-regular);
+  color: var(--text-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.record-card__field-value--link {
+  color: var(--slds-text-link);
+  cursor: pointer;
+}
+
+.record-card__field-value--link:hover {
+  text-decoration: underline;
+  color: var(--slds-text-link-hover);
+}
+
+
+/* ==========================================================================
+   4. CASE HEADER — Título del caso con acciones
+   ========================================================================== */
+
+.case-header {
+  padding: var(--slds-spacing-md) var(--slds-spacing-lg);
+  border-bottom: 1px solid var(--slds-border);
+  background-color: var(--bg-surface);
+}
+
+.case-header__title {
+  font-size: var(--slds-font-size-7);
+  font-weight: var(--slds-font-weight-bold);
+  color: var(--text-primary);
+  margin: 0 0 var(--slds-spacing-xs) 0;
+  line-height: var(--slds-line-height-tight);
+}
+
+.case-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-xxs);
+}
+
+.case-header__action-link {
+  font-size: var(--slds-font-size-3);
+  color: var(--slds-text-link);
+  text-decoration: none;
+  padding: var(--slds-spacing-xxs) var(--slds-spacing-xs);
+  border-radius: var(--slds-radius-sm);
+  transition: background-color var(--slds-duration-fast);
+  cursor: pointer;
+}
+
+.case-header__action-link:hover {
+  background-color: var(--slds-bg-wash);
+}
+
+.case-header__action-link--active {
+  font-weight: var(--slds-font-weight-semibold);
+  border-bottom: 2px solid var(--slds-brand);
+}
+
+
+/* ==========================================================================
+   5. PUBLISHER BAR — Write Email, Internal Post, Log a Call...
+   ========================================================================== */
+
+.publisher {
+  padding: var(--slds-spacing-sm) var(--slds-spacing-lg);
+  border-bottom: 1px solid var(--slds-border);
+  background-color: var(--bg-surface);
+}
+
+.publisher__actions {
+  display: flex;
+  gap: var(--slds-spacing-xxs);
+  margin-bottom: var(--slds-spacing-sm);
+  border-bottom: 1px solid var(--slds-border-separator);
+  padding-bottom: var(--slds-spacing-xs);
+}
+
+.publisher__action {
+  font-size: var(--slds-font-size-3);
+  font-weight: var(--slds-font-weight-regular);
+  color: var(--text-secondary);
+  padding: var(--slds-spacing-xxs) var(--slds-spacing-sm);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--slds-duration-fast) var(--slds-ease);
+  font-family: var(--font-family);
+}
+
+.publisher__action:hover {
+  color: var(--slds-brand);
+}
+
+.publisher__action--active {
+  color: var(--slds-brand);
+  font-weight: var(--slds-font-weight-semibold);
+  border-bottom-color: var(--slds-brand);
+}
+
+.publisher__input {
+  width: 100%;
+  padding: var(--slds-spacing-xs) var(--slds-spacing-sm);
+  border: 1px solid var(--slds-border-input);
+  border-radius: var(--slds-radius-md);
+  font-size: var(--slds-font-size-4);
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  transition: border-color var(--slds-duration-fast),
+              box-shadow var(--slds-duration-fast);
+}
+
+.publisher__input:focus {
+  outline: none;
+  border-color: var(--slds-border-input-active);
+  box-shadow: var(--slds-shadow-focus);
+}
+
+.publisher__input::placeholder {
+  color: var(--slds-text-placeholder);
+}
+
+
+/* ==========================================================================
+   6. SCOPED TABS — All Updates, All Emails, Call Logs...
+   ==========================================================================
+   Tabs horizontales con scroll, filtro y borde inferior activo
+   ========================================================================== */
+
+.scoped-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-bottom: 1px solid var(--slds-border);
+  padding: 0 var(--slds-spacing-lg);
+  background-color: var(--bg-surface);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.scoped-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.scoped-tabs__item {
+  display: flex;
+  align-items: center;
+  padding: var(--slds-spacing-xs) var(--slds-spacing-sm);
+  font-size: var(--slds-font-size-3);
+  font-weight: var(--slds-font-weight-regular);
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--slds-duration-fast) var(--slds-ease);
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: var(--font-family);
+}
+
+.scoped-tabs__item:hover {
+  color: var(--slds-brand);
+  border-bottom-color: var(--slds-brand-lighter);
+}
+
+.scoped-tabs__item--active {
+  color: var(--slds-brand);
+  font-weight: var(--slds-font-weight-semibold);
+  border-bottom-color: var(--slds-brand);
+}
+
+.scoped-tabs__more {
+  color: var(--text-secondary);
+  font-size: var(--slds-font-size-3);
+  padding: var(--slds-spacing-xs) var(--slds-spacing-sm);
+  margin-left: auto;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Toolbar entre tabs y feed (filtros, sort) */
+.feed-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--slds-spacing-xs) var(--slds-spacing-lg);
+  border-bottom: 1px solid var(--slds-border-separator);
+  background-color: var(--bg-surface);
+}
+
+.feed-toolbar__select {
+  font-size: var(--slds-font-size-3);
+  color: var(--text-secondary);
+  border: 1px solid var(--slds-border-input);
+  border-radius: var(--slds-radius-sm);
+  padding: 4px 28px 4px 8px;
+  background-color: var(--bg-surface);
+  font-family: var(--font-family);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394a3b8' d='M2.5 3.5L5 6l2.5-2.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+
+.feed-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-xxs);
+}
+
+.feed-toolbar__btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--slds-radius-sm);
+  background: transparent;
+  border: 1px solid var(--slds-border);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--slds-duration-fast);
+}
+
+.feed-toolbar__btn:hover {
+  background-color: var(--slds-bg-wash);
+  color: var(--slds-brand);
+  border-color: var(--slds-brand);
+}
+
+
+/* ==========================================================================
+   7. ACTIVITY FEED — Feed de actividad con avatares
+   ==========================================================================
+   Timeline vertical con avatar circular, nombre, hora, y contenido
+   ========================================================================== */
+
+.feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  background-color: var(--slds-bg-alt);
+}
+
+.feed-item {
+  display: flex;
+  gap: var(--slds-spacing-sm);
+  padding: var(--slds-spacing-md) var(--slds-spacing-lg);
+  border-bottom: 1px solid var(--slds-border-separator);
+  background-color: var(--bg-surface);
+  transition: background-color var(--slds-duration-fast);
+}
+
+.feed-item:hover {
+  background-color: var(--slds-bg-row-hover);
+}
+
+.feed-item__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--slds-radius-circle);
+  background: linear-gradient(135deg, var(--slds-brand), var(--slds-brand-dark));
+  color: var(--slds-text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--slds-font-size-3);
+  font-weight: var(--slds-font-weight-bold);
+  flex-shrink: 0;
+  /* Si hay imagen: */
+  object-fit: cover;
+}
+
+.feed-item__avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--slds-radius-circle);
+  object-fit: cover;
+}
+
+.feed-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-item__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--slds-spacing-xs);
+  margin-bottom: 2px;
+}
+
+.feed-item__name {
+  font-size: var(--slds-font-size-4);
+  font-weight: var(--slds-font-weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.feed-item__meta {
+  font-size: var(--slds-font-size-2);
+  color: var(--slds-text-placeholder);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-xxs);
+}
+
+.feed-item__meta-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: var(--slds-radius-circle);
+  background-color: var(--slds-text-placeholder);
+}
+
+.feed-item__body {
+  font-size: var(--slds-font-size-3);
+  color: var(--text-secondary);
+  line-height: var(--slds-line-height-normal);
+  margin: var(--slds-spacing-xxs) 0 0 0;
+}
+
+.feed-item__body--highlight {
+  color: var(--text-primary);
+}
+
+/* ── Feed item icons (llamada, email, etc.) ── */
+.feed-item__type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--slds-font-size-2);
+  font-weight: var(--slds-font-weight-medium);
+  color: var(--slds-brand);
+  margin-top: var(--slds-spacing-xxs);
+}
+
+/* ── Attachment preview ── */
+.feed-item__attachment {
+  margin-top: var(--slds-spacing-xs);
+  padding: var(--slds-spacing-xs) var(--slds-spacing-sm);
+  background-color: var(--slds-bg-wash);
+  border-radius: var(--slds-radius-sm);
+  border: 1px solid var(--slds-border-separator);
+  font-size: var(--slds-font-size-3);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-xs);
+}
+
+/* ── Feed actions (Comment, Like, etc.) ── */
+.feed-item__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-md);
+  margin-top: var(--slds-spacing-xs);
+}
+
+.feed-item__action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--slds-font-size-2);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: var(--font-family);
+  transition: color var(--slds-duration-fast);
+}
+
+.feed-item__action-btn:hover {
+  color: var(--slds-brand);
+}
+
+
+/* ==========================================================================
+   8. KNOWLEDGE SIDEBAR — Panel de conocimiento
+   ==========================================================================
+   Buscador + lista de artículos con títulos link y metadata
+   ========================================================================== */
+
+.knowledge-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.knowledge-panel__header {
+  padding: var(--slds-spacing-sm) var(--slds-spacing-md);
+  border-bottom: 1px solid var(--slds-border);
+  flex-shrink: 0;
+}
+
+.knowledge-panel__title {
+  font-size: var(--slds-font-size-5);
+  font-weight: var(--slds-font-weight-bold);
+  color: var(--text-primary);
+  margin: 0 0 var(--slds-spacing-xs) 0;
+}
+
+.knowledge-panel__search {
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-xs);
+  border: 1px solid var(--slds-border-input);
+  border-radius: var(--slds-radius-md);
+  padding: 0 var(--slds-spacing-xs);
+  background-color: var(--bg-surface);
+  transition: border-color var(--slds-duration-fast),
+              box-shadow var(--slds-duration-fast);
+}
+
+.knowledge-panel__search:focus-within {
+  border-color: var(--slds-border-input-active);
+  box-shadow: var(--slds-shadow-focus);
+}
+
+.knowledge-panel__search-icon {
+  color: var(--slds-text-placeholder);
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.knowledge-panel__search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--slds-font-size-3);
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  padding: var(--slds-spacing-xs) 0;
+  width: 100%;
+}
+
+.knowledge-panel__search-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.knowledge-panel__count {
+  font-size: var(--slds-font-size-2);
+  color: var(--slds-text-placeholder);
+  padding: var(--slds-spacing-xxs) var(--slds-spacing-md);
+}
+
+/* ── Lista de artículos ── */
+.knowledge-panel__list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.knowledge-article {
+  padding: var(--slds-spacing-sm) var(--slds-spacing-md);
+  border-bottom: 1px solid var(--slds-border-separator);
+  transition: background-color var(--slds-duration-fast);
+  cursor: pointer;
+}
+
+.knowledge-article:hover {
+  background-color: var(--slds-bg-wash);
+}
+
+.knowledge-article__title {
+  font-size: var(--slds-font-size-3);
+  font-weight: var(--slds-font-weight-semibold);
+  color: var(--slds-text-link);
+  margin: 0 0 4px 0;
+  line-height: var(--slds-line-height-tight);
+}
+
+.knowledge-article__title:hover {
+  text-decoration: underline;
+  color: var(--slds-text-link-hover);
+}
+
+.knowledge-article__excerpt {
+  font-size: var(--slds-font-size-2);
+  color: var(--text-secondary);
+  margin: 0 0 var(--slds-spacing-xxs) 0;
+  line-height: var(--slds-line-height-normal);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.knowledge-article__meta {
+  font-size: 10px;
+  color: var(--slds-text-placeholder);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-xxs);
+}
+
+.knowledge-article__stats {
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-sm);
+  margin-top: var(--slds-spacing-xxs);
+  font-size: var(--slds-font-size-2);
+  color: var(--slds-text-placeholder);
+}
+
+.knowledge-article__stat {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+
+/* ==========================================================================
+   9. BOTTOM UTILITY BAR — Call, Macros, History, Notes, Omni-Channel
+   ==========================================================================
+   Barra fija inferior con iconos + labels
+   ========================================================================== */
+
+.utility-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background-color: var(--slds-bg-inverse);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 var(--slds-spacing-xs);
+  z-index: var(--slds-z-sticky);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.utility-bar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--slds-spacing-xxs);
+  padding: 0 var(--slds-spacing-sm);
+  height: 100%;
+  font-size: var(--slds-font-size-2);
+  font-weight: var(--slds-font-weight-medium);
+  color: rgba(255, 255, 255, 0.75);
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all var(--slds-duration-fast);
+  font-family: var(--font-family);
+  white-space: nowrap;
+}
+
+.utility-bar__item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.utility-bar__item--active {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: 0 -2px 0 0 var(--slds-brand-light) inset;
+}
+
+.utility-bar__item-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+
+/* ==========================================================================
+   10. COMPACT SPACING — Variante densa para consolas
+   ==========================================================================
+   Aplica a contenedores para reducir padding y gaps un 25%
+   ========================================================================== */
+
+.console-compact .feed-item {
+  padding: var(--slds-spacing-sm) var(--slds-spacing-md);
+}
+
+.console-compact .record-card__body {
+  gap: var(--slds-spacing-xs) var(--slds-spacing-sm);
+}
+
+.console-compact .knowledge-article {
+  padding: var(--slds-spacing-xs) var(--slds-spacing-sm);
+}
