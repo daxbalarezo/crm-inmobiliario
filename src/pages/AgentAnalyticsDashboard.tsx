@@ -7,7 +7,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import LeadModal from '../components/LeadModal';
 import type { Lead } from '../types/definitions';
 
-const FUNNEL_COLORS = ['#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e3a8a', '#0f172a'];
+const SLDS_CATEGORICAL_COLORS = ['#52B7D8', '#E16032', '#FFB03B', '#54A77B', '#4FD2D2', '#E287B2', '#0176D3', '#0B5CAB'];
 
 export default function AgentAnalyticsDashboard() {
   const { tenant, userProfile } = useCRM();
@@ -17,7 +17,6 @@ export default function AgentAnalyticsDashboard() {
   
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
-  const [isListModalOpen, setIsListModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInputText, setPageInputText] = useState("1");
@@ -68,10 +67,15 @@ export default function AgentAnalyticsDashboard() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
-          <h2 className={styles.title}>Reporte Detallado por Asesor</h2>
-          <p className={styles.subtitle}>Métricas y rendimiento individual</p>
+      <div className={styles.pageHeader}>
+        <div className={styles.headerTitleRow}>
+          <div className={styles.headerIcon}>
+            <Activity size={24} />
+          </div>
+          <div className={styles.headerTextGroup}>
+            <p className={styles.superTitle}>Analíticas</p>
+            <h2 className={styles.mainTitle}>Reporte Detallado por Asesor</h2>
+          </div>
         </div>
         
         <div className={styles.filtersRow}>
@@ -113,121 +117,63 @@ export default function AgentAnalyticsDashboard() {
       </div>
 
       {!selectedAgent ? (
-        <div style={{ padding: 40, textAlign: 'center', color: '#64748b', backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0' }}>
-          <Filter size={40} style={{ margin: '0 auto 16px auto', color: '#94a3b8' }} />
-          <p>Selecciona un asesor en el menú superior para ver sus estadísticas.</p>
+        <div className={styles.illustration}>
+          <div className={styles.illustrationIcon}>
+            <Users size={48} color="var(--text-secondary)" />
+          </div>
+          <h3 className={styles.illustrationTitle}>Ningún Asesor Seleccionado</h3>
+          <p className={styles.illustrationText}>Selecciona un miembro del equipo en la parte superior para cargar sus métricas de rendimiento y visualizar su embudo de ventas actual.</p>
         </div>
       ) : loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Cargando métricas del asesor...</div>
       ) : (
         <>
-          <div className={styles.metricsGrid}>
-            <div className={styles.metricCard}>
-              <div className={styles.metricHeader}>
-                <p className={styles.metricLabel}>Total Asignados</p>
-                <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
-                  <Users size={16} />
-                </div>
-              </div>
-              <p className={styles.metricValue}>{stats.totalAssigned}</p>
+          <div className={styles.highlightsPanel}>
+            <div className={styles.highlightItem}>
+              <p className={styles.highlightLabel}>Total Asignados</p>
+              <p className={styles.highlightValue}>{stats.totalAssigned}</p>
             </div>
-            <div className={styles.metricCard}>
-              <div className={styles.metricHeader}>
-                <p className={styles.metricLabel}>Cierres / Ventas</p>
-                <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
-                  <Award size={16} />
-                </div>
-              </div>
-              <p className={styles.metricValue}>{stats.totalClosed}</p>
+            <div className={styles.highlightItem}>
+              <p className={styles.highlightLabel}>Cierres / Ventas</p>
+              <p className={styles.highlightValue}>{stats.totalClosed}</p>
             </div>
-            <div className={styles.metricCard}>
-              <div className={styles.metricHeader}>
-                <p className={styles.metricLabel}>Conversión Personal</p>
-                <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
-                  <Activity size={16} />
-                </div>
-              </div>
-              <p className={styles.metricValue}>{stats.avgConv.toFixed(1)}%</p>
+            <div className={styles.highlightItem}>
+              <p className={styles.highlightLabel}>Conversión Personal</p>
+              <p className={styles.highlightValue}>{stats.avgConv.toFixed(1)}%</p>
             </div>
-            <div className={styles.metricCard}>
-              <div className={styles.metricHeader}>
-                <p className={styles.metricLabel}>Proyección de Ventas</p>
-                <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
-                  <TrendingUp size={16} />
-                </div>
-              </div>
-              <p className={styles.metricValue}>S/ {stats.projectedRevenue.toLocaleString('en-PE')}</p>
+            <div className={styles.highlightItem}>
+              <p className={styles.highlightLabel}>Proyección de Ventas</p>
+              <p className={styles.highlightValue}>S/ {stats.projectedRevenue.toLocaleString('en-PE')}</p>
             </div>
-            <div className={styles.metricCard}>
-              <div className={styles.metricHeader}>
-                <p className={styles.metricLabel}>Volumen de Actividad</p>
-                <div className={`${styles.iconWrapper} ${styles.iconCorporate}`}>
-                  <BarChart3 size={16} />
-                </div>
-              </div>
-              <p className={styles.metricValue}>{stats.totalActivities}</p>
+            <div className={styles.highlightItem}>
+              <p className={styles.highlightLabel}>Volumen de Actividad</p>
+              <p className={styles.highlightValue}>{stats.totalActivities}</p>
             </div>
           </div>
 
-          <div className={styles.chartsContainer}>
-            <div className={styles.chartCard}>
-              <div className={styles.cardHeader}>
-                <h3 className={styles.cardTitle}>Embudo Personal del Agente</h3>
-                <p className={styles.cardSubtitle}>Distribución de prospectos por etapa en el rango seleccionado</p>
-              </div>
-              <div className={styles.chartWrapper}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={funnelData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <RechartsTooltip 
-                      formatter={(value: number) => [value, 'Prospectos']}
-                      cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {funnelData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={FUNNEL_COLORS[index % FUNNEL_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <button className={styles.openModalBtn} onClick={() => setIsListModalOpen(true)}>
-            <List size={20} />
-            Ver Listado Detallado de Prospectos ({filteredLeads.length})
-          </button>
-        </>
-      )}
-
-      {isListModalOpen && (
-        <div className={styles.modalOverlay} onClick={(e) => { if (e.target === e.currentTarget) setIsListModalOpen(false); }}>
-          <div className={styles.listModal}>
-            <div className={styles.listModalHeader}>
-              <h3 className={styles.cardTitle} style={{ margin: 0 }}>Listado de Prospectos ({filteredLeads.length})</h3>
-              <div className={styles.headerActions}>
+          <div className={styles.scorecardLayout}>
+            {/* LEFT COLUMN: Lead List (Pipeline Activo) */}
+            <div className={styles.tableCard}>
+              <div className={styles.tableHeader}>
+                <div>
+                  <h3 className={styles.sldsCardTitle}>Pipeline Activo del Agente ({filteredLeads.length})</h3>
+                  <p className={styles.sldsCardSubtitle}>Listado detallado de prospectos asignados</p>
+                </div>
                 {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
                   <button className={styles.exportBtn} onClick={handleExportCSV}>
                     <Download size={16} /> Exportar CSV
                   </button>
                 )}
-                <button className={styles.closeBtn} onClick={() => setIsListModalOpen(false)}>&times;</button>
               </div>
-            </div>
-            <div className={styles.listModalBody}>
               <div className={styles.tableContainer}>
-                <table className={styles.table}>
+                <table className="slds-table slds-table_cell-buffer slds-table_bordered" style={{ borderTop: 0 }}>
                   <thead>
-                    <tr>
-                      <th className={styles.th}>Nombre del Lead</th>
-                      <th className={styles.th}>Teléfono</th>
-                      <th className={styles.th}>Etapa</th>
-                      <th className={styles.th}>Nivel de Interés</th>
-                      <th className={styles.th}>Fecha de Ingreso</th>
+                    <tr className="slds-line-height_reset">
+                      <th scope="col"><div className="slds-truncate" title="Nombre del Lead">Nombre del Lead</div></th>
+                      <th scope="col"><div className="slds-truncate" title="Teléfono">Teléfono</div></th>
+                      <th scope="col"><div className="slds-truncate" title="Etapa">Etapa</div></th>
+                      <th scope="col"><div className="slds-truncate" title="Interés">Interés</div></th>
+                      <th scope="col"><div className="slds-truncate" title="Ingreso">Ingreso</div></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -241,16 +187,16 @@ export default function AgentAnalyticsDashboard() {
                       paginatedLeads.map(lead => {
                         const dateObj = lead.createdAt?.toDate ? lead.createdAt.toDate() : new Date(lead.createdAt || Date.now());
                         return (
-                          <tr key={lead.id} className={styles.tr} onClick={() => { setSelectedLead(lead); setIsLeadModalOpen(true); }}>
-                            <td className={styles.td} style={{ fontWeight: 500 }}>{lead.name}</td>
-                            <td className={styles.td}>{lead.phone}</td>
-                            <td className={styles.td}>{lead.status?.replace(/_/g, ' ')}</td>
-                            <td className={styles.td}>
+                          <tr key={lead.id} className="slds-hint-parent" style={{ cursor: 'pointer' }} onClick={() => { setSelectedLead(lead); setIsLeadModalOpen(true); }}>
+                            <td data-label="Nombre del Lead" style={{ fontWeight: 500 }}>{lead.name}</td>
+                            <td data-label="Teléfono">{lead.phone}</td>
+                            <td data-label="Etapa">{lead.status?.replace(/_/g, ' ')}</td>
+                            <td data-label="Interés">
                               <span className={`${styles.badge} ${styles['badge' + (lead.interestLevel || 'Medio')]}`}>
                                 {lead.interestLevel || 'Medio'}
                               </span>
                             </td>
-                            <td className={styles.td}>{dateObj.toLocaleDateString()}</td>
+                            <td data-label="Ingreso">{dateObj.toLocaleDateString()}</td>
                           </tr>
                         );
                       })
@@ -297,8 +243,37 @@ export default function AgentAnalyticsDashboard() {
                 </div>
               )}
             </div>
+
+            {/* RIGHT COLUMN: Funnel & Insights */}
+            <div className={styles.sldsCard}>
+              <div className={styles.sldsCardHeader}>
+                <h3 className={styles.sldsCardTitle}>Conversión y Embudo</h3>
+                <p className={styles.sldsCardSubtitle}>Distribución por etapa</p>
+              </div>
+              <div className={styles.sldsCardBody}>
+                <div className={styles.chartWrapper} style={{ height: '350px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={funnelData} layout="vertical" margin={{ top: 10, right: 20, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                      <XAxis type="number" axisLine={{ stroke: '#cbd5e1' }} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                      <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} width={80} />
+                      <RechartsTooltip 
+                        formatter={(value: number) => [value, 'Prospectos']}
+                        cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                        contentStyle={{ borderRadius: '4px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+                      />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
+                        {funnelData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={SLDS_CATEGORICAL_COLORS[index % SLDS_CATEGORICAL_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {isLeadModalOpen && selectedLead && (

@@ -1,87 +1,108 @@
 import React, { useState } from 'react';
-import styles from '../../pages/AdminDashboard.module.css';
+import { Link } from 'react-router-dom';
 import type { AgentStats } from '../../hooks/useAdminMetrics';
 
 interface LeaderboardTableProps {
   stats: AgentStats[];
 }
 
-type SortCriteria = 'conversion' | 'closures' | 'volume';
+type SortColumn = 'totalLeads' | 'reservations' | 'closedLeads' | 'totalVolume' | 'conversionRate';
 
 export default function LeaderboardTable({ stats }: LeaderboardTableProps) {
-  const [sortBy, setSortBy] = useState<SortCriteria>('conversion');
+  const [sortCol, setSortCol] = useState<SortColumn>('closedLeads');
+  const [sortDesc, setSortDesc] = useState<boolean>(true);
+
+  const handleSort = (column: SortColumn) => {
+    if (sortCol === column) {
+      setSortDesc(!sortDesc);
+    } else {
+      setSortCol(column);
+      setSortDesc(true); // Default to desc on new column
+    }
+  };
 
   const sortedStats = [...stats].sort((a, b) => {
-    if (sortBy === 'conversion') return b.conversionRate - a.conversionRate;
-    if (sortBy === 'closures') return b.closedLeads - a.closedLeads;
-    if (sortBy === 'volume') return b.totalVolume - a.totalVolume;
-    return 0;
+    const valA = a[sortCol];
+    const valB = b[sortCol];
+    return sortDesc ? valB - valA : valA - valB;
   });
 
+  const renderSortArrow = (col: SortColumn) => {
+    if (sortCol !== col) return null;
+    return sortDesc ? ' ▼' : ' ▲';
+  };
+
   return (
-    <div className={styles.panelCard}>
-      <div className={styles.panelHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 className={styles.panelTitle}>Rendimiento por Asesor</h3>
-        <select 
-          value={sortBy} 
-          onChange={e => setSortBy(e.target.value as SortCriteria)}
-          style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '14px' }}
-        >
-          <option value="conversion">Ordenar por % Conversión</option>
-          <option value="closures">Ordenar por Cierres Totales</option>
-          <option value="volume">Ordenar por Monto Vendido (S/)</option>
-        </select>
+    <div className="slds-card" style={{ border: '1px solid #c9c9c9', borderRadius: '4px', backgroundColor: '#fff' }}>
+      <div className="slds-card__header slds-grid" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #c9c9c9' }}>
+        <header className="slds-media slds-media_center slds-has-flexi-truncate">
+          <div className="slds-media__body">
+            <h2 className="slds-card__header-title">
+              <span className="slds-text-heading_small" style={{ fontWeight: 700 }}>Rendimiento por Asesor</span>
+            </h2>
+          </div>
+        </header>
       </div>
-      <div className={styles.tableContainer}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.th}>Posición</th>
-              <th className={styles.th}>Asesor</th>
-              <th className={styles.th}>Leads Asignados</th>
-              <th className={styles.th}>Separaciones</th>
-              <th className={styles.th}>Cierres</th>
-              <th className={styles.th}>Monto Vendido</th>
-              <th className={styles.th}>Conversión</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedStats.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>No hay datos suficientes</td></tr>
-            ) : sortedStats.map((stat, i) => (
-              <tr key={`lb-${stat.uid}`} className={styles.tr}>
-                <td className={styles.td}>
-                  <div style={{ color: '#64748b', fontWeight: 600, fontSize: '14px' }}>
-                    #{i + 1}
-                  </div>
-                </td>
-                <td className={styles.td}>
-                  <div className={styles.agentInfo}>
-                    <div className={styles.agentAvatar}>{stat.name.substring(0, 2).toUpperCase()}</div>
-                    <span className={styles.agentName} style={{ textTransform: 'capitalize', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
-                      {stat.name.toLowerCase()}
-                    </span>
-                  </div>
-                </td>
-                <td className={styles.td}>{stat.totalLeads}</td>
-                <td className={styles.td}>{stat.reservations}</td>
-                <td className={styles.td}>
-                  <span style={{ fontWeight: sortBy === 'closures' ? 600 : 500 }}>{stat.closedLeads}</span>
-                </td>
-                <td className={styles.td}>
-                  <span style={{ fontWeight: sortBy === 'volume' ? 600 : 500, color: stat.totalVolume > 0 ? '#059669' : 'inherit' }}>
-                    S/ {stat.totalVolume.toLocaleString('en-PE')}
-                  </span>
-                </td>
-                <td className={styles.td}>
-                  <span style={{ fontWeight: sortBy === 'conversion' ? 600 : 500, color: stat.conversionRate > 10 ? '#16a34a' : '#475569' }}>
-                    {stat.conversionRate.toFixed(1)}%
-                  </span>
-                </td>
+      
+      <div className="slds-card__body slds-card__body_inner" style={{ padding: 0 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="slds-table slds-table_cell-buffer slds-table_bordered slds-table_sortable" style={{ borderTop: 0 }}>
+            <thead>
+              <tr className="slds-line-height_reset">
+                <th scope="col" style={{ width: '3rem' }}>#</th>
+                <th scope="col">
+                  <div className="slds-truncate" title="Asesor">Asesor</div>
+                </th>
+                <th scope="col" aria-sort={sortCol === 'totalLeads' ? (sortDesc ? 'descending' : 'ascending') : 'none'}>
+                  <button className="slds-th__action slds-text-link_reset" onClick={() => handleSort('totalLeads')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <span className="slds-truncate" title="Asignados">Asignados {renderSortArrow('totalLeads')}</span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort={sortCol === 'closedLeads' ? (sortDesc ? 'descending' : 'ascending') : 'none'}>
+                  <button className="slds-th__action slds-text-link_reset" onClick={() => handleSort('closedLeads')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <span className="slds-truncate" title="Cierres">Cierres {renderSortArrow('closedLeads')}</span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort={sortCol === 'totalVolume' ? (sortDesc ? 'descending' : 'ascending') : 'none'}>
+                  <button className="slds-th__action slds-text-link_reset" onClick={() => handleSort('totalVolume')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <span className="slds-truncate" title="Monto Vendido">Monto Vendido {renderSortArrow('totalVolume')}</span>
+                  </button>
+                </th>
+                <th scope="col" aria-sort={sortCol === 'conversionRate' ? (sortDesc ? 'descending' : 'ascending') : 'none'}>
+                  <button className="slds-th__action slds-text-link_reset" onClick={() => handleSort('conversionRate')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <span className="slds-truncate" title="Conversión">Conversión {renderSortArrow('conversionRate')}</span>
+                  </button>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sortedStats.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '1rem', color: '#706e6b' }}>
+                    No hay datos suficientes
+                  </td>
+                </tr>
+              ) : sortedStats.map((stat, i) => (
+                <tr key={`lb-${stat.uid}`} className="slds-hint-parent">
+                  <td style={{ color: '#706e6b' }}>{i + 1}</td>
+                  <td data-label="Asesor">
+                    <Link to={`/analitica-agentes?agentId=${stat.uid}`} style={{ color: '#0176d3', textDecoration: 'none' }} onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'} onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+                      {stat.name}
+                    </Link>
+                  </td>
+                  <td data-label="Asignados">{stat.totalLeads}</td>
+                  <td data-label="Cierres">
+                    <Link to={`/seguimientos?agentId=${stat.uid}&stage=Cierre`} style={{ color: '#0176d3', textDecoration: 'none' }} onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'} onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+                      {stat.closedLeads}
+                    </Link>
+                  </td>
+                  <td data-label="Monto Vendido">S/ {stat.totalVolume.toLocaleString('en-PE')}</td>
+                  <td data-label="Conversión">{stat.conversionRate.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

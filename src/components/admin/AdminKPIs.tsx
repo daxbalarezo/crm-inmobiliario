@@ -22,7 +22,7 @@ export default function AdminKPIs({ globalStats }: AdminKPIsProps) {
       </div>
       <div className={styles.detailItem}>
         <p className={styles.detailLabel}>Proyección de Ventas</p>
-        <p className={styles.detailValueBrand}>S/ {globalStats.projectedRevenue.toLocaleString('en-PE')}</p>
+        <p className={styles.detailValue}>S/ {globalStats.projectedRevenue.toLocaleString('en-PE')}</p>
       </div>
       <div className={styles.detailItem}>
         <p className={styles.detailLabel}>Total Agentes</p>

@@ -20,11 +20,24 @@ export default function LeaderboardPage() {
           <p className={styles.subtitle}>Clasificación de asesores y agilidad en el primer contacto</p>
         </div>
         
-        <div className={styles.filterGroup}>
+        <div className={styles.filterGroup} style={{ display: 'flex', gap: '12px' }}>
+          <select className="slds-select" style={{ width: 'auto', padding: '0 1rem 0 .5rem', borderRadius: '4px', border: '1px solid #c9c9c9' }} defaultValue="all_teams">
+            <option value="all_teams">Todos los Equipos</option>
+            <option value="sales">Ventas</option>
+            <option value="rentals">Alquileres</option>
+          </select>
+
+          <select className="slds-select" style={{ width: 'auto', padding: '0 1rem 0 .5rem', borderRadius: '4px', border: '1px solid #c9c9c9' }} defaultValue="all_stages">
+            <option value="all_stages">Todos los Estados</option>
+            <option value="active">Activos</option>
+            <option value="closed">Cerrados</option>
+          </select>
+
           <select 
             value={timeRange} 
             onChange={e => setTimeRange(e.target.value)}
-            className={styles.timeFilter}
+            className="slds-select"
+            style={{ width: 'auto', padding: '0 1rem 0 .5rem', borderRadius: '4px', border: '1px solid #c9c9c9' }}
           >
             <option value="this_month">Este mes</option>
             <option value="last_month">Mes pasado</option>

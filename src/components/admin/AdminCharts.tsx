@@ -52,12 +52,16 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
   return (
     <div className={styles.chartsContainer}>
       {/* Funnel Chart */}
-      <div className={`${styles.chartCard} ${styles.fullWidth}`}>
-        <div className={styles.cardHeader}>
-          <div>
-            <h3 className={styles.cardTitle}>Embudo de Conversión Comercial</h3>
-            <p className={styles.cardSubtitle}>Volumen de prospectos por etapa en el periodo seleccionado</p>
-          </div>
+      <article className={`slds-card ${styles.colSpan2}`} style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="slds-card__header slds-grid" style={{ marginBottom: '16px' }}>
+          <header className="slds-media slds-media_center slds-has-flexi-truncate">
+            <div className="slds-media__body">
+              <h2 className="slds-card__header-title">
+                <span className="slds-text-heading_small slds-truncate">Embudo de Conversión Comercial</span>
+              </h2>
+              <p className="slds-text-body_small slds-text-color_weak">Volumen de prospectos por etapa en el periodo seleccionado</p>
+            </div>
+          </header>
           <Link 
             to="/analitica-agentes" 
             className={styles.sldsButtonNeutral}
@@ -65,7 +69,7 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             Ver detalle
           </Link>
         </div>
-        <div className={styles.chartWrapper}>
+        <div className="slds-card__body slds-card__body_inner" style={{ flex: 1, minHeight: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={funnelData} layout="vertical" margin={{ top: 20, right: 30, left: 80, bottom: 5 }}>
               <CartesianGrid stroke="#ECEBEA" horizontal={true} vertical={false} />
@@ -84,15 +88,19 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </article>
 
       {/* Source Pie Chart */}
-      <div className={styles.chartCard}>
-        <div className={styles.cardHeader}>
-          <div>
-            <h3 className={styles.cardTitle}>Fuentes de Adquisición</h3>
-            <p className={styles.cardSubtitle}>Top 5 orígenes de prospectos</p>
-          </div>
+      <article className="slds-card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="slds-card__header slds-grid" style={{ marginBottom: '16px' }}>
+          <header className="slds-media slds-media_center slds-has-flexi-truncate">
+            <div className="slds-media__body">
+              <h2 className="slds-card__header-title">
+                <span className="slds-text-heading_small slds-truncate">Fuentes de Adquisición</span>
+              </h2>
+              <p className="slds-text-body_small slds-text-color_weak">Top 5 orígenes de prospectos</p>
+            </div>
+          </header>
           <Link 
             to="/reportes-avanzados?type=source"
             className={styles.sldsButtonNeutral}
@@ -100,7 +108,7 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             Ver detalle
           </Link>
         </div>
-        <div className={styles.chartWrapper}>
+        <div className="slds-card__body slds-card__body_inner" style={{ flex: 1, minHeight: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -123,15 +131,19 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             </PieChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </article>
 
       {/* Workload Bar Chart */}
-      <div className={styles.chartCard}>
-        <div className={styles.cardHeader}>
-          <div>
-            <h3 className={styles.cardTitle}>Carga de Trabajo Activa</h3>
-            <p className={styles.cardSubtitle}>Leads sin resolver por asesor</p>
-          </div>
+      <article className="slds-card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="slds-card__header slds-grid" style={{ marginBottom: '16px' }}>
+          <header className="slds-media slds-media_center slds-has-flexi-truncate">
+            <div className="slds-media__body">
+              <h2 className="slds-card__header-title">
+                <span className="slds-text-heading_small slds-truncate">Carga de Trabajo Activa</span>
+              </h2>
+              <p className="slds-text-body_small slds-text-color_weak">Leads sin resolver por asesor</p>
+            </div>
+          </header>
           <Link 
             to="/reportes-avanzados?type=workload"
             className={styles.sldsButtonNeutral}
@@ -139,7 +151,7 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             Ver detalle
           </Link>
         </div>
-        <div className={styles.chartWrapper}>
+        <div className="slds-card__body slds-card__body_inner" style={{ flex: 1, minHeight: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={workloadData} layout="vertical" margin={{ top: 5, right: 30, left: 30, bottom: 5 }}>
               <CartesianGrid stroke="#ECEBEA" horizontal={true} vertical={false} />
@@ -154,14 +166,18 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </article>
       {/* Activity Bar Chart */}
-      <div className={styles.chartCard}>
-        <div className={styles.cardHeader}>
-          <div>
-            <h3 className={styles.cardTitle}>Métricas de Productividad</h3>
-            <p className={styles.cardSubtitle}>Total de acciones registradas por asesor</p>
-          </div>
+      <article className="slds-card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="slds-card__header slds-grid" style={{ marginBottom: '16px' }}>
+          <header className="slds-media slds-media_center slds-has-flexi-truncate">
+            <div className="slds-media__body">
+              <h2 className="slds-card__header-title">
+                <span className="slds-text-heading_small slds-truncate">Métricas de Productividad</span>
+              </h2>
+              <p className="slds-text-body_small slds-text-color_weak">Total de acciones registradas por asesor</p>
+            </div>
+          </header>
           <Link 
             to="/reportes-avanzados?type=productivity"
             className={styles.sldsButtonNeutral}
@@ -169,7 +185,7 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             Ver detalle
           </Link>
         </div>
-        <div className={styles.chartWrapper}>
+        <div className="slds-card__body slds-card__body_inner" style={{ flex: 1, minHeight: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={activityData} layout="vertical" margin={{ top: 5, right: 30, left: 30, bottom: 5 }}>
               <CartesianGrid stroke="#ECEBEA" horizontal={true} vertical={false} />
@@ -184,15 +200,19 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </article>
 
       {/* Loss Reasons Pie Chart */}
-      <div className={styles.chartCard}>
-        <div className={styles.cardHeader}>
-          <div>
-            <h3 className={styles.cardTitle}>Análisis de Ventas Perdidas</h3>
-            <p className={styles.cardSubtitle}>Principales motivos de pérdida</p>
-          </div>
+      <article className="slds-card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="slds-card__header slds-grid" style={{ marginBottom: '16px' }}>
+          <header className="slds-media slds-media_center slds-has-flexi-truncate">
+            <div className="slds-media__body">
+              <h2 className="slds-card__header-title">
+                <span className="slds-text-heading_small slds-truncate">Análisis de Ventas Perdidas</span>
+              </h2>
+              <p className="slds-text-body_small slds-text-color_weak">Principales motivos de pérdida</p>
+            </div>
+          </header>
           <Link 
             to="/reportes-avanzados?type=loss_reasons"
             className={styles.sldsButtonNeutral}
@@ -200,7 +220,7 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             Ver detalle
           </Link>
         </div>
-        <div className={styles.chartWrapper}>
+        <div className="slds-card__body slds-card__body_inner" style={{ flex: 1, minHeight: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -223,7 +243,7 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
             </PieChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </article>
     </div>
   );
 }

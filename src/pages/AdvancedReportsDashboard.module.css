@@ -1,38 +1,13 @@
 .container {
-  padding: 32px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.header {
-  margin-bottom: 24px;
-}
-
-.title {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 8px 0;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.controlsCard {
-  background-color: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
-  margin-bottom: 24px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.4s ease-out;
 }
+
+
+
+
 
 .filterGroup {
   display: flex;
@@ -65,74 +40,13 @@
   box-shadow: 0 0 0 2px rgba(1, 118, 211, 0.1);
 }
 
-.resultsCard {
-  background-color: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
-  overflow: hidden;
-}
 
-.resultsHeader {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #f8fafc;
-}
-
-.resultsTitle {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.resultsBadge {
-  background-color: var(--primary-color);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 600;
-}
 
 .tableContainer {
   overflow-x: auto;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
 
-.th {
-  text-align: left;
-  padding: 16px 24px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-surface);
-}
-
-.tr {
-  border-bottom: 1px solid var(--border-color);
-  transition: background-color 0.2s;
-}
-
-.tr:hover {
-  background-color: #f8fafc;
-  cursor: pointer;
-}
-
-.td {
-  padding: 16px 24px;
-  font-size: 14px;
-  color: var(--text-primary);
-}
 
 .badge {
   padding: 4px 8px;
@@ -153,72 +67,7 @@
   color: var(--text-secondary);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 
-.modalOverlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease-out;
-}
-
-.listModal {
-  background: var(--bg-surface);
-  border-radius: 12px;
-  width: 90%;
-  max-width: 900px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.listModalHeader {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.listModalBody {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.closeBtn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 4px;
-}
-.closeBtn:hover {
-  color: var(--text-primary);
-}
-
-.headerActions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
 
 .exportBtn {
   display: flex;
@@ -236,14 +85,6 @@
 }
 .exportBtn:hover {
   background-color: #059669;
-}
-
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  border-top: 1px solid var(--border-color);
 }
 
 .pageInfo {
@@ -278,11 +119,6 @@
   margin: 0;
 }
 
-.pageButtons {
-  display: flex;
-  gap: 8px;
-}
-
 .pageBtn {
   padding: 6px 12px;
   border: 1px solid var(--border-color);
@@ -301,9 +137,6 @@
 
 .pageBtn:hover:not(:disabled) {
   background-color: #f1f5f9;
-}
-
-.openModalBtn {
   display: flex;
   align-items: center;
   justify-content: center;

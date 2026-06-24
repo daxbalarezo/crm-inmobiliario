@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { List, Download } from 'lucide-react';
+import { List, Download, BarChart3, Inbox, PieChart as PieChartIcon } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useAdvancedReports } from '../hooks/useAdvancedReports';
 import styles from './AdvancedReportsDashboard.module.css';
+import agentStyles from './AgentAnalyticsDashboard.module.css';
 import LeadModal from '../components/LeadModal';
 import type { Lead } from '../types/definitions';
 import { useCRM } from '../context/CRMContext';
@@ -14,12 +16,12 @@ export default function AdvancedReportsDashboard() {
   const initialType = searchParams.get('type') || 'source';
 
   const { tenant, userProfile } = useCRM();
-  const { loading, leads, activities, users } = useAdvancedReports();
-  
   const [reportType, setReportType] = useState<string>(initialType);
-  const [timeRange, setTimeRange] = useState<string>('all');
+  const [timeRange, setTimeRange] = useState<string>('this_month');
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [stageFilter, setStageFilter] = useState<string>('all');
+
+  const { loading, error, leads, activities, users } = useAdvancedReports(timeRange);
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
@@ -41,34 +43,6 @@ export default function AdvancedReportsDashboard() {
   const filteredLeads = useMemo(() => {
     let result = leads;
 
-    // Time filter
-    if (timeRange !== 'all') {
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth();
-      
-      result = result.filter(l => {
-        if (!l.createdAt) return false;
-        const dateObj = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
-        if (isNaN(dateObj.getTime())) return false;
-
-        if (timeRange === 'this_month') {
-          return dateObj.getFullYear() === currentYear && dateObj.getMonth() === currentMonth;
-        } else if (timeRange === 'last_month') {
-          const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-          const year = currentMonth === 0 ? currentYear - 1 : currentYear;
-          return dateObj.getFullYear() === year && dateObj.getMonth() === lastMonth;
-        } else if (timeRange === 'last_6_months') {
-          const sixMonthsAgo = new Date();
-          sixMonthsAgo.setMonth(now.getMonth() - 6);
-          return dateObj >= sixMonthsAgo;
-        } else if (timeRange === 'this_year') {
-          return dateObj.getFullYear() === currentYear;
-        }
-        return true;
-      });
-    }
-
     // Agent filter
     if (selectedAgent !== 'all') {
       result = result.filter(l => l.assignedTo === selectedAgent);
@@ -89,44 +63,17 @@ export default function AdvancedReportsDashboard() {
     }
 
     return result;
-  }, [leads, timeRange, selectedAgent, stageFilter, reportType]);
+  }, [leads, selectedAgent, stageFilter, reportType]);
 
   const filteredActivities = useMemo(() => {
     let result = activities || [];
-
-    if (timeRange !== 'all') {
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth();
-      
-      result = result.filter(a => {
-        if (!a.createdAt) return false;
-        const dateObj = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-        if (isNaN(dateObj.getTime())) return false;
-
-        if (timeRange === 'this_month') {
-          return dateObj.getFullYear() === currentYear && dateObj.getMonth() === currentMonth;
-        } else if (timeRange === 'last_month') {
-          const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-          const year = currentMonth === 0 ? currentYear - 1 : currentYear;
-          return dateObj.getFullYear() === year && dateObj.getMonth() === lastMonth;
-        } else if (timeRange === 'last_6_months') {
-          const sixMonthsAgo = new Date();
-          sixMonthsAgo.setMonth(now.getMonth() - 6);
-          return dateObj >= sixMonthsAgo;
-        } else if (timeRange === 'this_year') {
-          return dateObj.getFullYear() === currentYear;
-        }
-        return true;
-      });
-    }
 
     if (selectedAgent !== 'all') {
       result = result.filter(a => a.userId === selectedAgent);
     }
 
     return result;
-  }, [activities, timeRange, selectedAgent]);
+  }, [activities, selectedAgent]);
 
   const getUserName = (uid: string) => users.find(u => u.uid === uid)?.name || 'Sin asignar';
   const getLeadName = (leadId: string) => leads.find(l => l.id === leadId)?.name || 'Desconocido';
@@ -200,14 +147,198 @@ export default function AdvancedReportsDashboard() {
     }
   };
 
-  const renderTable = () => {
-    if ((reportType !== 'productivity' && filteredLeads.length === 0) || (reportType === 'productivity' && filteredActivities.length === 0)) {
+  const SLDS_CATEGORICAL_COLORS = ['#52B7D8', '#E16032', '#FFB03B', '#54A77B', '#4FD2D2', '#E287B2', '#0176D3', '#0B5CAB'];
+
+  const renderHighlights = () => {
+    if (reportType === 'source') {
+      const sourceMap: Record<string, number> = {};
+      filteredLeads.forEach(l => {
+        const src = l.source || 'Desconocido';
+        sourceMap[src] = (sourceMap[src] || 0) + 1;
+      });
+      const topSource = Object.entries(sourceMap).sort((a,b) => b[1]-a[1])[0] || ['N/A', 0];
       return (
-        <div className={styles.emptyState}>
-          No hay datos disponibles para los filtros seleccionados.
+        <div className={agentStyles.highlightsPanel}>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Total Prospectos</p>
+            <p className={agentStyles.highlightValue}>{filteredLeads.length}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Principal Origen</p>
+            <p className={agentStyles.highlightValue}>{topSource[0]}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Prospectos del Principal</p>
+            <p className={agentStyles.highlightValue}>{topSource[1]}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Total Fuentes</p>
+            <p className={agentStyles.highlightValue}>{Object.keys(sourceMap).length}</p>
+          </div>
         </div>
       );
     }
+
+    if (reportType === 'productivity') {
+      const userMap: Record<string, number> = {};
+      filteredActivities.forEach(a => {
+        const uid = a.userId || 'unassigned';
+        userMap[uid] = (userMap[uid] || 0) + 1;
+      });
+      const topUser = Object.entries(userMap).sort((a,b) => b[1]-a[1])[0] || ['N/A', 0];
+      return (
+        <div className={agentStyles.highlightsPanel}>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Total Actividades</p>
+            <p className={agentStyles.highlightValue}>{filteredActivities.length}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Asesor Más Activo</p>
+            <p className={agentStyles.highlightValue}>{topUser[0] !== 'N/A' ? getUserName(topUser[0]) : 'N/A'}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Mayor Volumen</p>
+            <p className={agentStyles.highlightValue}>{topUser[1]}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Promedio por Asesor</p>
+            <p className={agentStyles.highlightValue}>{Object.keys(userMap).length > 0 ? (filteredActivities.length / Object.keys(userMap).length).toFixed(1) : 0}</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (reportType === 'loss_reasons') {
+      const reasonMap: Record<string, number> = {};
+      filteredLeads.forEach(l => {
+        const r = l.lossReason || 'No especificado';
+        reasonMap[r] = (reasonMap[r] || 0) + 1;
+      });
+      const topReason = Object.entries(reasonMap).sort((a,b) => b[1]-a[1])[0] || ['N/A', 0];
+      return (
+        <div className={agentStyles.highlightsPanel}>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Total Perdidos</p>
+            <p className={agentStyles.highlightValue}>{filteredLeads.length}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Motivo Principal</p>
+            <p className={agentStyles.highlightValue}>{topReason[0]}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Casos del Motivo</p>
+            <p className={agentStyles.highlightValue}>{topReason[1]}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Tipos de Motivo</p>
+            <p className={agentStyles.highlightValue}>{Object.keys(reasonMap).length}</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (reportType === 'workload') {
+       const activeLeads = filteredLeads;
+       const userMap: Record<string, number> = {};
+       activeLeads.forEach(l => {
+         const uid = l.assignedTo || 'unassigned';
+         userMap[uid] = (userMap[uid] || 0) + 1;
+       });
+       const maxUser = Object.entries(userMap).sort((a,b) => b[1]-a[1])[0] || ['N/A', 0];
+       return (
+        <div className={agentStyles.highlightsPanel}>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Asignaciones Activas</p>
+            <p className={agentStyles.highlightValue}>{activeLeads.length}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Mayor Carga</p>
+            <p className={agentStyles.highlightValue}>{maxUser[0] !== 'N/A' ? getUserName(maxUser[0]) : 'N/A'}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Volumen Máximo</p>
+            <p className={agentStyles.highlightValue}>{maxUser[1]}</p>
+          </div>
+          <div className={agentStyles.highlightItem}>
+            <p className={agentStyles.highlightLabel}>Promedio de Carga</p>
+            <p className={agentStyles.highlightValue}>{Object.keys(userMap).length > 0 ? (activeLeads.length / Object.keys(userMap).length).toFixed(1) : 0}</p>
+          </div>
+        </div>
+       );
+    }
+    return null;
+  };
+
+  const renderChart = () => {
+    let data: any[] = [];
+    
+    if (reportType === 'source') {
+      const sourceMap: Record<string, number> = {};
+      filteredLeads.forEach(l => {
+        const src = l.source || 'Desconocido';
+        sourceMap[src] = (sourceMap[src] || 0) + 1;
+      });
+      data = Object.entries(sourceMap).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
+    } else if (reportType === 'productivity') {
+      const userMap: Record<string, number> = {};
+      filteredActivities.forEach(a => {
+        const uid = a.userId || 'unassigned';
+        userMap[uid] = (userMap[uid] || 0) + 1;
+      });
+      data = Object.entries(userMap).map(([uid, value]) => ({ name: getUserName(uid), value })).sort((a,b) => b.value - a.value);
+    } else if (reportType === 'loss_reasons') {
+      const reasonMap: Record<string, number> = {};
+      filteredLeads.forEach(l => {
+        const r = l.lossReason || 'No especificado';
+        reasonMap[r] = (reasonMap[r] || 0) + 1;
+      });
+      data = Object.entries(reasonMap).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
+    } else if (reportType === 'workload') {
+       const userMap: Record<string, number> = {};
+       filteredLeads.forEach(l => {
+         const uid = l.assignedTo || 'unassigned';
+         userMap[uid] = (userMap[uid] || 0) + 1;
+       });
+       data = Object.entries(userMap).map(([uid, value]) => ({ name: getUserName(uid), value })).sort((a,b) => b.value - a.value);
+    }
+
+    if (data.length === 0) return null;
+
+    return (
+      <article className={agentStyles.sldsCard} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className={agentStyles.sldsCardHeader} style={{ display: 'flex', alignItems: 'center' }}>
+          <h2 className={agentStyles.sldsCardTitle} style={{ margin: 0 }}>Distribución</h2>
+        </div>
+        <div style={{ flex: 1, minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
+                nameKey="name"
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={SLDS_CATEGORICAL_COLORS[index % SLDS_CATEGORICAL_COLORS.length]} />
+                ))}
+              </Pie>
+              <RechartsTooltip 
+                formatter={(value: number) => [value, 'Registros']}
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+              />
+              <Legend verticalAlign="bottom" height={36} iconType="circle" />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </article>
+    );
+  };
+
+  const renderTable = () => {
 
     if (reportType === 'source') {
       // Agrupar por fuente
@@ -220,18 +351,18 @@ export default function AdvancedReportsDashboard() {
       const sources = Object.keys(sourceMap).sort((a, b) => sourceMap[b].length - sourceMap[a].length);
 
       return (
-        <table className={styles.table}>
+        <table className="slds-table slds-table_cell-buffer slds-table_bordered">
           <thead>
             <tr>
-              <th className={styles.th}>Fuente de Adquisición</th>
-              <th className={styles.th}>Total de Prospectos</th>
+              <th className="">Fuente de Adquisición</th>
+              <th className="">Total de Prospectos</th>
             </tr>
           </thead>
           <tbody>
             {sources.map(src => (
-              <tr key={src} className={styles.tr} onClick={() => { setSelectedSubFilter(src); setIsListModalOpen(true); setCurrentPage(1); }}>
-                <td className={styles.td} style={{ fontWeight: 600 }}>{src}</td>
-                <td className={styles.td}>{sourceMap[src].length}</td>
+              <tr key={src} className="slds-hint-parent" onClick={() => { setSelectedSubFilter(src); setIsListModalOpen(true); setCurrentPage(1); }}>
+                <td className="" style={{ fontWeight: 600 }}>{src}</td>
+                <td className="">{sourceMap[src].length}</td>
               </tr>
             ))}
           </tbody>
@@ -250,18 +381,18 @@ export default function AdvancedReportsDashboard() {
       const agents = Object.keys(agentMap).sort((a, b) => agentMap[b].length - agentMap[a].length);
 
       return (
-        <table className={styles.table}>
+        <table className="slds-table slds-table_cell-buffer slds-table_bordered">
           <thead>
             <tr>
-              <th className={styles.th}>Asesor</th>
-              <th className={styles.th}>Total Leads Activos</th>
+              <th className="">Asesor</th>
+              <th className="">Total Leads Activos</th>
             </tr>
           </thead>
           <tbody>
             {agents.map(agentId => (
-              <tr key={agentId} className={styles.tr} onClick={() => { setSelectedSubFilter(agentId); setIsListModalOpen(true); setCurrentPage(1); }}>
-                <td className={styles.td} style={{ fontWeight: 600 }}>{getUserName(agentId)}</td>
-                <td className={styles.td}>{agentMap[agentId].length}</td>
+              <tr key={agentId} className="slds-hint-parent" onClick={() => { setSelectedSubFilter(agentId); setIsListModalOpen(true); setCurrentPage(1); }}>
+                <td className="" style={{ fontWeight: 600 }}>{getUserName(agentId)}</td>
+                <td className="">{agentMap[agentId].length}</td>
               </tr>
             ))}
           </tbody>
@@ -280,18 +411,18 @@ export default function AdvancedReportsDashboard() {
       const reasons = Object.keys(reasonMap).sort((a, b) => reasonMap[b].length - reasonMap[a].length);
 
       return (
-        <table className={styles.table}>
+        <table className="slds-table slds-table_cell-buffer slds-table_bordered">
           <thead>
             <tr>
-              <th className={styles.th}>Motivo de Pérdida</th>
-              <th className={styles.th}>Total Prospectos Perdidos</th>
+              <th className="">Motivo de Pérdida</th>
+              <th className="">Total Prospectos Perdidos</th>
             </tr>
           </thead>
           <tbody>
             {reasons.map(reason => (
-              <tr key={reason} className={styles.tr} onClick={() => { setSelectedSubFilter(reason); setIsListModalOpen(true); setCurrentPage(1); }}>
-                <td className={styles.td} style={{ fontWeight: 600 }}>{reason}</td>
-                <td className={styles.td}>{reasonMap[reason].length}</td>
+              <tr key={reason} className="slds-hint-parent" onClick={() => { setSelectedSubFilter(reason); setIsListModalOpen(true); setCurrentPage(1); }}>
+                <td className="" style={{ fontWeight: 600 }}>{reason}</td>
+                <td className="">{reasonMap[reason].length}</td>
               </tr>
             ))}
           </tbody>
@@ -310,18 +441,18 @@ export default function AdvancedReportsDashboard() {
       const agents = Object.keys(agentMap).sort((a, b) => agentMap[b].length - agentMap[a].length);
 
       return (
-        <table className={styles.table}>
+        <table className="slds-table slds-table_cell-buffer slds-table_bordered">
           <thead>
             <tr>
-              <th className={styles.th}>Asesor</th>
-              <th className={styles.th}>Total Actividades</th>
+              <th className="">Asesor</th>
+              <th className="">Total Actividades</th>
             </tr>
           </thead>
           <tbody>
             {agents.map(agentId => (
-              <tr key={agentId} className={styles.tr} onClick={() => { setSelectedSubFilter(agentId); setIsListModalOpen(true); setCurrentPage(1); }}>
-                <td className={styles.td} style={{ fontWeight: 600 }}>{getUserName(agentId)}</td>
-                <td className={styles.td}>{agentMap[agentId].length}</td>
+              <tr key={agentId} className="slds-hint-parent" onClick={() => { setSelectedSubFilter(agentId); setIsListModalOpen(true); setCurrentPage(1); }}>
+                <td className="" style={{ fontWeight: 600 }}>{getUserName(agentId)}</td>
+                <td className="">{agentMap[agentId].length}</td>
               </tr>
             ))}
           </tbody>
@@ -333,51 +464,83 @@ export default function AdvancedReportsDashboard() {
   };
 
   if (loading) {
-    return <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Cargando datos para el reporte...</div>;
+    return (
+      <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+         <div className="slds-spinner_container slds-is-fixed">
+            <div role="status" className="slds-spinner slds-spinner_large slds-spinner_brand">
+               <span className="slds-assistive-text">Loading</span>
+               <div className="slds-spinner__dot-a"></div>
+               <div className="slds-spinner__dot-b"></div>
+            </div>
+         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    const urlMatch = error.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
+    const url = urlMatch ? urlMatch[0] : null;
+    return (
+      <div style={{ padding: '32px', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ backgroundColor: '#fee2e2', border: '1px solid #ef4444', padding: '24px', borderRadius: '8px', color: '#991b1b' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>Requiere Índice Compuesto de Firebase</h2>
+          <p style={{ marginBottom: '16px' }}>
+            Firebase ha bloqueado la consulta porque requiere un índice para ordenar los datos por fecha (`createdAt`) junto con el filtro de inquilino (`tenantId`).
+          </p>
+          {url ? (
+            <a 
+              href={url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ display: 'inline-block', backgroundColor: '#ef4444', color: 'white', padding: '10px 16px', borderRadius: '6px', fontWeight: 'bold', textDecoration: 'none' }}
+            >
+              Crear Índice Automáticamente en Firebase
+            </a>
+          ) : (
+            <p style={{ fontFamily: 'monospace', backgroundColor: '#fecaca', padding: '12px', borderRadius: '4px' }}>{error}</p>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Reportes Avanzados</h2>
-        <p className={styles.subtitle}>Explorador de datos y cruce de información</p>
-      </div>
-
-      <div className={styles.controlsCard}>
-        <div className={styles.filterGroup}>
-          <label className={styles.filterLabel}>Tipo de Reporte</label>
-          <select value={reportType} onChange={handleReportTypeChange} className={styles.filterSelect}>
+      <div className={agentStyles.pageHeader}>
+        <div className={agentStyles.headerTitleRow}>
+          <div className={agentStyles.headerIcon}>
+            <BarChart3 size={24} />
+          </div>
+          <div className={agentStyles.headerTextGroup}>
+            <p className={agentStyles.superTitle}>Analíticas</p>
+            <h2 className={agentStyles.mainTitle}>Explorador de Datos</h2>
+          </div>
+        </div>
+        
+        <div className={agentStyles.filtersRow}>
+          <select value={reportType} onChange={handleReportTypeChange} className={agentStyles.filterSelect} title="Tipo de Reporte">
             <option value="source">Fuentes de Adquisición</option>
             <option value="workload">Carga de Trabajo Activa</option>
             <option value="loss_reasons">Análisis de Ventas Perdidas</option>
             <option value="productivity">Métricas de Productividad</option>
           </select>
-        </div>
 
-        <div className={styles.filterGroup}>
-          <label className={styles.filterLabel}>Período</label>
-          <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className={styles.filterSelect}>
+          <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className={agentStyles.filterSelect} title="Período">
             <option value="all">Histórico Total</option>
             <option value="this_month">Este mes</option>
             <option value="last_month">Mes pasado</option>
             <option value="last_6_months">Últimos 6 meses</option>
             <option value="this_year">Este año</option>
           </select>
-        </div>
 
-        <div className={styles.filterGroup}>
-          <label className={styles.filterLabel}>Asesor</label>
-          <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} className={styles.filterSelect}>
+          <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} className={agentStyles.filterSelect} title="Asesor">
             <option value="all">Todos los asesores</option>
             {users.map(u => (
               <option key={u.uid} value={u.uid}>{u.name}</option>
             ))}
           </select>
-        </div>
 
-        <div className={styles.filterGroup}>
-          <label className={styles.filterLabel}>Etapa</label>
-          <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} className={styles.filterSelect}>
+          <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} className={agentStyles.filterSelect} title="Etapa">
             <option value="all">Todas las etapas</option>
             {dynamicStages.map(s => (
               <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
@@ -387,141 +550,173 @@ export default function AdvancedReportsDashboard() {
         </div>
       </div>
 
-      <div className={styles.resultsCard}>
-        <div className={styles.resultsHeader}>
-          <h3 className={styles.resultsTitle}>
-            {reportType === 'source' ? 'Resumen por Canal de Origen' : 
-             reportType === 'workload' ? 'Resumen de Carga de Trabajo por Asesor' :
-             reportType === 'loss_reasons' ? 'Resumen de Motivos de Pérdida' :
-             'Resumen de Actividades por Asesor'}
-          </h3>
-          <span className={styles.resultsBadge}>{reportType === 'productivity' ? filteredActivities.length : filteredLeads.length} Registros Totales</span>
+      {((reportType !== 'productivity' && filteredLeads.length > 0) || (reportType === 'productivity' && filteredActivities.length > 0)) && (
+        <div style={{ marginBottom: '24px' }}>
+          {renderHighlights()}
         </div>
-        <div className={styles.tableContainer}>
-          {renderTable()}
-        </div>
-        
-        {((reportType !== 'productivity' && filteredLeads.length > 0) || (reportType === 'productivity' && filteredActivities.length > 0)) && (
-          <div style={{ padding: '0 24px' }}>
-            <button 
-              onClick={() => { setSelectedSubFilter(null); setIsListModalOpen(true); setCurrentPage(1); }}
-              className={styles.openModalBtn}
-            >
-              <List size={20} />
-              Ver Listado Detallado de Todos los Registros ({reportType === 'productivity' ? filteredActivities.length : filteredLeads.length})
-            </button>
+      )}
+
+      {((reportType !== 'productivity' && filteredLeads.length === 0) || (reportType === 'productivity' && filteredActivities.length === 0)) ? (
+        <div className={agentStyles.illustration}>
+          <div className={agentStyles.illustrationIcon}>
+            <Inbox size={48} color="var(--text-secondary)" />
           </div>
-        )}
-      </div>
+          <h3 className={agentStyles.illustrationTitle}>Sin Resultados</h3>
+          <p className={agentStyles.illustrationText}>No encontramos datos que coincidan con los filtros seleccionados. Intenta ajustando el asesor, la etapa o el período para ver más información.</p>
+        </div>
+      ) : (
+        <div className={agentStyles.scorecardLayout} style={{ alignItems: 'stretch' }}>
+          <article className={agentStyles.sldsCard} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div className={agentStyles.sldsCardHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 className={agentStyles.sldsCardTitle} style={{ margin: 0 }}>
+                {reportType === 'source' ? 'Desglose por Canal de Origen' : 
+                 reportType === 'workload' ? 'Desglose de Carga de Trabajo' :
+                 reportType === 'loss_reasons' ? 'Desglose de Motivos de Pérdida' :
+                 'Desglose de Actividades'}
+              </h2>
+              <button className={agentStyles.exportBtn} onClick={handleExportCSV}>
+                <Download size={16} /> Exportar CSV
+              </button>
+            </div>
+            <div style={{ flex: 1, padding: 0 }}>
+              <div className={styles.tableContainer} style={{ margin: 0, height: '100%', borderBottom: '1px solid var(--border-color)' }}>
+                {renderTable()}
+              </div>
+            </div>
+            <footer className="slds-card__footer" style={{ borderTop: 'none', backgroundColor: '#fff', textAlign: 'center', padding: '12px' }}>
+              <button 
+                onClick={() => { setSelectedSubFilter(null); setIsListModalOpen(true); setCurrentPage(1); }}
+                className="slds-button" style={{ color: 'var(--primary-color)', fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              >
+                <List size={14} />
+                Ver Listado Detallado de Todos los Registros ({reportType === 'productivity' ? filteredActivities.length : filteredLeads.length})
+              </button>
+            </footer>
+          </article>
+
+          {renderChart()}
+        </div>
+      )}
 
       {isListModalOpen && (
-        <div className={styles.modalOverlay} onClick={(e) => { if (e.target === e.currentTarget) setIsListModalOpen(false); }}>
-          <div className={styles.listModal}>
-            <div className={styles.listModalHeader}>
-              <h3 className={styles.cardTitle} style={{ margin: 0 }}>
+        <div 
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '32px' }} 
+          onClick={(e) => { if (e.target === e.currentTarget) setIsListModalOpen(false); }}
+        >
+          <div style={{ backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', width: '100%', maxWidth: '1400px', maxHeight: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <header style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-surface)' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Listado Detallado {selectedSubFilter && `- ${reportType === 'workload' || reportType === 'productivity' ? getUserName(selectedSubFilter) : selectedSubFilter}`} ({totalItems})
-              </h3>
-              <div className={styles.headerActions}>
+              </h2>
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
-                  <button className={styles.exportBtn} onClick={handleExportCSV}>
+                  <button className={agentStyles.exportBtn} onClick={handleExportCSV}>
                     <Download size={16} /> Exportar CSV
                   </button>
                 )}
-                <button className={styles.closeBtn} onClick={() => setIsListModalOpen(false)}>&times;</button>
+                <button 
+                  onClick={() => setIsListModalOpen(false)} 
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
+                  title="Cerrar"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
               </div>
-            </div>
-            <div className={styles.listModalBody}>
-              <div className={styles.tableContainer}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      {reportType === 'productivity' ? (
-                        <>
-                          <th className={styles.th}>Fecha</th>
-                          <th className={styles.th}>Asesor</th>
-                          <th className={styles.th}>Actividad</th>
-                          <th className={styles.th}>Lead</th>
-                        </>
-                      ) : (
-                        <>
-                          <th className={styles.th}>Nombre del Lead</th>
-                          <th className={styles.th}>Asesor</th>
-                          <th className={styles.th}>Etapa</th>
-                          <th className={styles.th}>{reportType === 'source' ? 'Fuente' : reportType === 'loss_reasons' ? 'Motivo Pérdida' : 'Nivel de Interés'}</th>
-                          <th className={styles.th}>Fecha</th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
+            </header>
+            
+            <div style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--bg-surface)' }}>
+              <table className="slds-table slds-table_cell-buffer slds-table_bordered" style={{ borderTop: 0 }}>
+                <thead>
+                  <tr className="slds-line-height_reset">
                     {reportType === 'productivity' ? (
-                      paginatedActivities.map(act => {
-                        const dateObj = act.createdAt?.toDate ? act.createdAt.toDate() : new Date(act.createdAt || Date.now());
-                        return (
-                          <tr key={act.id} className={styles.tr}>
-                            <td className={styles.td}>{dateObj.toLocaleString()}</td>
-                            <td className={styles.td}>{getUserName(act.userId)}</td>
-                            <td className={styles.td} style={{ textTransform: 'capitalize' }}>{act.type}</td>
-                            <td className={styles.td}>{getLeadName(act.leadId)}</td>
-                          </tr>
-                        );
-                      })
+                      <>
+                        <th scope="col"><div className="slds-truncate">Fecha</div></th>
+                        <th scope="col"><div className="slds-truncate">Asesor</div></th>
+                        <th scope="col"><div className="slds-truncate">Actividad</div></th>
+                        <th scope="col"><div className="slds-truncate">Lead</div></th>
+                      </>
                     ) : (
-                      paginatedLeads.map(lead => {
-                        const dateObj = lead.createdAt?.toDate ? lead.createdAt.toDate() : new Date(lead.createdAt || Date.now());
-                        return (
-                          <tr key={lead.id} className={styles.tr} onClick={() => { setSelectedLead(lead); setIsLeadModalOpen(true); }} style={{ cursor: 'pointer' }}>
-                            <td className={styles.td}>{lead.name}</td>
-                            <td className={styles.td}>{getUserName(lead.assignedTo)}</td>
-                            <td className={styles.td}>{lead.status?.replace(/_/g, ' ')}</td>
-                            <td className={styles.td}>{reportType === 'source' ? (lead.source || 'Desconocido') : reportType === 'loss_reasons' ? (lead.lossReason || 'No especificado') : (lead.interestLevel || 'Medio')}</td>
-                            <td className={styles.td}>{dateObj.toLocaleDateString()}</td>
-                          </tr>
-                        );
-                      })
+                      <>
+                        <th scope="col"><div className="slds-truncate">Nombre del Lead</div></th>
+                        <th scope="col"><div className="slds-truncate">Asesor</div></th>
+                        <th scope="col"><div className="slds-truncate">Etapa</div></th>
+                        <th scope="col"><div className="slds-truncate">{reportType === 'source' ? 'Fuente' : reportType === 'loss_reasons' ? 'Motivo Pérdida' : 'Nivel de Interés'}</div></th>
+                        <th scope="col"><div className="slds-truncate">Fecha</div></th>
+                      </>
                     )}
-                  </tbody>
-                </table>
-              </div>
-              {totalItems > ITEMS_PER_PAGE && (
-                <div className={styles.pagination}>
-                  <span className={styles.pageInfo}>
-                    Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} de {totalItems}
-                  </span>
-                  
-                  <div className={styles.pageJumper}>
-                    Página 
-                    <input 
-                      type="number" 
-                      min={1} 
-                      max={totalPages} 
-                      value={pageInputText} 
-                      onChange={handlePageJumper}
-                      onBlur={() => setPageInputText(currentPage.toString())}
-                      className={styles.pageInput}
-                    /> 
-                    de {totalPages}
-                  </div>
-
-                  <div className={styles.pageButtons}>
-                    <button 
-                      className={styles.pageBtn} 
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Anterior
-                    </button>
-                    <button 
-                      className={styles.pageBtn} 
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Siguiente
-                    </button>
-                  </div>
-                </div>
-              )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportType === 'productivity' ? (
+                    paginatedActivities.map(act => {
+                      const dateObj = act.createdAt?.toDate ? act.createdAt.toDate() : new Date(act.createdAt || Date.now());
+                      return (
+                        <tr key={act.id} className="slds-hint-parent">
+                          <td data-label="Fecha">{dateObj.toLocaleString()}</td>
+                          <td data-label="Asesor">{getUserName(act.userId)}</td>
+                          <td data-label="Actividad" style={{ textTransform: 'capitalize' }}>{act.type}</td>
+                          <td data-label="Lead">{getLeadName(act.leadId)}</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    paginatedLeads.map(lead => {
+                      const dateObj = lead.createdAt?.toDate ? lead.createdAt.toDate() : new Date(lead.createdAt || Date.now());
+                      return (
+                        <tr key={lead.id} className="slds-hint-parent" onClick={() => { setSelectedLead(lead); setIsLeadModalOpen(true); }} style={{ cursor: 'pointer' }}>
+                          <td data-label="Nombre del Lead" style={{ fontWeight: 500 }}>{lead.name}</td>
+                          <td data-label="Asesor">{getUserName(lead.assignedTo)}</td>
+                          <td data-label="Etapa">{lead.status?.replace(/_/g, ' ')}</td>
+                          <td data-label={reportType === 'source' ? 'Fuente' : reportType === 'loss_reasons' ? 'Motivo Pérdida' : 'Nivel de Interés'}>
+                            {reportType === 'source' ? (lead.source || 'Desconocido') : reportType === 'loss_reasons' ? (lead.lossReason || 'No especificado') : (lead.interestLevel || 'Medio')}
+                          </td>
+                          <td data-label="Fecha">{dateObj.toLocaleDateString()}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
+
+            {totalItems > ITEMS_PER_PAGE && (
+              <div className={agentStyles.pagination}>
+                <span className={agentStyles.pageInfo}>
+                  Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} de {totalItems}
+                </span>
+                
+                <div className={agentStyles.pageJumper}>
+                  Página 
+                  <input 
+                    type="number" 
+                    min={1} 
+                    max={totalPages} 
+                    value={pageInputText} 
+                    onChange={handlePageJumper}
+                    onBlur={() => setPageInputText(currentPage.toString())}
+                    className={agentStyles.pageInput}
+                  />
+                  de {totalPages}
+                </div>
+
+                <div className={agentStyles.pageButtons}>
+                  <button 
+                    className={agentStyles.pageBtn}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Anterior
+                  </button>
+                  <button 
+                    className={agentStyles.pageBtn}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

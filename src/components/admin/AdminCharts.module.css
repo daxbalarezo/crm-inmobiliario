@@ -6,7 +6,7 @@
 
 @media (min-width: 1024px) {
   .chartsContainer {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -20,8 +20,10 @@
   flex-direction: column;
 }
 
-.chartCard.fullWidth {
-  grid-column: 1 / -1;
+@media (min-width: 1024px) {
+  .colSpan2 {
+    grid-column: span 2;
+  }
 }
 
 .cardHeader {

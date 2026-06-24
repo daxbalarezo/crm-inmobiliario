@@ -458,4 +458,33 @@ svg {
   border-radius: 4px;
   box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.10);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.slds-card__header {
+  padding: 16px 24px 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.slds-card__header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #181818;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.slds-text-body_small {
+  font-size: 14px;
+  color: #706E6B;
+  margin-top: 4px;
+  display: block;
+}
+
+.slds-card__body {
+  padding: 16px 24px 24px 24px;
+  flex: 1;
 }
