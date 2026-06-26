@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { Building2, Plus, Settings } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { supabase } from '../../../config/supabase';
+import { saasService, type SaaSPlan } from '../../../services/saasService';
 
 import TenantMetrics from './components/TenantMetrics';
 import TenantList from './components/TenantList';
@@ -12,6 +13,7 @@ import NewTenantModal from './components/NewTenantModal';
 export default function CompaniesDashboard() {
   const { userProfile } = useCRM();
   const [tenants, setTenants] = useState<any[]>([]);
+  const [plans, setPlans] = useState<SaaSPlan[]>([]);
   const [loading, setLoading] = useState(true);
   
   
@@ -23,14 +25,16 @@ export default function CompaniesDashboard() {
   useEffect(() => {
     if (userProfile?.role !== 'owner') return;
     
-    // Load prices from localStorage
-    const savedPrices = localStorage.getItem('crm_plan_prices');
-    if (savedPrices) {
+    const loadPlans = async () => {
       try {
-        setPlanPrices(JSON.parse(savedPrices));
-      } catch (e) {}
-    }
+        const fetchedPlans = await saasService.getPlans();
+        setPlans(fetchedPlans);
+      } catch (e) {
+        console.error('Error loading plans', e);
+      }
+    };
     
+    loadPlans();
     fetchTenants();
   }, [userProfile?.role]);
 
@@ -146,8 +150,7 @@ export default function CompaniesDashboard() {
   };
 
   const handleSavePricing = (newPrices: { starter: number; pro: number; enterprise: number }) => {
-    setPlanPrices(newPrices);
-    localStorage.setItem('crm_plan_prices', JSON.stringify(newPrices));
+    // Deprecated: Las configuraciones de precios ya se manejan en PlanManagement
   };
 
   if (userProfile?.role !== 'owner') {
@@ -157,7 +160,12 @@ export default function CompaniesDashboard() {
   // KPIs
   const activeTenants = tenants.filter(t => t.status === 'active' || !t.status);
   const suspendedTenantsCount = tenants.length - activeTenants.length;
-  const mrr = activeTenants.reduce((sum, t) => sum + (planPrices[t.plan as keyof typeof planPrices] || planPrices.starter), 0);
+  
+  const mrr = activeTenants.reduce((sum, t) => {
+    const planObj = plans.find(p => p.id === t.plan) || plans.find(p => p.id === 'starter');
+    return sum + (planObj ? Number(planObj.price_monthly) : 0);
+  }, 0);
+  
   const arr = mrr * 12;
 
   return (

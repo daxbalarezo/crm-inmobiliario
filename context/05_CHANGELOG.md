@@ -4,6 +4,36 @@ Este archivo mantiene un registro cronológico de todas las modificaciones impor
 
 ---
 
+## [2026-06-26] - Migración Comercial Fase 2: Embudo de Ventas Dinámico
+**Objetivo del cambio:** Desconectar el Tablero Comercial de Firebase y conectar el frontend a Supabase para heredar las etapas B2B personalizadas.
+**Archivos modificados:** `14_schema_leads_and_tenant_stages.sql`, `CommercialDashboard.tsx`, `KanbanBoard.tsx`, `LeadModal.tsx`, `definitions.ts`.
+**Detalles:** 
+1. Se generó un script SQL para añadir la columna JSONB `pipeline_stages` a los inquilinos y migrar la tabla relacional `leads`.
+2. Se programó el Trigger Postgres `inherit_seed_templates()` para que toda inmobiliaria nueva clone el "Starter Pack" maestro.
+3. Se refactorizó `CommercialDashboard.tsx` sustituyendo Firestore por Supabase JS.
+4. Se modificó el `KanbanBoard.tsx` y `LeadModal.tsx` para generar sus columnas y colores reactivamente leyendo `tenant.pipeline_stages`.
+5. **(Fix de UX)**: Se renombraron las etapas finales a "06 - Vendido" y "07 - Perdido" para utilizar un lenguaje más natural y comercial.
+6. **(Fix de Mercado)**: Se adaptó el flujo completo de etapas al estándar del mercado inmobiliario peruano (Prospecto -> Contactado -> Negociación -> Visita -> Separación -> Vendido -> Perdido).
+
+## [2026-06-26] - Refactorización de UI: Plantillas Semilla
+**Objetivo del cambio:** Hacer que el módulo de "Starter Pack" de las inmobiliarias sea 100% interactivo antes del guardado.
+**Archivos modificados:** `src/pages/owner/SaaSOperations/SeedTemplates.tsx`
+**Detalles:** 
+- Se habilitó la lógica `onClick` para los botones de "Añadir Etapa" y el ícono de la papelera para eliminar etapas.
+- Se reemplazaron las etiquetas estáticas de "Probabilidad" y "Color" por `<input type="number">` y `<input type="color">` interactivos, actualizando el estado reactivo del componente.
+- Se preparó la función `handleSave` para insertar correctamente (`insert`) los nuevos registros creados dinámicamente.
+
+## [2026-06-26] - Blindaje B2B: RLS y Triggers de Autenticación
+**Objetivo del cambio:** Eliminar el registro B2C público, forzar el uso de invitaciones seguras y arreglar bloqueos de lectura en la base de datos.
+**Archivos modificados:** `07_b2b_invitations.sql`, `08_fix_invitations_permissions.sql`, `09_fix_rls_invitations.sql`, `10_fix_owner_bypass.sql`, `11_fix_users_rls.sql`, `12_force_provision_owner.sql`, `13_enable_auth_trigger.sql`
+**Detalles:** 
+1. Se forzó la existencia del `CREATE TRIGGER on_auth_user_created` en Supabase Auth para que la lógica de invitaciones se ejecute de verdad al registrarse.
+2. Se corrigió la política RLS (Row Level Security) en `public.users` (`users_read_own_profile`) para que los usuarios puedan leer su propio perfil al iniciar sesión.
+3. Se desactivaron los parches frontend (`CRMContext.tsx`) que daban rol `owner` por defecto si fallaba la lectura de base de datos. Ahora el sistema cierra la sesión y expulsa si el perfil no fue aprovisionado.
+4. Se corrigió un error circular de RLS en `user_invitations` separando las reglas explícitas de `SELECT`, `INSERT` y `UPDATE`.
+
+---
+
 ## [2026-06-26] - Mejoras UI y Manejo de Errores en Dashboards
 **Objetivo del cambio:** Limpiar redundancias visuales y fortalecer la conexión frontend-Supabase con control estricto de errores.
 - **CompaniesDashboard**: 

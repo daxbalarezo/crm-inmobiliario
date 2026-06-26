@@ -11,7 +11,8 @@ A partir de este momento, toda modificación importante del proyecto debe quedar
 * Creación de una nueva funcionalidad, integraciones, autenticación, cambios en arquitectura, modelos de datos, migraciones, corrección de bugs, dependencias o antes/después de commits.
 
 ## Regla principal
-Ninguna tarea se considera completada hasta que la documentación correspondiente haya sido creada o actualizada. No preguntes si deseas documentar el cambio, asume que es obligatorio. Si detectas un cambio significativo y la documentación no ha sido actualizada, detén el flujo y actualízala primero.
+Ninguna tarea se considera completada hasta que la documentación correspondiente haya sido creada o actualizada en la carpeta `context/`. No preguntes si deseas documentar el cambio, asume que es obligatorio. 
+**PROHIBICIÓN ESTRICTA:** Queda TERMINANTEMENTE PROHIBIDO crear archivos de tipo `walkthrough.md`, resúmenes temporales o artefactos de documentación fuera de la carpeta `context/`. Toda la documentación generada por el agente debe insertarse o anexarse obligatoriamente a los archivos de Obsidian existentes (`01_ESTADO_ACTUAL.md`, `05_CHANGELOG.md`, etc.). Si detectas un cambio significativo, actualiza directamente Obsidian.
 
 ## Archivos de documentación a mantener
 * `context/01_ESTADO_ACTUAL.md` (Para progreso de tareas)

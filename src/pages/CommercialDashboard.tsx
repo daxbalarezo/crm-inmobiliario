@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Search, Users } from 'lucide-react';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import { useCommercialData } from '../hooks/useCommercialData';
 import { useCRM } from '../context/CRMContext';
 import { useAuditTrail } from '../hooks/useAuditTrail';
@@ -10,10 +9,8 @@ import { logActivityService } from '../services/activities';
 import LeadModal from '../components/LeadModal';
 import KanbanBoard from '../components/KanbanBoard';
 import type { Lead } from '../types/definitions';
-import styles from './CommercialDashboard.module.css';
-import adminStyles from './AdminDashboard.module.css';
 
-// For Weighted Pipeline Calculation
+// For Weighted Pipeline Calculation (Fallback)
 const defaultProbabilities: Record<string, number> = {
   'PROSPECTO': 10,
   'SIN_CONTACTAR': 5,
@@ -22,11 +19,10 @@ const defaultProbabilities: Record<string, number> = {
   'SEPARACION': 90,
   'VENDIDO': 100,
 };
-const getProbability = (stage: string) => defaultProbabilities[stage] || 0;
 
 export default function CommercialDashboard() {
-  const { leads, inventory, loading } = useCommercialData();
-  const { tenantId, activeProjectId, userProfile, userPermissions } = useCRM();
+  const { leads, inventory, loading, updateLeadOptimistically } = useCommercialData();
+  const { tenantId, activeProjectId, userProfile, userPermissions, tenant } = useCRM();
   const { logEvent } = useAuditTrail(tenantId || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -38,13 +34,21 @@ export default function CommercialDashboard() {
 
   React.useEffect(() => {
     if (userProfile?.role === 'owner' || userProfile?.role === 'manager') {
-      import('firebase/firestore').then(({ collection, getDocs, query, where }) => {
-        getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId))).then(snap => {
-          setAgents(snap.docs.map(d => ({ id: d.id, name: d.data().name })));
-        });
+      supabase.from('users').select('uid, name').eq('tenant_id', tenantId).then(({ data }) => {
+        if (data) {
+          setAgents(data.map(d => ({ id: d.uid, name: d.name })));
+        }
       });
     }
   }, [tenantId, userProfile?.role]);
+
+  const getProbability = (stageName: string) => {
+    if (tenant?.pipeline_stages) {
+      const stage = tenant.pipeline_stages.find(s => s.name === stageName);
+      if (stage) return stage.probability;
+    }
+    return defaultProbabilities[stageName] || 0;
+  };
 
   const filteredLeads = useMemo(() => {
     if (!leads) return [];
@@ -90,34 +94,50 @@ export default function CommercialDashboard() {
       montoPonderado += (amount * probability);
     });
     return { montoTotal, montoPonderado };
-  }, [filteredLeads]);
+  }, [filteredLeads, tenant]);
 
   const { executeWorkflows } = useWorkflows();
 
   const handleSave = async (data: Partial<Lead>) => {
     if (!tenantId) return;
     
+    // Mapear de camelCase a snake_case para Supabase
+    const payload: any = {
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      status: data.status,
+      interest_level: data.interestLevel,
+      notes: data.notes,
+      saved_proforma: data.savedProforma,
+      assigned_to: data.assignedTo
+    };
+    
     if (editingLead?.id) {
-      await updateDoc(doc(db, 'leads', editingLead.id), {
-        ...data,
-        updatedAt: serverTimestamp(),
-      });
-      // Exec workflows for UPDATE
+      const { error } = await supabase.from('leads').update(payload).eq('id', editingLead.id);
+      if (error) {
+        console.error("Error updating lead:", error);
+        return;
+      }
       executeWorkflows(tenantId, 'lead_updated', { id: editingLead.id, ...data });
     } else {
-      const docRef = await addDoc(collection(db, 'leads'), {
-        ...data,
-        tenantId,
-        projectId: activeProjectId,
-        assignedTo: userProfile?.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      payload.tenant_id = tenantId;
+      payload.project_id = activeProjectId === 'all' ? null : activeProjectId;
+      if (!payload.assigned_to) {
+        payload.assigned_to = userProfile?.uid;
+      }
       
-      if (userProfile) {
+      const { data: newLead, error } = await supabase.from('leads').insert([payload]).select().single();
+      
+      if (error) {
+        console.error("Error creating lead:", error);
+        return;
+      }
+      
+      if (userProfile && newLead) {
         await logActivityService(
           tenantId,
-          docRef.id,
+          newLead.id,
           userProfile.uid,
           userProfile.name,
           'lead_created',
@@ -125,15 +145,18 @@ export default function CommercialDashboard() {
         );
       }
       
-      // Exec workflows for CREATE
-      executeWorkflows(tenantId, 'lead_created', { id: docRef.id, ...data, assignedTo: userProfile?.uid });
+      if (newLead) {
+        executeWorkflows(tenantId, 'lead_created', { id: newLead.id, ...data, assignedTo: userProfile?.uid });
+      }
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       const leadName = leads.find(l => l.id === id)?.name || 'Desconocido';
-      await deleteDoc(doc(db, 'leads', id));
+      const { error } = await supabase.from('leads').delete().eq('id', id);
+      if (error) throw error;
+      
       if (userProfile) {
         await logEvent(userProfile.uid, userProfile.name, 'DELETE', 'LEAD', id, `Prospecto eliminado: ${leadName}`);
       }
@@ -145,19 +168,22 @@ export default function CommercialDashboard() {
   };
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
+    // 1. Actualización Optimista (feedback instantáneo)
+    updateLeadOptimistically(leadId, { status: newStatus });
+
     const lead = leads.find(l => l.id === leadId);
     
     const updates: any = {
       status: newStatus,
-      updatedAt: serverTimestamp(),
     };
     
     // SLA tracking: if it's the first time changing status from default
     if (lead && !lead.firstContactAt && newStatus !== 'PROSPECTO') {
-      updates.firstContactAt = serverTimestamp();
+      updates.first_contact_at = new Date().toISOString();
     }
 
-    await updateDoc(doc(db, 'leads', leadId), updates);
+    const { error } = await supabase.from('leads').update(updates).eq('id', leadId);
+    if (error) console.error("Error changing status:", error);
     
     if (userProfile && tenantId) {
       await logActivityService(
@@ -185,107 +211,138 @@ export default function CommercialDashboard() {
   );
 
   return (
-    <div className={adminStyles.container}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Exact 'Visión General' Header Style applied to Pipeline Global */}
-      <div className={adminStyles.pageHeader}>
-        <div className={adminStyles.headerTopRow} style={{ marginBottom: '16px' }}>
-          <div className={adminStyles.headerTitleBlock}>
-            <div className={adminStyles.headerIcon} style={{ backgroundColor: '#FF9D50' }}>
-              {/* Using a commercial/opportunity icon */}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
-            </div>
-            <div className={adminStyles.headerTextGroup}>
-              <p className={adminStyles.headerBreadcrumb}>Gestión Comercial</p>
-              <h2 className={adminStyles.title}>Pipeline Global</h2>
+      {/* PAGE HEADER SLDS */}
+      <div className="slds-page-header slds-m-bottom_medium" style={{ backgroundColor: 'white' }}>
+        <div className="slds-page-header__row">
+          <div className="slds-page-header__col-title">
+            <div className="slds-media">
+              <div className="slds-media__figure">
+                <span className="slds-icon_container slds-icon-standard-opportunity" title="Gestión Comercial">
+                  <svg className="slds-icon slds-page-header__icon" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: '#FFFFFF', color: '#FFFFFF' }}>
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                </span>
+              </div>
+              <div className="slds-media__body">
+                <div className="slds-page-header__name">
+                  <div className="slds-page-header__name-title">
+                    <h1>
+                      <span className="slds-page-header__title slds-truncate" title="Pipeline Global">Pipeline Global</span>
+                    </h1>
+                  </div>
+                </div>
+                <p className="slds-page-header__name-meta">Gestión Comercial</p>
+              </div>
             </div>
           </div>
-          
-          <div className="slds-no-flex">
-            {userPermissions.leads.create && (
-              <button onClick={openNew} className="slds-button slds-button_brand">
-                Nuevo Prospecto
-              </button>
-            )}
+          <div className="slds-page-header__col-actions">
+            <div className="slds-page-header__controls">
+              <div className="slds-page-header__control">
+                {userPermissions.leads.create && (
+                  <button className="slds-button slds-button_brand" onClick={openNew}>
+                    <Plus size={14} className="slds-m-right_x-small" /> Nuevo Prospecto
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Filters and KPI row matching exactly the style of Explorador de Datos */}
-        <div style={{ display: 'flex', padding: '12px 0 0 0', borderTop: '1px solid #DDDBDA', marginTop: '4px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        
+        {/* Sub-Header / Filters SLDS */}
+        <div className="slds-page-header__row slds-m-top_medium" style={{ borderTop: '1px solid var(--slds-border)', paddingTop: '16px' }}>
           
-          <div className={adminStyles.filterGroup} style={{ gap: '12px', flexWrap: 'wrap' }}>
-            <div className="slds-form-element" style={{ marginBottom: 0 }}>
-              <div className="slds-form-element__control slds-input-has-icon slds-input-has-icon_left" style={{ position: 'relative' }}>
-                <Search 
-                  size={16} 
-                  color="#747474" 
-                  style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fill: 'none' }} 
-                />
-                <input 
-                  type="text" 
-                  placeholder="Buscar prospecto..."
-                  className={adminStyles.timeFilter}
-                  style={{ minWidth: '180px', paddingLeft: '32px' }}
-                  value={searchTerm} 
-                  onChange={e => setSearchTerm(e.target.value)}
-                />
+          <div className="slds-page-header__col-details" style={{ flex: '1 1 auto' }}>
+            <div className="slds-grid slds-wrap slds-grid_pull-padded-small">
+              <div className="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-horizontal_small slds-m-bottom_small">
+                <div className="slds-form-element">
+                  <div className="slds-form-element__control slds-input-has-icon slds-input-has-icon_left">
+                    <Search size={16} className="slds-input__icon slds-input__icon_left" />
+                    <input 
+                      type="text" 
+                      className="slds-input" 
+                      placeholder="Buscar prospecto..."
+                      value={searchTerm} 
+                      onChange={e => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <select 
-              className={adminStyles.timeFilter}
-              style={{ minWidth: '160px' }}
-              value={savedView} 
-              onChange={e => setSavedView(e.target.value)}
-              title="Vistas Guardadas"
-            >
-              <option value="all">Todos los Prospectos</option>
-              <option value="stalled">Oportunidades Estancadas</option>
-              <option value="high_value">Alto Valor (Cotizados)</option>
-              <option value="hot">Cierres Calientes</option>
-            </select>
-
-            {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
-              <select 
-                className={adminStyles.timeFilter}
-                style={{ minWidth: '160px' }}
-                value={selectedAgentId} 
-                onChange={e => setSelectedAgentId(e.target.value)}
-              >
-                <option value="all">Todos los Asesores</option>
-                {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            )}
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {/* KPI Inline */}
-            <div style={{ display: 'flex' }}>
-              <div className={adminStyles.detailItem} style={{ paddingLeft: 0 }}>
-                <span className={adminStyles.detailLabel} style={{ marginBottom: 0 }} title="Total de Oportunidades Abiertas">ACTIVOS</span>
-                <span className={adminStyles.detailValueBrand} style={{ fontSize: '18px' }}>{filteredLeads.length}</span>
+              
+              <div className="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-horizontal_small slds-m-bottom_small">
+                <div className="slds-form-element">
+                  <div className="slds-form-element__control">
+                    <div className="slds-select_container">
+                      <select 
+                        className="slds-select" 
+                        value={savedView} 
+                        onChange={e => setSavedView(e.target.value)}
+                      >
+                        <option value="all">Todos los Prospectos</option>
+                        <option value="stalled">Oportunidades Estancadas</option>
+                        <option value="high_value">Alto Valor (Cotizados)</option>
+                        <option value="hot">Cierres Calientes</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
+
               {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
-                <>
-                  <div className={adminStyles.detailItem}>
-                    <span className={adminStyles.detailLabel} style={{ marginBottom: 0 }} title="Suma Nominal de Oportunidades">PIPELINE</span>
-                    <span className={adminStyles.detailValueBrand} style={{ fontSize: '18px' }}>
-                      ${kpis.montoTotal >= 1000 ? `${(kpis.montoTotal / 1000).toFixed(1)}k` : kpis.montoTotal}
-                    </span>
+                <div className="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-horizontal_small slds-m-bottom_small">
+                  <div className="slds-form-element">
+                    <div className="slds-form-element__control">
+                      <div className="slds-select_container">
+                        <select 
+                          className="slds-select" 
+                          value={selectedAgentId} 
+                          onChange={e => setSelectedAgentId(e.target.value)}
+                        >
+                          <option value="all">Todos los Asesores</option>
+                          {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <div className={adminStyles.detailItem} style={{ borderRight: 'none', paddingRight: '24px' }}>
-                    <span className={adminStyles.detailLabel} style={{ marginBottom: 0 }} title="Valor Real Proyectado según Probabilidad">PONDERADO</span>
-                    <span className={adminStyles.detailValueBrand} style={{ fontSize: '18px', color: '#54A77B' }}>
-                      ${kpis.montoPonderado >= 1000 ? `${(kpis.montoPonderado / 1000).toFixed(1)}k` : kpis.montoPonderado}
-                    </span>
-                  </div>
-                </>
+                </div>
               )}
             </div>
+          </div>
+          
+          <div className="slds-page-header__col-details">
+            <ul className="slds-page-header__detail-row">
+              <li className="slds-page-header__detail-block">
+                <div className="slds-text-title slds-truncate" title="Activos">ACTIVOS</div>
+                <div className="slds-truncate" title={String(filteredLeads.length)}>
+                  <span className="slds-text-heading_small">{filteredLeads.length}</span>
+                </div>
+              </li>
+              {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
+                <>
+                  <li className="slds-page-header__detail-block">
+                    <div className="slds-text-title slds-truncate" title="Pipeline">PIPELINE</div>
+                    <div className="slds-truncate" title={String(kpis.montoTotal)}>
+                      <span className="slds-text-heading_small slds-text-color_default">
+                        ${kpis.montoTotal >= 1000 ? `${(kpis.montoTotal / 1000).toFixed(1)}k` : kpis.montoTotal}
+                      </span>
+                    </div>
+                  </li>
+                  <li className="slds-page-header__detail-block">
+                    <div className="slds-text-title slds-truncate" title="Ponderado">PONDERADO</div>
+                    <div className="slds-truncate" title={String(kpis.montoPonderado)}>
+                      <span className="slds-text-heading_small slds-text-color_success">
+                        ${kpis.montoPonderado >= 1000 ? `${(kpis.montoPonderado / 1000).toFixed(1)}k` : kpis.montoPonderado}
+                      </span>
+                    </div>
+                  </li>
+                </>
+              )}
+            </ul>
+          </div>
             
-            <div className="slds-button-group slds-m-left_medium" role="group">
+          <div className="slds-page-header__col-actions slds-m-top_small">
+            <div className="slds-button-group" role="group">
               <button 
                 className={`slds-button ${viewMode === 'board' ? 'slds-button_brand' : 'slds-button_neutral'}`}
                 onClick={() => setViewMode('board')}
@@ -310,6 +367,7 @@ export default function CommercialDashboard() {
           onLeadStatusChange={handleStatusChange}
           onLeadClick={openEdit}
           isAdminMode={userProfile?.role === 'owner' || userProfile?.role === 'manager'}
+          agents={agents}
         />
       ) : (
         <div className="slds-card slds-scrollable_y" style={{ maxHeight: 'calc(100vh - 250px)' }}>
@@ -388,10 +446,11 @@ export default function CommercialDashboard() {
 
       <LeadModal
         isOpen={showLeadModal}
-        onClose={() => setShowLeadModal(false)}
+        onClose={() => { setShowLeadModal(false); setEditingLead(null); }}
         lead={editingLead}
         onSave={handleSave}
-        onDelete={handleDelete}
+        onDelete={userPermissions?.leads?.delete ? handleDelete : undefined}
+        agents={agents}
       />
     </div>
   );

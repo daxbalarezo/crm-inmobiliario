@@ -6,7 +6,6 @@ import { useCRM } from '../context/CRMContext';
 import { useTenantSchema } from '../hooks/useTenantSchema';
 import LeadFinanceTab from './LeadFinanceTab';
 import LeadTimeline from './LeadTimeline';
-import styles from './LeadModal.module.css';
 
 interface Props {
   isOpen: boolean;
@@ -14,6 +13,7 @@ interface Props {
   lead?: Lead | null;
   onSave: (leadData: Partial<Lead>) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
+  agents?: {id: string, name: string}[];
 }
 
 const SOURCES = [
@@ -21,7 +21,7 @@ const SOURCES = [
   'Base de Datos', 'Orgánicos', 'Feria', 'Referidos',
 ];
 
-export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: Props) {
+export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, agents }: Props) {
   const { tenantId, activeProjectId, userProfile, tenant, userPermissions } = useCRM();
   const { fields } = useTenantSchema('lead');
   const [saving, setSaving] = useState(false);
@@ -34,7 +34,7 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
       setFormData(lead);
     } else {
       setFormData({
-        status: tenant?.stages?.[0] || 'PROSPECTO', // Fallback dinámico al 1er stage
+        status: tenant?.pipeline_stages?.[0]?.name || tenant?.stages?.[0] || 'PROSPECTO', // Fallback dinámico al 1er stage
         interestLevel: 'Medio',
         tenantId: tenantId ?? '',
         projectId: activeProjectId ?? '',
@@ -47,7 +47,7 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
   if (!isOpen) return null;
 
   const dynamicSources = tenant?.sources || SOURCES;
-  const dynamicStages = tenant?.stages || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
+  const dynamicStages = tenant?.pipeline_stages?.map(s => s.name) || tenant?.stages || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
 
   const isEditing = !!lead?.id;
   const update = (patch: Partial<Lead>) => setFormData(p => ({ ...p, ...patch }));
@@ -75,266 +75,335 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete }: P
   const initials = hasName ? formData.name!.trim().split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() : '';
 
   return (
-    <div className={styles.overlay}>
-      <div className={styles.modal}>
-        {/* ── HEADER ── */}
-        <div className={styles.header}>
-          <div className={styles.headerContent}>
-            <div className={styles.headerLeft}>
-              <div className={styles.avatar}>
-                {hasName ? initials : <User size={20} strokeWidth={2.5} />}
+    <>
+      <section role="dialog" tabIndex={-1} aria-modal="true" className="slds-modal slds-fade-in-open slds-modal_large">
+        <div className="slds-modal__container" style={{ width: '80%', maxWidth: '900px' }}>
+          
+          {/* HEADER SLDS */}
+          <header className="slds-modal__header">
+            <button 
+              className="slds-button slds-button_icon slds-modal__close" 
+              title="Cerrar"
+              onClick={onClose}
+            >
+              <X size={24} />
+              <span className="slds-assistive-text">Cerrar</span>
+            </button>
+            <h2 className="slds-text-heading_medium slds-hyphenate">
+              {isEditing ? (formData.name || 'Prospecto') : 'Nuevo Prospecto'}
+            </h2>
+            {isEditing && formData.phone && (
+              <p className="slds-m-top_x-small slds-text-color_weak">{formData.phone}</p>
+            )}
+
+            {isEditing && (
+              <div className="slds-tabs_default slds-m-top_medium">
+                <ul className="slds-tabs_default__nav" role="tablist">
+                  <li className={`slds-tabs_default__item ${activeTab === 'info' ? 'slds-is-active' : ''}`} title="Información" role="presentation">
+                    <a className="slds-tabs_default__link" href="#" role="tab" onClick={(e) => { e.preventDefault(); setActiveTab('info'); }}>
+                      Información
+                    </a>
+                  </li>
+                  {userPermissions?.finance?.read !== 'none' && (
+                    <li className={`slds-tabs_default__item ${activeTab === 'finance' ? 'slds-is-active' : ''}`} title="Finanzas y Separación" role="presentation">
+                      <a className="slds-tabs_default__link" href="#" role="tab" onClick={(e) => { e.preventDefault(); setActiveTab('finance'); }}>
+                        Finanzas y Separación
+                      </a>
+                    </li>
+                  )}
+                </ul>
               </div>
-              <div>
-                <h3 className={styles.title}>
-                  {isEditing ? (formData.name || 'Prospecto') : 'Nuevo Prospecto'}
-                </h3>
-                {isEditing && formData.phone && (
-                  <p className={styles.subtitle}>{formData.phone}</p>
+            )}
+          </header>
+
+          {/* CONTENIDO SLDS */}
+          <div className="slds-modal__content slds-p-around_medium" style={{ backgroundColor: '#f4f6f9' }}>
+            {activeTab === 'info' ? (
+              <form id="lead-form" onSubmit={handleSave}>
+                <div className="slds-box slds-theme_default slds-m-bottom_medium">
+                  
+                  {/* Fila 1 */}
+                  <div className="slds-grid slds-gutters slds-m-bottom_small">
+                    <div className="slds-col slds-size_1-of-1">
+                      <div className="slds-form-element">
+                        <label className="slds-form-element__label">
+                          <abbr className="slds-required" title="required">* </abbr>Nombre Completo
+                        </label>
+                        <div className="slds-form-element__control">
+                          <input
+                            required
+                            type="text"
+                            className="slds-input"
+                            placeholder="Ej: Juan Pérez García"
+                            value={formData.name ?? ''}
+                            onChange={e => update({ name: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fila 2 */}
+                  <div className="slds-grid slds-gutters slds-m-bottom_small">
+                    <div className="slds-col slds-size_1-of-2">
+                      <div className="slds-form-element">
+                        <label className="slds-form-element__label">
+                          <abbr className="slds-required" title="required">* </abbr>Teléfono
+                        </label>
+                        <div className="slds-form-element__control">
+                          <input
+                            required
+                            type="text"
+                            className="slds-input"
+                            placeholder="999 999 999"
+                            value={formData.phone ?? ''}
+                            onChange={e => update({ phone: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="slds-col slds-size_1-of-2">
+                      <div className="slds-form-element">
+                        <label className="slds-form-element__label">Email</label>
+                        <div className="slds-form-element__control">
+                          <input
+                            type="email"
+                            className="slds-input"
+                            placeholder="correo@email.com"
+                            value={formData.email ?? ''}
+                            onChange={e => update({ email: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fila 3 */}
+                  <div className="slds-grid slds-gutters slds-m-bottom_small">
+                    <div className="slds-col slds-size_1-of-1">
+                      <div className="slds-form-element">
+                        <label className="slds-form-element__label">Etapa del Prospecto</label>
+                        <div className="slds-form-element__control">
+                          <div className="slds-select_container">
+                            <select
+                              className="slds-select"
+                              value={formData.status ?? (dynamicStages[0] || 'PROSPECTO')}
+                              onChange={e => update({ status: e.target.value })}
+                            >
+                              {dynamicStages.map(s => <option key={s} value={s}>{s}</option>)}
+                              {!dynamicStages.includes('PERDIDO') && <option value="PERDIDO">PERDIDO</option>}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Motivo de pérdida */}
+                  {formData.status === 'PERDIDO' && (
+                    <div className="slds-grid slds-gutters slds-m-bottom_small">
+                      <div className="slds-col slds-size_1-of-1">
+                        <div className="slds-form-element slds-has-error">
+                          <label className="slds-form-element__label">
+                            <abbr className="slds-required" title="required">* </abbr>Motivo de Pérdida
+                          </label>
+                          <div className="slds-form-element__control">
+                            <div className="slds-select_container">
+                              <select
+                                required
+                                className="slds-select"
+                                value={formData.lossReason ?? ''}
+                                onChange={e => update({ lossReason: e.target.value })}
+                              >
+                                <option value="">Seleccionar motivo...</option>
+                                <option value="Precio/Presupuesto">Precio/Presupuesto insuficiente</option>
+                                <option value="Competencia">Compró a la competencia</option>
+                                <option value="Crédito Rechazado">Crédito hipotecario rechazado</option>
+                                <option value="Incontactable">No contesta / Incontactable</option>
+                                <option value="Proyecto no encaja">El proyecto no encaja con lo que busca</option>
+                                <option value="Otro">Otro motivo</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fila 4 */}
+                  <div className="slds-grid slds-gutters slds-m-bottom_small">
+                    <div className="slds-col slds-size_1-of-2">
+                      <div className="slds-form-element">
+                        <label className="slds-form-element__label">Nivel de Interés</label>
+                        <div className="slds-form-element__control">
+                          <div className="slds-select_container">
+                            <select
+                              className="slds-select"
+                              value={formData.interestLevel ?? 'Medio'}
+                              onChange={e => update({ interestLevel: e.target.value as any })}
+                            >
+                              <option value="Alto">Alto</option>
+                              <option value="Medio">Medio</option>
+                              <option value="Bajo">Bajo</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="slds-col slds-size_1-of-2">
+                      <div className="slds-form-element">
+                        <label className="slds-form-element__label">Fuente</label>
+                        <div className="slds-form-element__control">
+                          <div className="slds-select_container">
+                            <select
+                              className="slds-select"
+                              value={formData.source ?? ''}
+                              onChange={e => update({ source: e.target.value })}
+                            >
+                              <option value="">Seleccionar...</option>
+                              {dynamicSources.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fila Asignación (Visible para Managers/Owners) */}
+                  {agents && agents.length > 0 && (userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
+                    <div className="slds-grid slds-gutters slds-m-bottom_small">
+                      <div className="slds-col slds-size_1-of-1">
+                        <div className="slds-form-element">
+                          <label className="slds-form-element__label">
+                            <User size={14} style={{ display: 'inline', marginRight: '4px' }} />
+                            Asignado A
+                          </label>
+                          <div className="slds-form-element__control">
+                            <div className="slds-select_container">
+                              <select
+                                className="slds-select"
+                                value={formData.assignedTo ?? ''}
+                                onChange={e => update({ assignedTo: e.target.value })}
+                              >
+                                {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Campos Personalizados (Dinámicos) */}
+                {fields.length > 0 && (
+                  <div className="slds-box slds-theme_default slds-m-bottom_medium">
+                    <h3 className="slds-text-heading_small slds-m-bottom_medium">Información Adicional</h3>
+                    <div className="slds-grid slds-wrap slds-gutters">
+                      {fields.map(field => (
+                        <div key={field.id} className={`slds-col slds-m-bottom_small ${field.type === 'string' ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
+                          <div className="slds-form-element">
+                            <label className="slds-form-element__label">
+                              {field.required && <abbr className="slds-required" title="required">* </abbr>}
+                              {field.label}
+                            </label>
+                            <div className="slds-form-element__control">
+                              {field.type === 'select' ? (
+                                <div className="slds-select_container">
+                                  <select
+                                    required={field.required}
+                                    className="slds-select"
+                                    value={formData.customData?.[field.id] || ''}
+                                    onChange={e => updateCustom(field.id, e.target.value)}
+                                  >
+                                    <option value="">Seleccionar...</option>
+                                    {field.options?.map(opt => (
+                                      <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : field.type === 'boolean' ? (
+                                <div className="slds-checkbox">
+                                  <input
+                                    type="checkbox"
+                                    id={`checkbox-${field.id}`}
+                                    required={field.required}
+                                    checked={!!formData.customData?.[field.id]}
+                                    onChange={e => updateCustom(field.id, e.target.checked)}
+                                  />
+                                  <label className="slds-checkbox__label" htmlFor={`checkbox-${field.id}`}>
+                                    <span className="slds-checkbox_faux"></span>
+                                    <span className="slds-form-element__label">Sí / No</span>
+                                  </label>
+                                </div>
+                              ) : (
+                                <input
+                                  type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                                  required={field.required}
+                                  className="slds-input"
+                                  placeholder={`Ingresar ${field.label.toLowerCase()}`}
+                                  value={formData.customData?.[field.id] || ''}
+                                  onChange={e => updateCustom(field.id, field.type === 'number' ? Number(e.target.value) : e.target.value)}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </div>
-            </div>
-            <div className={styles.headerActions}>
+                
+                {isEditing && lead && (
+                  <div className="slds-box slds-theme_default">
+                    <h3 className="slds-text-heading_small slds-m-bottom_medium">Línea de Tiempo</h3>
+                    <LeadTimeline lead={lead as Lead} />
+                  </div>
+                )}
+              </form>
+            ) : (
+              <LeadFinanceTab lead={lead as Lead} />
+            )}
+          </div>
+
+          {/* FOOTER SLDS */}
+          <footer className="slds-modal__footer slds-grid slds-grid_align-spread">
+            <div>
               {isEditing && onDelete && formData.id && userPermissions?.leads?.delete && (
                 <button
                   type="button"
                   onClick={() => { if(window.confirm('¿Eliminar prospecto?')) { onDelete(formData.id!); onClose(); } }}
-                  className={`${styles.btnAction} ${styles.btnDelete}`}
+                  className="slds-button slds-button_destructive"
                 >
-                  <Trash2 size={16}/>
-                </button>
-              )}
-              <button type="button" onClick={onClose} className={`${styles.btnAction} ${styles.btnClose}`}>
-                <X size={18}/>
-              </button>
-            </div>
-          </div>
-          
-          {isEditing && (
-            <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #e2e8f0', marginTop: '16px' }}>
-              <button 
-                type="button"
-                onClick={() => setActiveTab('info')}
-                style={{ background: 'none', border: 'none', borderBottom: activeTab === 'info' ? '2px solid var(--primary-color)' : '2px solid transparent', padding: '8px 4px', fontWeight: activeTab === 'info' ? 600 : 400, color: activeTab === 'info' ? 'var(--primary-color)' : '#64748b', cursor: 'pointer' }}
-              >
-                Información
-              </button>
-              {userPermissions?.finance?.read !== 'none' && (
-                <button 
-                  type="button"
-                  onClick={() => setActiveTab('finance')}
-                  style={{ background: 'none', border: 'none', borderBottom: activeTab === 'finance' ? '2px solid var(--primary-color)' : '2px solid transparent', padding: '8px 4px', fontWeight: activeTab === 'finance' ? 600 : 400, color: activeTab === 'finance' ? 'var(--primary-color)' : '#64748b', cursor: 'pointer' }}
-                >
-                  Finanzas y Separación
+                  <Trash2 size={16} className="slds-button__icon slds-button__icon_left" />
+                  Eliminar Prospecto
                 </button>
               )}
             </div>
-          )}
-        </div>
-
-        {/* ── CONTENIDO ── */}
-        {activeTab === 'info' ? (
-        <form onSubmit={handleSave} className={styles.form}>
-          <div className={styles.formBody}>
-            
-            {/* Nombre */}
-            <div className={styles.formGroup}>
-              <label className={styles.label}>
-                Nombre Completo *
-              </label>
-              <input
-                required
-                className={styles.input}
-                placeholder="Ej: Juan Pérez García"
-                value={formData.name ?? ''}
-                onChange={e => update({ name: e.target.value })}
-              />
-            </div>
-
-            {/* Teléfono + Email */}
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Teléfono *
-                </label>
-                <input
-                  required
-                  className={styles.input}
-                  placeholder="999 999 999"
-                  value={formData.phone ?? ''}
-                  onChange={e => update({ phone: e.target.value })}
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className={styles.input}
-                  placeholder="correo@email.com"
-                  value={formData.email ?? ''}
-                  onChange={e => update({ email: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Etapa */}
-            <div className={styles.formGroup}>
-              <label className={styles.label}>
-                Etapa del Prospecto
-              </label>
-              <select
-                className={styles.select}
-                value={formData.status ?? (dynamicStages[0] || 'PROSPECTO')}
-                onChange={e => update({ status: e.target.value })}
-              >
-                {dynamicStages.map(s => <option key={s} value={s}>{s}</option>)}
-                {!dynamicStages.includes('PERDIDO') && <option value="PERDIDO">PERDIDO</option>}
-              </select>
-            </div>
-
-            {/* Motivo de Pérdida (Condicional) */}
-            {formData.status === 'PERDIDO' && (
-              <div className={styles.formGroup} style={{ marginTop: 12 }}>
-                <label className={styles.label} style={{ color: '#ef4444' }}>
-                  Motivo de Pérdida *
-                </label>
-                <select
-                  required
-                  className={styles.select}
-                  value={formData.lossReason ?? ''}
-                  onChange={e => update({ lossReason: e.target.value })}
-                  style={{ borderColor: '#ef4444' }}
-                >
-                  <option value="">Seleccionar motivo...</option>
-                  <option value="Precio/Presupuesto">Precio/Presupuesto insuficiente</option>
-                  <option value="Competencia">Compró a la competencia</option>
-                  <option value="Crédito Rechazado">Crédito hipotecario rechazado</option>
-                  <option value="Incontactable">No contesta / Incontactable</option>
-                  <option value="Proyecto no encaja">El proyecto no encaja con lo que busca</option>
-                  <option value="Otro">Otro motivo</option>
-                </select>
-              </div>
-            )}
-
-            {/* Interés + Fuente */}
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Nivel de Interés
-                </label>
-                <select
-                  className={styles.select}
-                  value={formData.interestLevel ?? 'Medio'}
-                  onChange={e => update({ interestLevel: e.target.value as any })}
-                >
-                  <option value="Alto">Alto</option>
-                  <option value="Medio">Medio</option>
-                  <option value="Bajo">Bajo</option>
-                </select>
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Fuente
-                </label>
-                <select
-                  className={styles.select}
-                  value={formData.source ?? ''}
-                  onChange={e => update({ source: e.target.value })}
-                >
-                  <option value="">Seleccionar...</option>
-                  {dynamicSources.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Campos Personalizados (Dinámicos) */}
-            {fields.length > 0 && (
-              <>
-                <hr className={styles.divider} />
-                <h4 className={styles.sectionTitle}>
-                  Información Adicional
-                </h4>
-                <div className={styles.formRow}>
-                  {fields.map(field => (
-                    <div key={field.id} className={field.type === 'string' ? "" : ""} style={{ gridColumn: field.type === 'string' ? '1 / -1' : 'auto' }}>
-                      <div className={styles.formGroup}>
-                        <label className={styles.label}>
-                          {field.label} {field.required && '*'}
-                        </label>
-                        {field.type === 'select' ? (
-                          <select
-                            required={field.required}
-                            className={styles.select}
-                          value={formData.customData?.[field.id] || ''}
-                          onChange={e => updateCustom(field.id, e.target.value)}
-                        >
-                          <option value="">Seleccionar...</option>
-                          {field.options?.map(opt => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      ) : field.type === 'boolean' ? (
-                        <div className={styles.checkboxWrapper}>
-                          <input
-                            type="checkbox"
-                            required={field.required}
-                            className={styles.checkbox}
-                            checked={!!formData.customData?.[field.id]}
-                            onChange={e => updateCustom(field.id, e.target.checked)}
-                          />
-                          <span className={styles.checkboxLabel}>Sí / No</span>
-                        </div>
-                      ) : (
-                        <input
-                          type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                          required={field.required}
-                          className={styles.input}
-                          placeholder={`Ingresar ${field.label.toLowerCase()}`}
-                          value={formData.customData?.[field.id] || ''}
-                          onChange={e => updateCustom(field.id, field.type === 'number' ? Number(e.target.value) : e.target.value)}
-                        />
-                      )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-          </div>
-
-          {isEditing && lead && (
-            <div style={{ padding: '0 24px' }}>
-              <LeadTimeline lead={lead as Lead} />
-            </div>
-          )}
-
-          {/* ── FOOTER ── */}
-          <div className={styles.footer}>
-            <button
-              type="button"
-              onClick={onClose}
-              className={styles.btnCancel}
-            >
-              Cancelar
-            </button>
-            {((!isEditing && userPermissions.leads.create) || (isEditing && userPermissions.leads.update)) && (
+            <div>
               <button
-                type="submit"
-                disabled={saving}
-                className={styles.btnSave}
+                type="button"
+                onClick={onClose}
+                className="slds-button slds-button_neutral"
               >
-                <Save size={16}/>
-                {saving ? 'Guardando...' : isEditing ? 'Actualizar' : 'Guardar Prospecto'}
+                Cancelar
               </button>
-            )}
-          </div>
-        </form>
-        ) : (
-          <LeadFinanceTab lead={lead as Lead} />
-        )}
-      </div>
-    </div>
+              {((!isEditing && userPermissions.leads.create) || (isEditing && userPermissions.leads.update)) && activeTab === 'info' && (
+                <button
+                  type="submit"
+                  form="lead-form"
+                  disabled={saving}
+                  className="slds-button slds-button_brand"
+                >
+                  <Save size={16} className="slds-button__icon slds-button__icon_left" />
+                  {saving ? 'Guardando...' : isEditing ? 'Actualizar Prospecto' : 'Guardar Prospecto'}
+                </button>
+              )}
+            </div>
+          </footer>
+        </div>
+      </section>
+      <div className="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </>
   );
 }

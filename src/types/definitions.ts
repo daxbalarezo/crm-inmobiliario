@@ -12,15 +12,27 @@ export interface UserProfile {
   createdAt?: any;
 }
 
+export interface PipelineStage {
+  id: string;
+  name: string;
+  description?: string;
+  probability: number;
+  color: string;
+  order: number;
+  is_closed: boolean;
+}
+
 export interface Tenant {
   id: string;
   name: string;
   plan: 'starter' | 'pro' | 'enterprise';
   status?: string;
-  stages?: string[];
+  stages?: string[]; // Deprecated, use pipeline_stages
+  pipeline_stages?: PipelineStage[]; // NUEVO: Embudo dinámico B2B
   sources?: string[];
   createdAt?: any;
   fields?: CustomFieldDefinition[];
+  saas_subscriptions?: any[];
 }
 
 export interface ModulePermissions {

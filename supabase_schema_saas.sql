@@ -88,13 +88,13 @@ ON CONFLICT (id) DO NOTHING;
 -- Insertar plantillas semilla (Pipeline Standard Salesforce)
 INSERT INTO public.saas_seed_templates (type, name, description, config_json)
 VALUES 
-    ('pipeline_stage', '01 - Prospecting', 'Búsqueda e identificación inicial', '{"probability": 10, "color": "#0176D3", "order": 1}'::jsonb),
-    ('pipeline_stage', '02 - Qualification', 'Evaluación de interés y presupuesto', '{"probability": 20, "color": "#0176D3", "order": 2}'::jsonb),
-    ('pipeline_stage', '03 - Needs Analysis', 'Reunión/Visita para entender necesidades', '{"probability": 30, "color": "#0176D3", "order": 3}'::jsonb),
-    ('pipeline_stage', '04 - Value Proposition', 'Presentación de propuesta/cotización', '{"probability": 50, "color": "#0176D3", "order": 4}'::jsonb),
-    ('pipeline_stage', '05 - Negotiation/Review', 'Negociación de términos', '{"probability": 70, "color": "#FE9339", "order": 5}'::jsonb),
-    ('pipeline_stage', '06 - Closed Won', 'Reserva pagada y contrato firmado', '{"probability": 100, "color": "#2E844A", "order": 6, "is_closed": true}'::jsonb),
-    ('pipeline_stage', '07 - Closed Lost', 'Venta perdida', '{"probability": 0, "color": "#BA0517", "order": 7, "is_closed": true}'::jsonb)
+    ('pipeline_stage', 'Prospecto', 'Lead nuevo recién ingresado', '{"probability": 10, "color": "#0176D3", "order": 1}'::jsonb),
+    ('pipeline_stage', 'Contactado', 'Primer acercamiento por llamada o WhatsApp', '{"probability": 20, "color": "#0176D3", "order": 2}'::jsonb),
+    ('pipeline_stage', 'Negociación', 'Discusión de precios, cuotas y crédito antes de la visita', '{"probability": 40, "color": "#FE9339", "order": 3}'::jsonb),
+    ('pipeline_stage', 'Visita', 'Cita presencial en el proyecto o piloto', '{"probability": 70, "color": "#0176D3", "order": 4}'::jsonb),
+    ('pipeline_stage', 'Separación', 'El cliente pagó el adelanto para bloquear la unidad', '{"probability": 90, "color": "#0176D3", "order": 5}'::jsonb),
+    ('pipeline_stage', 'Vendido', 'Reserva pagada y contrato firmado', '{"probability": 100, "color": "#2E844A", "order": 6, "is_closed": true}'::jsonb),
+    ('pipeline_stage', 'Perdido', 'Venta perdida o cliente descartado', '{"probability": 0, "color": "#BA0517", "order": 7, "is_closed": true}'::jsonb)
 ON CONFLICT DO NOTHING;
 
 -- ==============================================================================

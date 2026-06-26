@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import styles from './App.module.css';
 import { CRMProvider, useCRM } from './context/CRMContext';
+import { GlobalDataProvider } from './context/GlobalDataProvider';
 import CorporateLayout from './layouts/CorporateLayout';
 import HomeDashboard from './pages/HomeDashboard';
 import CommercialDashboard from './pages/CommercialDashboard';
@@ -12,6 +13,7 @@ import AgentAnalyticsDashboard from './pages/AgentAnalyticsDashboard';
 import AdvancedReportsDashboard from './pages/AdvancedReportsDashboard';
 import FinanceDashboard from './pages/FinanceDashboard';
 import LoginPage from './pages/LoginPage';
+import InvitedSignUp from './pages/InvitedSignUp';
 import CompaniesDashboard from './pages/owner/CompaniesDashboard';
 import SaaSOperations from './pages/owner/SaaSOperations';
 import TeamDashboard from './pages/TeamDashboard';
@@ -82,103 +84,106 @@ export default function App() {
   return (
     <BrowserRouter>
       <CRMProvider>
-        <Routes>
-          {/* Ruta publica */}
-          <Route path="/login" element={<LoginPage />} />
+        <GlobalDataProvider>
+          <Routes>
+            {/* Ruta publica */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<InvitedSignUp />} />
 
-          <Route path="/" element={
-            <AuthGuard>
-              <HomeRoute />
-            </AuthGuard>
-          } />
-          <Route path="/comercial" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <CommercialDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/seguimientos" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <FollowUpsDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/finanzas" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <FinanceDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/configuracion" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <SettingsDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/empresas" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <CompaniesDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/saas/*" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <SaaSOperations />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/analitica-agentes" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <AgentAnalyticsDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/reportes-avanzados" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <AdvancedReportsDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/rendimiento" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <LeaderboardPage />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/equipo" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <TeamDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/proyectos" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <ProjectsDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
-          <Route path="/plantillas" element={
-            <AuthGuard>
-              <CorporateLayout>
-                <TemplatesDashboard />
-              </CorporateLayout>
-            </AuthGuard>
-          } />
+            <Route path="/" element={
+              <AuthGuard>
+                <HomeRoute />
+              </AuthGuard>
+            } />
+            <Route path="/comercial" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <CommercialDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/seguimientos" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <FollowUpsDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/finanzas" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <FinanceDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/configuracion" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <SettingsDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/empresas" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <CompaniesDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/saas/*" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <SaaSOperations />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/analitica-agentes" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <AgentAnalyticsDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/reportes-avanzados" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <AdvancedReportsDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/rendimiento" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <LeaderboardPage />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/equipo" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <TeamDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/proyectos" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <ProjectsDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/plantillas" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <TemplatesDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
 
-          {/* Cualquier ruta desconocida va al inicio */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Cualquier ruta desconocida va al inicio */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </GlobalDataProvider>
       </CRMProvider>
     </BrowserRouter>
   );

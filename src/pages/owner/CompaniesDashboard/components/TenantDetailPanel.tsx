@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Building2, Users, FolderKanban, Play, Pause, LogIn, Edit2, Save } from 'lucide-react';
+import { X, Building2, Users, FolderKanban, Play, Pause, LogIn, Edit2, Save, Send } from 'lucide-react';
 import { useCRM } from '../../../../context/CRMContext';
 
 interface TenantDetailPanelProps {
@@ -54,6 +54,38 @@ export default function TenantDetailPanel({ tenant, onClose, onUpdateStatus, onU
     }
   };
 
+  const handleInviteManager = async () => {
+    const email = window.prompt('Ingrese el correo electrónico del nuevo Gerente:');
+    if (!email) return;
+
+    try {
+      const { supabase } = await import('../../../../config/supabase');
+      
+      const { data, error } = await supabase.from('user_invitations').insert([{
+        tenant_id: tenant.id,
+        email: email,
+        role: 'manager'
+      }]).select().single();
+
+      if (error) {
+        if (error.code === '23505') {
+          alert('Ya existe una invitación pendiente para este correo.');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      const inviteLink = `${window.location.origin}/signup?token=${data.token}`;
+      
+      window.prompt('✅ Invitación generada exitosamente. Copie el siguiente enlace y envíeselo al cliente:', inviteLink);
+      
+    } catch (error: any) {
+      console.error(error);
+      alert('Error al generar la invitación: ' + (error.message || JSON.stringify(error)));
+    }
+  };
+
   const handleSaveDetails = async () => {
     await onUpdateDetails(tenant.id, { name: editName, ruc: editRuc });
     setIsEditing(false);
@@ -103,6 +135,16 @@ export default function TenantDetailPanel({ tenant, onClose, onUpdateStatus, onU
               >
                 <LogIn size={14} className="slds-m-right_xx-small"/>
                 {isImpersonatingLoad ? 'Conectando...' : 'Login As'}
+              </button>
+            </div>
+            <div className="slds-col">
+              <button 
+                className="slds-button slds-button_outline-brand slds-size_1-of-1"
+                onClick={handleInviteManager}
+                title="Generar enlace de invitación para el Gerente de esta Inmobiliaria"
+              >
+                <Send size={14} className="slds-m-right_xx-small"/>
+                Invitar Gerente
               </button>
             </div>
           </div>

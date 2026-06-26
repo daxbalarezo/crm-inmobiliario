@@ -7,7 +7,7 @@ export interface Tenant {
   id: string;
   name: string;
   status: 'active' | 'suspended' | 'pending';
-  plan_id: string;
+  plan: string;
   billing_email: string;
   created_at: string;
 }
@@ -100,6 +100,14 @@ export const saasService = {
     const { error } = await supabase
       .from('saas_subscriptions')
       .update({ status })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async updateSubscriptionDetails(id: string, updates: { status: string, current_period_end: string }): Promise<void> {
+    const { error } = await supabase
+      .from('saas_subscriptions')
+      .update(updates)
       .eq('id', id);
     if (error) throw error;
   },

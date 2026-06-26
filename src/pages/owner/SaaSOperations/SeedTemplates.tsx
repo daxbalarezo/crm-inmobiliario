@@ -49,9 +49,9 @@ export default function SeedTemplates() {
   const handleSave = async () => {
     try {
       setLoading(true);
-      // Actualizar Pipeline Stages existentes
+      // Actualizar o crear Pipeline Stages
       for (const stage of stages) {
-        if (typeof stage.id === 'string') {
+        if (typeof stage.id === 'string' && !stage.id.startsWith('new_')) {
           await supabase.from('saas_seed_templates').update({
             name: stage.name,
             description: stage.description,
@@ -61,6 +61,17 @@ export default function SeedTemplates() {
               order: stage.order
             }
           }).eq('id', stage.id);
+        } else if (typeof stage.id === 'string' && stage.id.startsWith('new_')) {
+          await supabase.from('saas_seed_templates').insert([{
+            type: 'pipeline_stage',
+            name: stage.name,
+            description: stage.description || 'Etapa del proceso',
+            config_json: {
+              probability: stage.probability,
+              color: stage.color,
+              order: stage.order
+            }
+          }]);
         }
       }
       
@@ -83,6 +94,25 @@ export default function SeedTemplates() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddStage = () => {
+    const newOrder = stages.length > 0 ? Math.max(...stages.map(s => s.order)) + 1 : 1;
+    const newStage = {
+      id: `new_${Date.now()}`,
+      name: 'Nueva Etapa',
+      description: '',
+      probability: 0,
+      color: '#0176d3',
+      order: newOrder
+    };
+    setStages([...stages, newStage]);
+  };
+
+  const handleRemoveStage = (index: number) => {
+    const newStages = [...stages];
+    newStages.splice(index, 1);
+    setStages(newStages);
   };
 
   return (
@@ -109,7 +139,7 @@ export default function SeedTemplates() {
               <h3 className="slds-text-heading_small" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <GitCommit size={18} color="#0176d3" /> Embudo de Ventas (Estándar Salesforce)
               </h3>
-              <button className="slds-button slds-button_neutral">
+              <button className="slds-button slds-button_neutral" onClick={handleAddStage}>
                 <Plus size={14} className="slds-m-right_xx-small" /> Añadir Etapa
               </button>
             </div>
@@ -157,13 +187,41 @@ export default function SeedTemplates() {
                           <div className="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">{stage.description}</div>
                         </td>
                         <td data-label="Probabilidad">
-                          <div className="slds-truncate" title={`${stage.probability}%`}>{stage.probability}%</div>
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <input 
+                              type="number" 
+                              className="slds-input" 
+                              value={stage.probability}
+                              onChange={(e) => {
+                                const newStages = [...stages];
+                                newStages[index].probability = parseInt(e.target.value) || 0;
+                                setStages(newStages);
+                              }}
+                              min="0" max="100"
+                              style={{ width: '60px', border: '1px solid transparent', backgroundColor: 'transparent' }}
+                              onFocus={(e) => e.target.style.border = '1px solid #0176d3'}
+                              onBlur={(e) => e.target.style.border = '1px solid transparent'}
+                            /> 
+                            <span className="slds-m-left_xx-small">%</span>
+                          </div>
                         </td>
                         <td data-label="Color">
-                          <span className="slds-badge" style={{ backgroundColor: stage.color, color: 'white' }}>■ Color</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input 
+                              type="color" 
+                              value={stage.color}
+                              onChange={(e) => {
+                                const newStages = [...stages];
+                                newStages[index].color = e.target.value;
+                                setStages(newStages);
+                              }}
+                              style={{ width: '32px', height: '32px', padding: '0', border: 'none', cursor: 'pointer', backgroundColor: 'transparent' }}
+                            />
+                            <span className="slds-text-body_small slds-text-color_weak">{stage.color}</span>
+                          </div>
                         </td>
                         <td role="gridcell">
-                          <button className="slds-button slds-button_icon slds-button_icon-error" title="Eliminar">
+                          <button className="slds-button slds-button_icon slds-button_icon-error" title="Eliminar" onClick={() => handleRemoveStage(index)}>
                             <Trash2 size={16} />
                           </button>
                         </td>

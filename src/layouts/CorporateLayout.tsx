@@ -21,7 +21,7 @@ interface NavItem {
 
 export default function CorporateLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const { logout, userProfile, userPermissions, isImpersonating, stopImpersonating, tenant, activeProjectId, setActiveProjectId } = useCRM();
+  const { logout, userProfile, userPermissions, isImpersonating, stopImpersonating, tenant, tenantSubscription, activeProjectId, setActiveProjectId } = useCRM();
   const { projects } = useProjects();
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
@@ -165,9 +165,33 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
+  let billingWarning = null;
+  if (userProfile?.role === 'manager' && tenantSubscription?.current_period_end) {
+    const endDate = new Date(tenantSubscription.current_period_end);
+    const now = new Date();
+    const diffTime = endDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 3 && diffDays > 0) {
+      billingWarning = (
+        <div style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '10px', textAlign: 'center', fontWeight: 'bold', fontSize: '14px', zIndex: 100 }}>
+          ⚠️ Tu suscripción vence en {diffDays} {diffDays === 1 ? 'día' : 'días'}. Por favor gestiona tu pago para evitar interrupciones.
+        </div>
+      );
+    } else if (diffDays <= 0 && diffDays >= -1) {
+      billingWarning = (
+        <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '10px', textAlign: 'center', fontWeight: 'bold', fontSize: '14px', zIndex: 100 }}>
+          🚨 Tu suscripción ha vencido. Tienes 24 horas de prórroga para registrar tu pago antes de que se suspenda el acceso.
+        </div>
+      );
+    }
+  }
+
   return (
     <div className={styles.layoutContainer}>
       
+      {billingWarning}
+
       {isImpersonating && (
         <div className={styles.supportBanner}>
           <div className={styles.supportBannerContent}>

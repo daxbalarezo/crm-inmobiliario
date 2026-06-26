@@ -5,7 +5,7 @@ import { useGlobalData } from '../context/GlobalDataProvider';
 import type { Lead, Unit } from '../types/definitions';
 
 export function useCommercialData() {
-  const { leads: globalLeads, loading: globalLoading } = useGlobalData();
+  const { leads: globalLeads, loading: globalLoading, updateLeadOptimistically } = useGlobalData();
   const [inventory, setInventory] = useState<Unit[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
   const { authReady, userProfile, tenantId, activeProjectId } = useCRM();
@@ -96,6 +96,7 @@ export function useCommercialData() {
   return { 
     leads, 
     inventory, 
-    loading: globalLoading || loadingInventory 
+    loading: globalLoading || loadingInventory,
+    updateLeadOptimistically
   };
 }

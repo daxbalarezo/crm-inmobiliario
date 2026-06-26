@@ -43,8 +43,9 @@ export function useTenantSchema(entityType: 'lead' | 'project' = 'lead') {
     fetchSchema();
 
     // Configurar Supabase Realtime para cambios en los fields del tenant
+    const channelName = `tenant_schema_${tenantId}_${entityType}_${Math.random().toString(36).slice(2, 9)}`;
     const channel = supabase
-      .channel(`tenant_schema_${tenantId}_${entityType}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'tenants', filter: `id=eq.${tenantId}` },

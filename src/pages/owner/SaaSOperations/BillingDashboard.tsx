@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, Users, AlertCircle, CheckCircle, Clock, Upload } from 'lucide-react';
+import { DollarSign, TrendingUp, Users, AlertCircle, CheckCircle, Clock, Upload, Edit2 } from 'lucide-react';
 import { saasService, type SaaSSubscription } from '../../../services/saasService';
+import EditSubscriptionModal from './EditSubscriptionModal';
 
 export default function BillingDashboard() {
   const [subscriptions, setSubscriptions] = useState<SaaSSubscription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSubscription, setSelectedSubscription] = useState<SaaSSubscription | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     loadSubscriptions();
@@ -36,6 +39,14 @@ export default function BillingDashboard() {
       console.error('Error approving deposit:', error);
       alert('Error al aprobar el depósito');
     }
+  };
+
+  const handleSaveSubscription = async (id: string, updates: { current_period_end: string, status: string }) => {
+    await saasService.updateSubscriptionDetails(id, updates);
+    setSubscriptions(prev => prev.map(sub => 
+      sub.id === id ? { ...sub, ...updates } : sub
+    ));
+    alert('Suscripción actualizada correctamente.');
   };
 
   const getStatusBadge = (status: string) => {
@@ -72,8 +83,8 @@ export default function BillingDashboard() {
                 </span>
               </div>
               <div className="slds-media__body">
-                <p className="slds-text-heading_small slds-text-color_weak">MRR (Mensual)</p>
-                <h2 className="slds-text-heading_large slds-m-top_xx-small">${totalMRR}</h2>
+                <p className="slds-text-heading_small slds-text-color_weak">Ingreso Mensual</p>
+                <h2 className="slds-text-heading_large slds-m-top_xx-small">S/ {totalMRR}</h2>
               </div>
             </div>
           </div>
@@ -88,8 +99,8 @@ export default function BillingDashboard() {
                 </span>
               </div>
               <div className="slds-media__body">
-                <p className="slds-text-heading_small slds-text-color_weak">ARR (Anual)</p>
-                <h2 className="slds-text-heading_large slds-m-top_xx-small">${totalARR}</h2>
+                <p className="slds-text-heading_small slds-text-color_weak">Ingreso Anual</p>
+                <h2 className="slds-text-heading_large slds-m-top_xx-small">S/ {totalARR}</h2>
               </div>
             </div>
           </div>
@@ -105,7 +116,7 @@ export default function BillingDashboard() {
               </div>
               <div className="slds-media__body">
                 <p className="slds-text-heading_small slds-text-color_weak">Inmobiliarias Activas</p>
-                <h2 className="slds-text-heading_large slds-m-top_xx-small">{inmobiliarias.length}</h2>
+                <h2 className="slds-text-heading_large slds-m-top_xx-small">{subscriptions.filter(s => s.status === 'active').length}</h2>
               </div>
             </div>
           </div>
@@ -120,7 +131,7 @@ export default function BillingDashboard() {
                 </span>
               </div>
               <div className="slds-media__body">
-                <p className="slds-text-heading_small slds-text-color_weak">Churn Rate</p>
+                <p className="slds-text-heading_small slds-text-color_weak">Tasa de Cancelación</p>
                 <h2 className="slds-text-heading_large slds-m-top_xx-small">0%</h2>
               </div>
             </div>
@@ -173,7 +184,7 @@ export default function BillingDashboard() {
                         <div className="slds-truncate" title={sub.saas_plans?.name || 'Desconocido'}>{sub.saas_plans?.name || 'Desconocido'}</div>
                       </td>
                       <td data-label="MRR">
-                        <div className="slds-truncate" title={`$${sub.mrr}`}>${sub.mrr}</div>
+                        <div className="slds-truncate" title={`S/ ${sub.mrr}`}>S/ {sub.mrr}</div>
                       </td>
                       <td data-label="Estado">
                         {getStatusBadge(sub.status)}
@@ -184,19 +195,29 @@ export default function BillingDashboard() {
                         </div>
                       </td>
                       <td data-label="Acciones">
-                        {sub.status === 'pending_verification' ? (
+                        <div style={{ display: 'flex', gap: '8px' }}>
                           <button 
-                            className="slds-button slds-button_success" 
-                            style={{ color: 'white' }}
-                            onClick={() => handleApproveDeposit(sub.id)}
+                            className="slds-button slds-button_icon slds-button_icon-border-filled" 
+                            title="Editar"
+                            onClick={() => { setSelectedSubscription(sub); setIsEditModalOpen(true); }}
                           >
-                            Aprobar Depósito
+                            <Edit2 size={14} color="#0176d3" />
+                            <span className="slds-assistive-text">Editar</span>
                           </button>
-                        ) : (
-                          <button className="slds-button slds-button_outline-brand" disabled={sub.status === 'active'}>
-                            Reclamar Pago
-                          </button>
-                        )}
+                          {sub.status === 'pending_verification' ? (
+                            <button 
+                              className="slds-button slds-button_success" 
+                              style={{ color: 'white' }}
+                              onClick={() => handleApproveDeposit(sub.id)}
+                            >
+                              Aprobar Depósito
+                            </button>
+                          ) : (
+                            <button className="slds-button slds-button_outline-brand" disabled={sub.status === 'active'}>
+                              Reclamar Pago
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -212,6 +233,13 @@ export default function BillingDashboard() {
           </div>
         </div>
       </div>
+
+      <EditSubscriptionModal 
+        isOpen={isEditModalOpen}
+        onClose={() => { setIsEditModalOpen(false); setSelectedSubscription(null); }}
+        subscription={selectedSubscription}
+        onSave={handleSaveSubscription}
+      />
     </div>
   );
 }

@@ -35,6 +35,7 @@ interface CRMContextType {
   realUserProfile: UserProfile | null;
   isImpersonating: boolean;
   tenant: Tenant | null;
+  tenantSubscription: any | null;
   tenantId: string | null;
   activeProjectId: string | null;
   userPermissions: RolePermission['permissions'];
@@ -54,7 +55,8 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   const [isImpersonating, setIsImpersonating] = useState(false);
   
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [activeProjectId, setActiveProjectId] = useState<string>('valle_pacora');
+  const [tenantSubscription, setTenantSubscription] = useState<any>(null);
+  const [activeProjectId, setActiveProjectId] = useState<string>('all');
   const [userPermissions, setUserPermissions] = useState<RolePermission['permissions']>(DEFAULT_PERMISSIONS);
   const [authReady, setAuthReady] = useState(false);
 
@@ -65,7 +67,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     if (!tenantId) return { id: 'unknown', name: 'Empresa no encontrada', plan: 'starter' } as Tenant;
     
     try {
-      const { data, error } = await supabase.from('tenants').select('*').eq('id', tenantId).single();
+      const { data, error } = await supabase.from('tenants').select('*, saas_subscriptions(*)').eq('id', tenantId).single();
       if (!error && data) {
         return data as Tenant;
       }
@@ -108,15 +110,10 @@ export function CRMProvider({ children }: { children: ReactNode }) {
               return;
             }
           } else {
-            // Si no existe, simulamos uno para no romper la app durante desarrollo
-            profile = {
-              uid: supabaseUser.id,
-              tenantId: supabaseUser.id,
-              role: 'owner',
-              name: supabaseUser.email?.split('@')[0] ?? 'Usuario',
-              email: supabaseUser.email ?? '',
-              assignedProjectIds: ['valle_pacora'],
-            };
+            // Error grave de seguridad/sincronización: El usuario está en Auth pero no en public.users o RLS bloquea su lectura.
+            await supabase.auth.signOut();
+            alert('Error crítico: Tu perfil no fue aprovisionado o no tienes permisos de lectura. Contacta a soporte.');
+            return;
           }
           
           setUserProfile(profile);
@@ -124,6 +121,11 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           
           const fetchedTenant = await fetchTenant(profile.tenantId, profile.role);
           setTenant(fetchedTenant);
+          if (fetchedTenant.saas_subscriptions && fetchedTenant.saas_subscriptions.length > 0) {
+            setTenantSubscription(fetchedTenant.saas_subscriptions[0]);
+          } else {
+            setTenantSubscription(null);
+          }
 
           const permissions = await fetchPermissions(profile.tenantId, profile.role);
           setUserPermissions(permissions);
@@ -169,6 +171,11 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         
         const fetchedTenant = await fetchTenant(targetProfile.tenantId, targetProfile.role);
         setTenant(fetchedTenant);
+        if (fetchedTenant.saas_subscriptions && fetchedTenant.saas_subscriptions.length > 0) {
+          setTenantSubscription(fetchedTenant.saas_subscriptions[0]);
+        } else {
+          setTenantSubscription(null);
+        }
 
         const permissions = await fetchPermissions(targetProfile.tenantId, targetProfile.role);
         setUserPermissions(permissions);
@@ -189,6 +196,11 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     setIsImpersonating(false);
     const fetchedTenant = await fetchTenant(realUserProfile.tenantId, realUserProfile.role);
     setTenant(fetchedTenant);
+    if (fetchedTenant.saas_subscriptions && fetchedTenant.saas_subscriptions.length > 0) {
+      setTenantSubscription(fetchedTenant.saas_subscriptions[0]);
+    } else {
+      setTenantSubscription(null);
+    }
 
     const permissions = await fetchPermissions(realUserProfile.tenantId, realUserProfile.role);
     setUserPermissions(permissions);
@@ -209,6 +221,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       realUserProfile,
       isImpersonating,
       tenant,
+      tenantSubscription,
       tenantId: userProfile?.tenantId ?? null,
       activeProjectId,
       userPermissions,
