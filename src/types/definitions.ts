@@ -50,6 +50,7 @@ export interface RolePermission {
 
 export interface CustomFieldDefinition {
   id: string; // e.g. 'presupuesto'
+  entityType?: 'lead' | 'project'; // Opcional por retrocompatibilidad, pero requerido de ahora en adelante
   label: string; // e.g. 'Presupuesto Máximo'
   type: 'string' | 'number' | 'boolean' | 'date' | 'select';
   options?: string[]; // Para tipo 'select'

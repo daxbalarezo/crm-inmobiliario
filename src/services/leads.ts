@@ -1,8 +1,7 @@
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import type { Lead } from '../types/definitions'; 
 
-const COLLECTION_NAME = 'leads'; 
+const TABLE_NAME = 'leads'; 
 
 const cleanPayload = (data: Partial<Lead>) => {
   const payload = { ...data };
@@ -11,10 +10,6 @@ const cleanPayload = (data: Partial<Lead>) => {
   return payload;
 };
 
-/**
- * Servicio de Persistencia SaaS
- * Obliga al paso de tenantId y projectId para garantizar aislamiento de datos.
- */
 export const saveLeadService = async (
   formData: any, 
   editingId: string | null,
@@ -25,22 +20,41 @@ export const saveLeadService = async (
   try {
     const cleanData = cleanPayload(formData);
     
-    // El payload ahora es autogestionado por la arquitectura
-    const payload = { 
-      ...cleanData, 
-      tenantId, 
-      projectId,
-      ownerId,
-      updatedAt: serverTimestamp() 
+    const row = { 
+      tenant_id: tenantId, 
+      project_id: projectId,
+      assigned_to: ownerId || cleanData.assignedTo,
+      name: cleanData.name,
+      phone: cleanData.phone,
+      email: cleanData.email,
+      dni: cleanData.dni,
+      source: cleanData.source,
+      status: cleanData.status,
+      interest_level: cleanData.interestLevel,
+      interactions: cleanData.interactions,
+      next_follow_up_date: cleanData.nextFollowUpDate,
+      next_follow_up_note: cleanData.nextFollowUpNote,
+      last_campaign_date: cleanData.lastCampaignDate,
+      contact_date: cleanData.contactDate,
+      first_contact_at: cleanData.firstContactAt,
+      saved_proforma: cleanData.savedProforma,
+      loss_reason: cleanData.lossReason,
+      custom_data: cleanData.customData
     };
 
+    // Remove undefined values
+    Object.keys(row).forEach(key => {
+      if ((row as any)[key] === undefined) {
+        delete (row as any)[key];
+      }
+    });
+
     if (editingId) {
-      await updateDoc(doc(db, COLLECTION_NAME, editingId), payload);
+      const { error } = await supabase.from(TABLE_NAME).update(row).eq('id', editingId);
+      if (error) throw error;
     } else {
-      await addDoc(collection(db, COLLECTION_NAME), { 
-        ...payload, 
-        createdAt: serverTimestamp() 
-      });
+      const { error } = await supabase.from(TABLE_NAME).insert(row);
+      if (error) throw error;
     }
     return { success: true };
   } catch (error) {
@@ -51,7 +65,8 @@ export const saveLeadService = async (
 
 export const deleteLeadService = async (id: string) => {
   try {
-    await deleteDoc(doc(db, COLLECTION_NAME, id));
+    const { error } = await supabase.from(TABLE_NAME).delete().eq('id', id);
+    if (error) throw error;
     return { success: true };
   } catch (error) {
     console.error("🚨 Error al eliminar lead:", error);
@@ -71,11 +86,13 @@ export const completeTaskService = async (lead: Lead, tenantId: string) => {
     
     const updatedInteractions = [note, ...(lead.interactions || [])];
     
-    await updateDoc(doc(db, COLLECTION_NAME, lead.id!), { 
+    const { error } = await supabase.from(TABLE_NAME).update({ 
         interactions: updatedInteractions, 
-        nextFollowUpDate: null, 
-        nextFollowUpNote: ''    
-    });
+        next_follow_up_date: null, 
+        next_follow_up_note: null    
+    }).eq('id', lead.id);
+    
+    if (error) throw error;
     return { success: true };
   } catch (error) {
     console.error("🚨 Error al completar tarea:", error);

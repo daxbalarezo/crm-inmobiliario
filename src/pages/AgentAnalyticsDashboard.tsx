@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAgentAnalytics } from '../hooks/useAgentAnalytics';
 import { useCRM } from '../context/CRMContext';
 import styles from './AgentAnalyticsDashboard.module.css';
+import adminStyles from './AdminDashboard.module.css';
 import { Users, TrendingUp, Award, Activity, BarChart3, Filter, Download, List } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell } from 'recharts';
 import LeadModal from '../components/LeadModal';
@@ -67,52 +68,61 @@ export default function AgentAnalyticsDashboard() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.pageHeader}>
-        <div className={styles.headerTitleRow}>
-          <div className={styles.headerIcon}>
-            <Activity size={24} />
+      <div className={adminStyles.pageHeader}>
+        <div className={adminStyles.headerTopRow}>
+          <div className={adminStyles.headerTitleBlock}>
+            <div className={adminStyles.headerIcon}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            </div>
+            <div className={adminStyles.headerTextGroup}>
+              <p className={adminStyles.headerBreadcrumb}>Analíticas</p>
+              <h2 className={adminStyles.title}>Reporte Detallado por Asesor</h2>
+            </div>
           </div>
-          <div className={styles.headerTextGroup}>
-            <p className={styles.superTitle}>Analíticas</p>
-            <h2 className={styles.mainTitle}>Reporte Detallado por Asesor</h2>
-          </div>
+          <div></div>
         </div>
         
-        <div className={styles.filtersRow}>
-          <select 
-            value={selectedAgent} 
-            onChange={e => setSelectedAgent(e.target.value)}
-            className={styles.filterSelect}
-          >
-            <option value="">Seleccione un asesor...</option>
-            {agentsList.map(a => (
-              <option key={a.uid} value={a.uid}>{a.name}</option>
-            ))}
-          </select>
+        {/* SLDS Filter Bar / Secondary Row */}
+        <div style={{ display: 'flex', padding: '12px 0 0 0', borderTop: '1px solid #DDDBDA', marginTop: '4px' }}>
+          <div className={adminStyles.filterGroup} style={{ gap: '12px', width: '100%', flexWrap: 'wrap' }}>
+            <select 
+              value={selectedAgent} 
+              onChange={e => setSelectedAgent(e.target.value)}
+              className={adminStyles.timeFilter}
+              style={{ flex: '1', minWidth: '150px' }}
+            >
+              <option value="">Seleccione un asesor...</option>
+              {agentsList.map(a => (
+                <option key={a.uid} value={a.uid}>{a.name}</option>
+              ))}
+            </select>
 
-          <select 
-            value={timeRange} 
-            onChange={e => setTimeRange(e.target.value)}
-            className={styles.filterSelect}
-          >
-            <option value="this_month">Este mes</option>
-            <option value="last_month">Mes pasado</option>
-            <option value="last_6_months">Últimos 6 meses</option>
-            <option value="this_year">Este año</option>
-            <option value="all">Histórico Total</option>
-          </select>
+            <select 
+              value={timeRange} 
+              onChange={e => setTimeRange(e.target.value)}
+              className={adminStyles.timeFilter}
+              style={{ flex: '1', minWidth: '150px' }}
+            >
+              <option value="this_month">Este mes</option>
+              <option value="last_month">Mes pasado</option>
+              <option value="last_6_months">Últimos 6 meses</option>
+              <option value="this_year">Este año</option>
+              <option value="all">Histórico Total</option>
+            </select>
 
-          <select 
-            value={stageFilter} 
-            onChange={e => setStageFilter(e.target.value)}
-            className={styles.filterSelect}
-          >
-            <option value="all">Todas las etapas</option>
-            {dynamicStages.map(s => (
-              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-            ))}
-            <option value="PERDIDO">PERDIDO</option>
-          </select>
+            <select 
+              value={stageFilter} 
+              onChange={e => setStageFilter(e.target.value)}
+              className={adminStyles.timeFilter}
+              style={{ flex: '1', minWidth: '150px' }}
+            >
+              <option value="all">Todas las etapas</option>
+              {dynamicStages.map(s => (
+                <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+              ))}
+              <option value="PERDIDO">PERDIDO</option>
+            </select>
+          </div>
         </div>
       </div>
 

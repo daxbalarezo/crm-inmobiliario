@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, CheckCircle2, MoreVertical, Power, PowerOff, CalendarOff, Edit, LogIn } from 'lucide-react';
+import { Plus, X, CheckCircle2, MoreVertical, Power, PowerOff, CalendarOff, Edit, LogIn, Palmtree } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useRoles } from '../hooks/useRoles';
-import { db, firebaseConfig } from '../config/firebase';
-import { collection, query, getDocs, where, orderBy, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../config/supabase';
 import styles from './SettingsDashboard.module.css';
 
-const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp2");
-const secondaryAuth = getAuth(secondaryApp);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
 
 export default function TeamDashboard() {
   const { userProfile, impersonateUser } = useCRM();
@@ -50,20 +52,18 @@ export default function TeamDashboard() {
       setLoading(true);
       try {
         if (userProfile.role === 'owner') {
-          const [tenantsSnap, usersSnap] = await Promise.all([
-            getDocs(collection(db, 'tenants')),
-            getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')))
-          ]);
-          setTenants(tenantsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-          setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+          const { data: tenantsSnap } = await supabase.from('tenants').select('*');
+          const { data: usersSnap } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+          
+          setTenants(tenantsSnap || []);
+          setUsers((usersSnap || []).map(u => ({ id: u.uid, ...u })));
         } else {
           // Manager
-          const [tenantSnap, usersSnap] = await Promise.all([
-            getDocs(query(collection(db, 'tenants'), where('__name__', '==', userProfile.tenantId))),
-            getDocs(query(collection(db, 'users'), where('tenantId', '==', userProfile.tenantId)))
-          ]);
-          setTenants(tenantSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-          setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+          const { data: tenantSnap } = await supabase.from('tenants').select('*').eq('id', userProfile.tenantId);
+          const { data: usersSnap } = await supabase.from('users').select('*').eq('tenant_id', userProfile.tenantId);
+          
+          setTenants(tenantSnap || []);
+          setUsers((usersSnap || []).map(u => ({ id: u.uid, ...u })));
         }
       } catch (err) {
         console.error(err);
@@ -94,16 +94,15 @@ export default function TeamDashboard() {
     setIsCheckingCollision(true);
     setCollisionError('');
     try {
-      const q = query(collection(db, 'users'), where('username', '==', username));
-      const snap = await getDocs(q);
+      const { data } = await supabase.from('users').select('uid').eq('email', `${username}@crm.local`);
 
-      if (!snap.empty) {
+      if (data && data.length > 0) {
         let i = 2;
         while (true) {
           const testUsername = `${username}${i}`;
-          const qTest = query(collection(db, 'users'), where('username', '==', testUsername));
-          const snapTest = await getDocs(qTest);
-          if (snapTest.empty) {
+          const { data: testData } = await supabase.from('users').select('uid').eq('email', `${testUsername}@crm.local`);
+          
+          if (!testData || testData.length === 0) {
             setCollisionError(`El usuario ya existe. Sugerencia: ${testUsername}`);
             break;
           }
@@ -131,22 +130,25 @@ export default function TeamDashboard() {
 
     try {
       const fullEmail = `${generatedUsername}@crm.local`;
-      const cred = await createUserWithEmailAndPassword(secondaryAuth, fullEmail, newUser.password);
+      const { data: cred, error: signUpError } = await secondarySupabase.auth.signUp({
+        email: fullEmail,
+        password: newUser.password
+      });
+
+      if (signUpError || !cred.user) throw signUpError || new Error("Error creating auth user");
 
       const newDoc = {
+        uid: cred.user.id,
         name: `${newUser.firstName.trim()} ${newUser.lastName.trim()}`,
         email: fullEmail,
-        username: generatedUsername,
         role: newUser.role,
-        customRoleId: newUser.customRoleId || null,
-        tenantId: newUser.tenantId,
-        createdAt: serverTimestamp()
+        tenant_id: newUser.tenantId
       };
 
-      await setDoc(doc(db, 'users', cred.user.uid), newDoc);
-      await secondaryAuth.signOut();
+      const { error: insertError } = await supabase.from('users').insert(newDoc);
+      if (insertError) throw insertError;
 
-      setUsers(prev => [{ id: cred.user.uid, ...newDoc, createdAt: new Date() }, ...prev]);
+      setUsers(prev => [{ id: cred.user.id, ...newDoc, status: 'active', created_at: new Date() }, ...prev]);
       
       setCreatedCredentials({
         username: generatedUsername,
@@ -170,7 +172,7 @@ export default function TeamDashboard() {
   const handleToggleStatus = async (userId: string, currentStatus: string | undefined) => {
     const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
     try {
-      await updateDoc(doc(db, 'users', userId), { status: newStatus });
+      await supabase.from('users').update({ status: newStatus }).eq('uid', userId);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
     } catch (e) {
       console.error(e);
@@ -181,8 +183,8 @@ export default function TeamDashboard() {
   const handleToggleOoo = async (userId: string, currentOoo: boolean | undefined) => {
     const newOoo = !currentOoo;
     try {
-      await updateDoc(doc(db, 'users', userId), { outOfOffice: newOoo });
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, outOfOffice: newOoo } : u));
+      await supabase.from('users').update({ out_of_office: newOoo }).eq('uid', userId);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, out_of_office: newOoo } : u));
     } catch (e) {
       console.error(e);
     }

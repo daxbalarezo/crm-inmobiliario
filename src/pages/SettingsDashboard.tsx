@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { Settings, Database, Users, Link as LinkIcon, Shuffle, ShieldAlert, FileText } from 'lucide-react';
+import { supabase } from '../config/supabase';
 import { useCRM } from '../context/CRMContext';
 import { seedTestData, clearTestData } from '../utils/dataSeeder';
 
 import DataModelSettings from './settings/DataModelSettings';
 import RolesSettings from './settings/RolesSettings';
 import AuditDashboard from './settings/AuditDashboard';
-import WorkflowsDashboard from './settings/WorkflowsDashboard';
 import BusinessRulesSettings from './settings/BusinessRulesSettings';
-
-import styles from './SettingsDashboard.module.css';
+import IntegrationsSettings from './settings/IntegrationsSettings';
+import AssignmentRulesSettings from './settings/AssignmentRulesSettings';
 
 export default function SettingsDashboard() {
   const { userProfile, tenantId } = useCRM();
@@ -27,8 +26,13 @@ export default function SettingsDashboard() {
 
     setIsSeeding(true);
     try {
-      const usersSnap = await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId)));
-      const fetchedUsers = usersSnap.docs.map(d => ({ ...d.data(), uid: d.id })).filter((u: any) => u.role === 'agent');
+      const { data: fetchedUsers, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('role', 'agent');
+        
+      if (error) throw error;
       
       if (fetchedUsers.length === 0) {
         alert('Debes tener al menos 1 asesor registrado en la plataforma para generar datos.');
@@ -50,38 +54,72 @@ export default function SettingsDashboard() {
     return <Navigate to="/" replace />;
   }
 
+  const getHeaderData = () => {
+    switch (activeTab) {
+      case 'campos': return { title: 'Modelo de Datos', icon: Database };
+      case 'roles': return { title: 'Roles y Permisos', icon: Users };
+      case 'integraciones': return { title: 'Integraciones (Webhooks)', icon: LinkIcon };
+      case 'asignacion': return { title: 'Reglas de Asignación', icon: Shuffle };
+      case 'reglas': return { title: 'Reglas de Negocio (SLA)', icon: ShieldAlert };
+      case 'auditoria': return { title: 'Registro de Auditoría', icon: FileText };
+      default: return { title: 'Configuración Inmobiliaria', icon: Settings };
+    }
+  };
+
+  const headerData = getHeaderData();
+  const IconComponent = headerData.icon;
+
   return (
-    <div className={styles.container}>
-      <div className={styles.header} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2 className={styles.title}>Configuración Técnica</h2>
-          <p className={styles.subtitle}>Ajustes del sistema y modelo de datos</p>
-        </div>
-        <div>
-          <button 
-            onClick={handleSeed} 
-            disabled={isSeeding}
-            style={{ backgroundColor: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '6px', fontWeight: 500, fontSize: '14px', border: 'none', cursor: isSeeding ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            {isSeeding ? 'Generando...' : '⚙️ Limpiar y Re-Sembrar (400 Leads)'}
-          </button>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* PAGE HEADER DINÁMICO */}
+      <div className="slds-page-header slds-m-bottom_medium" style={{ backgroundColor: 'white' }}>
+        <div className="slds-page-header__row">
+          <div className="slds-page-header__col-title">
+            <div className="slds-media">
+              <div className="slds-media__figure">
+                <span className="slds-icon_container slds-icon-standard-custom" title={headerData.title} style={{ color: 'white', backgroundColor: '#344a5e' }}>
+                  <IconComponent size={32} className="slds-icon slds-page-header__icon" />
+                </span>
+              </div>
+              <div className="slds-media__body">
+                <div className="slds-page-header__name">
+                  <div className="slds-page-header__name-title">
+                    <h1>
+                      <span className="slds-page-header__title slds-truncate" title={headerData.title}>
+                        {headerData.title}
+                      </span>
+                    </h1>
+                  </div>
+                </div>
+                <p className="slds-page-header__name-meta">Configuración Inmobiliaria (Tenant Admin)</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="slds-page-header__col-actions">
+            <div className="slds-page-header__controls">
+              <div className="slds-page-header__control">
+                {activeTab === 'campos' && (
+                  <button 
+                    className="slds-button slds-button_destructive"
+                    onClick={handleSeed} 
+                    disabled={isSeeding}
+                  >
+                    {isSeeding ? 'Generando...' : 'Limpiar y Re-Sembrar (400 Leads)'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div style={{ marginTop: '24px' }}>
-        {/* CAMPOS PERSONALIZADOS */}
+      <div style={{ flex: 1 }}>
         {activeTab === 'campos' && <DataModelSettings />}
-
-        {/* ROLES Y PERMISOS */}
         {activeTab === 'roles' && <RolesSettings />}
-
-        {/* AUDITORÍA */}
+        {activeTab === 'integraciones' && <IntegrationsSettings />}
+        {activeTab === 'asignacion' && <AssignmentRulesSettings />}
         {activeTab === 'auditoria' && <AuditDashboard />}
-
-        {/* WORKFLOWS */}
-        {activeTab === 'workflows' && <WorkflowsDashboard />}
-
-        {/* REGLAS DE NEGOCIO */}
         {activeTab === 'reglas' && <BusinessRulesSettings />}
       </div>
     </div>

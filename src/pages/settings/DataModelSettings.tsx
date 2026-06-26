@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Edit2, GripVertical } from 'lucide-react';
-import { collection, addDoc, deleteDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { supabase } from '../../config/supabase';
 import { useCRM } from '../../context/CRMContext';
 import { useTenantSchema } from '../../hooks/useTenantSchema';
 import type { CustomFieldDefinition } from '../../types/definitions';
@@ -19,6 +18,7 @@ export default function DataModelSettings() {
   const [fieldType, setFieldType] = useState<CustomFieldDefinition['type']>('string');
   const [fieldRequired, setFieldRequired] = useState(false);
   const [fieldOptions, setFieldOptions] = useState(''); // Comma separated for 'select'
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleOpenModal = (field?: CustomFieldDefinition) => {
     if (field) {
@@ -41,42 +41,92 @@ export default function DataModelSettings() {
     e.preventDefault();
     if (!tenantId || !fieldLabel.trim()) return;
 
-    const schemaRef = collection(db, 'tenants', tenantId, 'schema_lead');
+    setIsSaving(true);
     const optionsArray = fieldType === 'select' ? fieldOptions.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-    const fieldData = {
-      label: fieldLabel.trim(),
-      type: fieldType,
-      required: fieldRequired,
-      options: optionsArray,
-      updatedAt: serverTimestamp()
-    };
-
     try {
+      // Obtener el array completo actual de Supabase
+      const { data, error: fetchError } = await supabase
+        .from('tenants')
+        .select('fields')
+        .eq('id', tenantId)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      let currentFields: CustomFieldDefinition[] = data?.fields || [];
+      
+      let newFields = [...currentFields];
+      
       if (editingField) {
-        await updateDoc(doc(schemaRef, editingField.id), fieldData);
+        // Editar
+        newFields = newFields.map(f => {
+          if (f.id === editingField.id) {
+            return {
+              ...f,
+              label: fieldLabel.trim(),
+              type: fieldType,
+              required: fieldRequired,
+              options: optionsArray,
+            };
+          }
+          return f;
+        });
       } else {
+        // Crear
         const generatedId = fieldLabel.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
-        await addDoc(schemaRef, {
-          ...fieldData,
+        newFields.push({
           id: generatedId,
-          order: fields.length,
-          createdAt: serverTimestamp()
+          entityType: 'lead',
+          label: fieldLabel.trim(),
+          type: fieldType,
+          required: fieldRequired,
+          options: optionsArray,
+          order: currentFields.length
         });
       }
+
+      // Guardar de vuelta en Supabase
+      const { error: updateError } = await supabase
+        .from('tenants')
+        .update({ fields: newFields })
+        .eq('id', tenantId);
+        
+      if (updateError) throw updateError;
+      
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error saving field:', error);
       alert('Error al guardar el campo.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!tenantId || !window.confirm('¿Estás seguro de eliminar este campo? Esto no borrará los datos ya guardados en los leads, pero ocultará el campo del formulario.')) return;
+    
     try {
-      await deleteDoc(doc(db, 'tenants', tenantId, 'schema_lead', id));
+      const { data, error: fetchError } = await supabase
+        .from('tenants')
+        .select('fields')
+        .eq('id', tenantId)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      let currentFields: CustomFieldDefinition[] = data?.fields || [];
+      let newFields = currentFields.filter(f => f.id !== id);
+      
+      const { error: updateError } = await supabase
+        .from('tenants')
+        .update({ fields: newFields })
+        .eq('id', tenantId);
+        
+      if (updateError) throw updateError;
     } catch (error) {
       console.error('Error deleting field:', error);
+      alert('Error al eliminar el campo.');
     }
   };
 
@@ -184,8 +234,10 @@ export default function DataModelSettings() {
               </div>
 
               <div className={styles.modalFooter}>
-                <button type="button" onClick={() => setIsModalOpen(false)} className={styles.btnCancel}>Cancelar</button>
-                <button type="submit" className={styles.btnPrimary}>Guardar Campo</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSaving} className={styles.btnCancel}>Cancelar</button>
+                <button type="submit" disabled={isSaving} className={styles.btnPrimary}>
+                  {isSaving ? 'Guardando...' : 'Guardar Campo'}
+                </button>
               </div>
             </form>
           </div>

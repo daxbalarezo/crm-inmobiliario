@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import { useCRM } from '../context/CRMContext';
+import { useGlobalData } from '../context/GlobalDataProvider';
 import type { Lead, UserProfile } from '../types/definitions';
 
 export function useAdvancedReports(timeRange: string = 'this_month') {
   const { tenantId, userProfile } = useCRM();
+  const { leads: globalLeads, loading: globalLoading } = useGlobalData();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -13,26 +14,29 @@ export function useAdvancedReports(timeRange: string = 'this_month') {
   const [users, setUsers] = useState<UserProfile[]>([]);
 
   useEffect(() => {
-    if (!tenantId) return;
+    if (!tenantId || globalLoading) return;
     loadData();
-  }, [tenantId, timeRange]);
+  }, [tenantId, timeRange, globalLoading]);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      let usersSnap;
-      
-      if (userProfile?.role === 'owner') {
-        usersSnap = await getDocs(collection(db, 'users'));
-      } else {
-        usersSnap = await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId)));
+      // Fetch Users
+      let usersQuery = supabase.from('users').select('*');
+      if (userProfile?.role !== 'owner') {
+        usersQuery = usersQuery.eq('tenant_id', tenantId);
       }
+      const { data: usersData, error: usersError } = await usersQuery;
+      if (usersError) throw usersError;
 
-      const fetchedUsers = usersSnap.docs.map(d => {
-        const data = d.data() as UserProfile;
-        return { ...data, uid: d.id, name: String(data.name || '').toUpperCase() };
-      }).filter(u => u.role === 'agent');
+      const fetchedUsers = (usersData || []).map(row => ({
+        uid: row.uid,
+        tenantId: row.tenant_id,
+        role: row.role,
+        name: String(row.name || '').toUpperCase(),
+        email: row.email
+      }) as UserProfile).filter(u => u.role === 'agent');
       setUsers(fetchedUsers);
       
       // Calculate Date Range
@@ -51,40 +55,49 @@ export function useAdvancedReports(timeRange: string = 'this_month') {
         startDate = new Date(now.getFullYear(), 0, 1);
       }
 
-      // Fetch Leads
-      let leadsConstraints: any[] = [];
+      // Filter Leads from Global Cache
+      let filteredLeads = globalLeads;
       if (userProfile?.role !== 'owner') {
-        leadsConstraints.push(where('tenantId', '==', tenantId));
+        filteredLeads = filteredLeads.filter(l => l.tenantId === tenantId);
       }
-      if (startDate) leadsConstraints.push(where('createdAt', '>=', startDate));
-      if (endDate) leadsConstraints.push(where('createdAt', '<', endDate));
-
-      const leadsQ = query(collection(db, 'leads'), ...leadsConstraints);
-      const leadsSnap = await getDocs(leadsQ);
-      const fetchedLeads = leadsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Lead));
+      if (startDate) {
+        filteredLeads = filteredLeads.filter(l => l.createdAt && new Date(l.createdAt) >= startDate!);
+      }
+      if (endDate) {
+        filteredLeads = filteredLeads.filter(l => l.createdAt && new Date(l.createdAt) < endDate!);
+      }
       
-      fetchedLeads.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+      filteredLeads.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
       });
-      setLeads(fetchedLeads);
+      setLeads(filteredLeads);
 
       // Fetch Activities
-      let actsConstraints: any[] = [];
+      let actsQuery = supabase.from('lead_activities').select('*');
       if (userProfile?.role !== 'owner') {
-        actsConstraints.push(where('tenantId', '==', tenantId));
+        actsQuery = actsQuery.eq('tenant_id', tenantId);
       }
-      if (startDate) actsConstraints.push(where('createdAt', '>=', startDate));
-      if (endDate) actsConstraints.push(where('createdAt', '<', endDate));
+      if (startDate) actsQuery = actsQuery.gte('created_at', startDate.toISOString());
+      if (endDate) actsQuery = actsQuery.lt('created_at', endDate.toISOString());
 
-      const actsQ = query(collection(db, 'lead_activities'), ...actsConstraints);
-      const actsSnap = await getDocs(actsQ);
-      const fetchedActivities = actsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const { data: actsData, error: actsError } = await actsQuery;
+      if (actsError) throw actsError;
+
+      const fetchedActivities = (actsData || []).map(row => ({
+        id: row.id,
+        leadId: row.lead_id,
+        tenantId: row.tenant_id,
+        userId: row.user_id,
+        type: row.type,
+        notes: row.notes,
+        createdAt: row.created_at
+      }));
       
       fetchedActivities.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
       });
       setActivities(fetchedActivities);

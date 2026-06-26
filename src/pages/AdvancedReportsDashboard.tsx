@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, L
 import { useAdvancedReports } from '../hooks/useAdvancedReports';
 import styles from './AdvancedReportsDashboard.module.css';
 import agentStyles from './AgentAnalyticsDashboard.module.css';
+import adminStyles from './AdminDashboard.module.css';
 import LeadModal from '../components/LeadModal';
 import type { Lead } from '../types/definitions';
 import { useCRM } from '../context/CRMContext';
@@ -317,8 +318,8 @@ export default function AdvancedReportsDashboard() {
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
+                outerRadius={100}
+                paddingAngle={2}
                 dataKey="value"
                 nameKey="name"
               >
@@ -506,52 +507,60 @@ export default function AdvancedReportsDashboard() {
 
   return (
     <div className={styles.container}>
-      <div className={agentStyles.pageHeader}>
-        <div className={agentStyles.headerTitleRow}>
-          <div className={agentStyles.headerIcon}>
-            <BarChart3 size={24} />
+      <div className={adminStyles.pageHeader}>
+        <div className={adminStyles.headerTopRow}>
+          <div className={adminStyles.headerTitleBlock}>
+            <div className={adminStyles.headerIcon}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            </div>
+            <div className={adminStyles.headerTextGroup}>
+              <p className={adminStyles.headerBreadcrumb}>Analíticas</p>
+              <h2 className={adminStyles.title}>Explorador de Datos</h2>
+            </div>
           </div>
-          <div className={agentStyles.headerTextGroup}>
-            <p className={agentStyles.superTitle}>Analíticas</p>
-            <h2 className={agentStyles.mainTitle}>Explorador de Datos</h2>
-          </div>
+          
+          {/* Espacio reservado para Global Actions (Exportar, etc.) */}
+          <div></div>
         </div>
         
-        <div className={agentStyles.filtersRow}>
-          <select value={reportType} onChange={handleReportTypeChange} className={agentStyles.filterSelect} title="Tipo de Reporte">
-            <option value="source">Fuentes de Adquisición</option>
-            <option value="workload">Carga de Trabajo Activa</option>
-            <option value="loss_reasons">Análisis de Ventas Perdidas</option>
-            <option value="productivity">Métricas de Productividad</option>
-          </select>
+        {/* SLDS Filter Bar / Secondary Row */}
+        <div style={{ display: 'flex', padding: '12px 0 0 0', borderTop: '1px solid #DDDBDA', marginTop: '4px' }}>
+          <div className={adminStyles.filterGroup} style={{ gap: '12px', width: '100%', flexWrap: 'wrap' }}>
+            <select value={reportType} onChange={handleReportTypeChange} className={adminStyles.timeFilter} title="Tipo de Reporte" style={{ flex: '1', minWidth: '200px' }}>
+              <option value="source">Fuentes de Adquisición</option>
+              <option value="workload">Carga de Trabajo Activa</option>
+              <option value="loss_reasons">Análisis de Ventas Perdidas</option>
+              <option value="productivity">Métricas de Productividad</option>
+            </select>
 
-          <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className={agentStyles.filterSelect} title="Período">
-            <option value="all">Histórico Total</option>
-            <option value="this_month">Este mes</option>
-            <option value="last_month">Mes pasado</option>
-            <option value="last_6_months">Últimos 6 meses</option>
-            <option value="this_year">Este año</option>
-          </select>
+            <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className={adminStyles.timeFilter} title="Período" style={{ flex: '1', minWidth: '150px' }}>
+              <option value="all">Histórico Total</option>
+              <option value="this_month">Este mes</option>
+              <option value="last_month">Mes pasado</option>
+              <option value="last_6_months">Últimos 6 meses</option>
+              <option value="this_year">Este año</option>
+            </select>
 
-          <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} className={agentStyles.filterSelect} title="Asesor">
-            <option value="all">Todos los asesores</option>
-            {users.map(u => (
-              <option key={u.uid} value={u.uid}>{u.name}</option>
-            ))}
-          </select>
+            <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} className={adminStyles.timeFilter} title="Asesor" style={{ flex: '1', minWidth: '150px' }}>
+              <option value="all">Todos los asesores</option>
+              {users.map(u => (
+                <option key={u.uid} value={u.uid}>{u.name}</option>
+              ))}
+            </select>
 
-          <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} className={agentStyles.filterSelect} title="Etapa">
-            <option value="all">Todas las etapas</option>
-            {dynamicStages.map(s => (
-              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-            ))}
-            <option value="PERDIDO">PERDIDO</option>
-          </select>
+            <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} className={adminStyles.timeFilter} title="Etapa" style={{ flex: '1', minWidth: '150px' }}>
+              <option value="all">Todas las etapas</option>
+              {dynamicStages.map(s => (
+                <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+              ))}
+              <option value="PERDIDO">PERDIDO</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {((reportType !== 'productivity' && filteredLeads.length > 0) || (reportType === 'productivity' && filteredActivities.length > 0)) && (
-        <div style={{ marginBottom: '24px' }}>
+        <div>
           {renderHighlights()}
         </div>
       )}

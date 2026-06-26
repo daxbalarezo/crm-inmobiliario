@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@salesforce-ux/design-system": "^2.30.4",
+    "@supabase/supabase-js": "^2.108.2",
     "date-fns": "^4.4.0",
     "docxtemplater": "^3.69.0",
     "file-saver": "^2.0.5",
@@ -40,6 +42,7 @@
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vite-plugin-static-copy": "^4.1.1"
   }
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, getDocs, getDoc, doc, setDoc, updateDoc, serverTimestamp, onSnapshot, addDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import type { Payment } from '../types/definitions';
 import { useAuditTrail } from './useAuditTrail';
 import { useCRM } from '../context/CRMContext';
@@ -19,44 +18,81 @@ export function useFinance(tenantId?: string) {
       return;
     }
 
-    const q = query(
-      collection(db, 'payments'),
-      where('tenantId', '==', tenantId)
-    );
+    const fetchPayments = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false });
 
-    const unsub = onSnapshot(q, (snap) => {
-      let data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
-      // Sort client-side to avoid requiring composite index
-      data.sort((a, b) => {
-        const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-        const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-        return dateB - dateA;
-      });
-      setAllPayments(data);
-      setLoading(false);
-    }, (err) => {
-      console.error("Error fetching pending payments:", err);
-      setLoading(false);
-    });
+        if (error) throw error;
+        
+        const mapped = (data || []).map(row => ({
+          id: row.id,
+          leadId: row.lead_id,
+          tenantId: row.tenant_id,
+          amount: row.amount,
+          method: row.method,
+          reference: row.reference,
+          status: row.status,
+          type: row.type,
+          concept: row.concept,
+          notes: row.notes,
+          attachmentUrl: row.attachment_url,
+          approvedBy: row.approved_by,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at
+        } as Payment));
+        
+        setAllPayments(mapped);
+      } catch (err) {
+        console.error("Error fetching pending payments:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => unsub();
+    fetchPayments();
+
+    const channel = supabase.channel('payments_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments', filter: `tenant_id=eq.${tenantId}` }, () => {
+        fetchPayments();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [tenantId]);
 
   // Obtener pagos de un prospecto específico
   const getLeadPayments = async (leadId: string) => {
     try {
-      const q = query(
-        collection(db, 'payments'),
-        where('leadId', '==', leadId)
-      );
-      const snap = await getDocs(q);
-      let data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
-      data.sort((a, b) => {
-        const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-        const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-        return dateB - dateA;
-      });
-      return data;
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      return (data || []).map(row => ({
+        id: row.id,
+        leadId: row.lead_id,
+        tenantId: row.tenant_id,
+        amount: row.amount,
+        method: row.method,
+        reference: row.reference,
+        status: row.status,
+        type: row.type,
+        concept: row.concept,
+        notes: row.notes,
+        attachmentUrl: row.attachment_url,
+        approvedBy: row.approved_by,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      } as Payment));
     } catch (e) {
       console.error("Error fetching lead payments:", e);
       return [];
@@ -66,15 +102,33 @@ export function useFinance(tenantId?: string) {
   // Registrar un nuevo pago (Asesor)
   const createPayment = async (data: Omit<Payment, 'id' | 'createdAt' | 'status'>) => {
     try {
-      const newRef = doc(collection(db, 'payments'));
-      const payment: Payment = {
-        ...data,
-        id: newRef.id,
+      const row = {
+        lead_id: data.leadId,
+        tenant_id: data.tenantId,
+        amount: data.amount,
+        method: data.method,
+        reference: data.reference,
         status: 'PENDING',
-        createdAt: serverTimestamp()
+        type: data.type,
+        concept: data.concept,
+        notes: data.notes,
+        attachment_url: data.attachmentUrl
       };
-      await setDoc(newRef, payment);
-      return payment;
+      
+      const { data: inserted, error } = await supabase
+        .from('payments')
+        .insert(row)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      return {
+        id: inserted.id,
+        ...data,
+        status: 'PENDING',
+        createdAt: inserted.created_at
+      } as Payment;
     } catch (e) {
       console.error("Error creating payment:", e);
       throw e;
@@ -84,11 +138,13 @@ export function useFinance(tenantId?: string) {
   // Aprobar pago (Contador/Admin)
   const approvePayment = async (paymentId: string, approvedBy: string) => {
     try {
-      await updateDoc(doc(db, 'payments', paymentId), {
-        status: 'APPROVED',
-        approvedBy,
-        updatedAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('payments')
+        .update({ status: 'APPROVED', approved_by: approvedBy })
+        .eq('id', paymentId);
+        
+      if (error) throw error;
+      
       if (userProfile) {
         await logEvent(userProfile.uid, userProfile.name, 'APPROVE', 'PAYMENT', paymentId, `Pago aprobado`);
       }
@@ -101,12 +157,17 @@ export function useFinance(tenantId?: string) {
   // Rechazar pago (Contador/Admin)
   const rejectPayment = async (paymentId: string, approvedBy: string, notes?: string) => {
     try {
-      await updateDoc(doc(db, 'payments', paymentId), {
-        status: 'REJECTED',
-        approvedBy,
-        notes: notes || 'Rechazado por el administrador',
-        updatedAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('payments')
+        .update({ 
+          status: 'REJECTED', 
+          approved_by: approvedBy,
+          notes: notes || 'Rechazado por el administrador'
+        })
+        .eq('id', paymentId);
+        
+      if (error) throw error;
+      
       if (userProfile) {
         await logEvent(userProfile.uid, userProfile.name, 'REJECT', 'PAYMENT', paymentId, `Pago rechazado. Motivo: ${notes || 'Rechazado por el administrador'}`);
       }
@@ -116,15 +177,29 @@ export function useFinance(tenantId?: string) {
     }
   };
 
-  // Obtener plantilla por defecto (o la única existente por retrocompatibilidad)
+  // Obtener plantilla por defecto
   const getContractTemplate = async () => {
     if (!tenantId) return null;
     try {
-      const q = query(collection(db, 'contract_templates'), where('tenantId', '==', tenantId));
-      const snap = await getDocs(q);
-      const templates = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-      if (templates.length === 0) return null;
-      return templates.find(t => t.isDefault) || templates[0];
+      const { data, error } = await supabase
+        .from('contract_templates')
+        .select('*')
+        .eq('tenant_id', tenantId);
+        
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+      
+      const mapped = data.map(d => ({
+        id: d.id,
+        tenantId: d.tenant_id,
+        name: d.name,
+        docxBase64: d.docx_base64,
+        size: d.size,
+        isDefault: d.is_default,
+        createdAt: d.created_at
+      }));
+      
+      return mapped.find(t => t.isDefault) || mapped[0];
     } catch (e) {
       console.error("Error fetching template:", e);
       return null;
@@ -135,11 +210,24 @@ export function useFinance(tenantId?: string) {
   const getContractTemplates = async () => {
     if (!tenantId) return [];
     try {
-      const q = query(collection(db, 'contract_templates'), where('tenantId', '==', tenantId));
-      const snap = await getDocs(q);
-      const templates = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-      // Ordenar para que la default aparezca primero
-      return templates.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
+      const { data, error } = await supabase
+        .from('contract_templates')
+        .select('*')
+        .eq('tenant_id', tenantId);
+        
+      if (error) throw error;
+      
+      const mapped = (data || []).map(d => ({
+        id: d.id,
+        tenantId: d.tenant_id,
+        name: d.name,
+        docxBase64: d.docx_base64,
+        size: d.size,
+        isDefault: d.is_default,
+        createdAt: d.created_at
+      }));
+      
+      return mapped.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
     } catch (e) {
       console.error("Error fetching templates:", e);
       return [];
@@ -155,34 +243,39 @@ export function useFinance(tenantId?: string) {
         throw new Error("Límite alcanzado: Máximo 5 plantillas.");
       }
       const isDefault = existing.length === 0;
-      await addDoc(collection(db, 'contract_templates'), {
-        tenantId,
-        name,
-        docxBase64,
-        size,
-        isDefault,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      
+      const { error } = await supabase
+        .from('contract_templates')
+        .insert({
+          tenant_id: tenantId,
+          name,
+          docx_base64: docxBase64,
+          size,
+          is_default: isDefault
+        });
+        
+      if (error) throw error;
     } catch (e) {
       console.error("Error uploading template:", e);
       throw e;
     }
   };
 
-  // Guardar/Actualizar plantilla antigua (retrocompatibilidad)
+  // Guardar/Actualizar plantilla antigua
   const saveContractTemplate = async (docxBase64: string) => {
     if (!tenantId) return;
     try {
-      const docRef = doc(db, 'contract_templates', tenantId);
-      await setDoc(docRef, {
-        id: tenantId,
-        tenantId,
-        name: 'Plantilla Principal',
-        docxBase64,
-        isDefault: true,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      // Upsert
+      const { error } = await supabase
+        .from('contract_templates')
+        .upsert({
+          id: tenantId, // using tenantId as ID for retrocompatibility if possible, though UUID might conflict
+          tenant_id: tenantId,
+          name: 'Plantilla Principal',
+          docx_base64: docxBase64,
+          is_default: true
+        });
+      if (error) throw error;
     } catch (e) {
       console.error("Error saving template:", e);
       throw e;
@@ -192,7 +285,8 @@ export function useFinance(tenantId?: string) {
   // Eliminar plantilla
   const deleteContractTemplate = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'contract_templates', id));
+      const { error } = await supabase.from('contract_templates').delete().eq('id', id);
+      if (error) throw error;
     } catch (e) {
       console.error("Error deleting template:", e);
       throw e;
@@ -202,10 +296,8 @@ export function useFinance(tenantId?: string) {
   // Renombrar plantilla
   const renameContractTemplate = async (id: string, newName: string) => {
     try {
-      await updateDoc(doc(db, 'contract_templates', id), {
-        name: newName,
-        updatedAt: serverTimestamp()
-      });
+      const { error } = await supabase.from('contract_templates').update({ name: newName }).eq('id', id);
+      if (error) throw error;
     } catch (e) {
       console.error("Error renaming template:", e);
       throw e;
@@ -216,16 +308,10 @@ export function useFinance(tenantId?: string) {
   const setDefaultContractTemplate = async (id: string) => {
     if (!tenantId) return;
     try {
-      const existing = await getContractTemplates();
-      const batchUpdate = existing.map(async (tpl) => {
-        const ref = doc(db, 'contract_templates', tpl.id);
-        if (tpl.id === id) {
-          await updateDoc(ref, { isDefault: true, updatedAt: serverTimestamp() });
-        } else if (tpl.isDefault) {
-          await updateDoc(ref, { isDefault: false, updatedAt: serverTimestamp() });
-        }
-      });
-      await Promise.all(batchUpdate);
+      // Unset all
+      await supabase.from('contract_templates').update({ is_default: false }).eq('tenant_id', tenantId);
+      // Set one
+      await supabase.from('contract_templates').update({ is_default: true }).eq('id', id);
     } catch (e) {
       console.error("Error setting default template:", e);
       throw e;

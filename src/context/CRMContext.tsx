@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import type { User } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import type { User } from '@supabase/supabase-js';
+import { supabase } from '../config/supabase';
 import type { Tenant, RolePermission } from '../types/definitions';
 
 const DEFAULT_PERMISSIONS: RolePermission['permissions'] = {
@@ -27,6 +25,7 @@ export interface UserProfile {
   name: string;
   email: string;
   assignedProjectIds: string[];
+  status?: string;
   createdAt?: any;
 }
 
@@ -66,9 +65,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     if (!tenantId) return { id: 'unknown', name: 'Empresa no encontrada', plan: 'starter' } as Tenant;
     
     try {
-      const tenantSnap = await getDoc(doc(db, 'tenants', tenantId));
-      if (tenantSnap.exists()) {
-        return { id: tenantSnap.id, ...tenantSnap.data() } as Tenant;
+      const { data, error } = await supabase.from('tenants').select('*').eq('id', tenantId).single();
+      if (!error && data) {
+        return data as Tenant;
       }
     } catch (e) {
       console.error("Error cargando tenant:", e);
@@ -76,49 +75,46 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     return { id: tenantId, name: 'Empresa no encontrada', plan: 'starter' } as Tenant;
   };
 
-  const fetchPermissions = async (tenantId: string, roleName: string, roleId?: string) => {
+  const fetchPermissions = async (tenantId: string, roleName: string) => {
     if (roleName === 'owner' || roleName === 'manager') return MANAGER_PERMISSIONS;
-    if (!tenantId) return DEFAULT_PERMISSIONS;
-    try {
-      if (roleId) {
-        const roleSnap = await getDoc(doc(db, `tenants/${tenantId}/roles`, roleId));
-        if (roleSnap.exists()) {
-          return (roleSnap.data() as RolePermission).permissions;
-        }
-      } else {
-        const q = query(collection(db, `tenants/${tenantId}/roles`), where('name', '==', roleName));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          return (snap.docs[0].data() as RolePermission).permissions;
-        }
-      }
-    } catch (e) {
-      console.error("Error fetching permissions:", e);
-    }
-    return DEFAULT_PERMISSIONS; // fallback
+    return DEFAULT_PERMISSIONS;
   };
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
+    // Escuchar cambios de sesión en Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const supabaseUser = session?.user ?? null;
+      if (supabaseUser) {
+        setUser(supabaseUser);
         try {
-          const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+          // Buscar perfil en tabla public.users
+          const { data: snap } = await supabase.from('users').select('*').eq('uid', supabaseUser.id).maybeSingle();
+          
           let profile: UserProfile;
-          if (snap.exists()) {
-            profile = { uid: firebaseUser.uid, ...snap.data() } as UserProfile;
+          if (snap) {
+            profile = { 
+              uid: snap.uid, 
+              tenantId: snap.tenant_id,
+              role: snap.role,
+              name: snap.name,
+              email: snap.email,
+              assignedProjectIds: snap.assigned_project_ids || [],
+              status: snap.status
+            } as UserProfile;
+
             if (profile.status === 'suspended') {
-              await signOut(auth);
+              await supabase.auth.signOut();
               alert('Tu cuenta ha sido suspendida. Contacta a tu administrador.');
               return;
             }
           } else {
+            // Si no existe, simulamos uno para no romper la app durante desarrollo
             profile = {
-              uid: firebaseUser.uid,
-              tenantId: firebaseUser.uid,
+              uid: supabaseUser.id,
+              tenantId: supabaseUser.id,
               role: 'owner',
-              name: firebaseUser.displayName ?? 'Usuario',
-              email: firebaseUser.email ?? '',
+              name: supabaseUser.email?.split('@')[0] ?? 'Usuario',
+              email: supabaseUser.email ?? '',
               assignedProjectIds: ['valle_pacora'],
             };
           }
@@ -129,7 +125,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           const fetchedTenant = await fetchTenant(profile.tenantId, profile.role);
           setTenant(fetchedTenant);
 
-          const permissions = await fetchPermissions(profile.tenantId, profile.role, profile.roleId);
+          const permissions = await fetchPermissions(profile.tenantId, profile.role);
           setUserPermissions(permissions);
 
           if (profile.assignedProjectIds?.length > 0) {
@@ -149,23 +145,32 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       setAuthReady(true);
     });
 
-    return () => unsub();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const impersonateUser = async (targetUid: string) => {
     if (realUserProfile?.role !== 'owner') return;
-    
     try {
-      const snap = await getDoc(doc(db, 'users', targetUid));
-      if (snap.exists()) {
-        const targetProfile = { uid: targetUid, ...snap.data() } as UserProfile;
+      const { data: snap } = await supabase.from('users').select('*').eq('uid', targetUid).single();
+      if (snap) {
+        const targetProfile = { 
+          uid: snap.uid, 
+          tenantId: snap.tenant_id,
+          role: snap.role,
+          name: snap.name,
+          email: snap.email,
+          assignedProjectIds: snap.assigned_project_ids || []
+        } as UserProfile;
+        
         setUserProfile(targetProfile);
         setIsImpersonating(true);
         
         const fetchedTenant = await fetchTenant(targetProfile.tenantId, targetProfile.role);
         setTenant(fetchedTenant);
 
-        const permissions = await fetchPermissions(targetProfile.tenantId, targetProfile.role, targetProfile.roleId);
+        const permissions = await fetchPermissions(targetProfile.tenantId, targetProfile.role);
         setUserPermissions(permissions);
 
         if (targetProfile.assignedProjectIds?.length > 0) {
@@ -185,13 +190,13 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     const fetchedTenant = await fetchTenant(realUserProfile.tenantId, realUserProfile.role);
     setTenant(fetchedTenant);
 
-    const permissions = await fetchPermissions(realUserProfile.tenantId, realUserProfile.role, realUserProfile.roleId);
+    const permissions = await fetchPermissions(realUserProfile.tenantId, realUserProfile.role);
     setUserPermissions(permissions);
   };
 
   const logout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }

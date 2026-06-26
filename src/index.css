@@ -488,3 +488,58 @@ svg {
   padding: 16px 24px 24px 24px;
   flex: 1;
 }
+
+/* ==========================================================================
+   11. INTEROPERABILIDAD LUCIDE-REACT vs SLDS Y SELECTS
+   ========================================================================== */
+
+/* 1. Forzar que todos los SVGs de Lucide-React mantengan stroke y NO se llenen de negro (fill) */
+svg[class*="lucide"],
+.slds-icon_container svg,
+.slds-input__icon {
+  fill: none !important;
+  stroke: currentColor !important;
+}
+
+/* 2. El color estándar de SLDS para iconos dentro de inputs es gris oscuro */
+.slds-input__icon {
+  color: #747474 !important;
+}
+
+/* 3. Asegurar que los botones de iconos neutros (ej. cerrar modal) respeten el color heredado y no se fuercen a negro */
+.slds-button_icon svg {
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+/* 4. Select Nativo (Quitar doble flecha forzado global) */
+select.slds-select,
+.slds-select_container select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important; /* Por si algún reset inyecta un SVG */
+  background-color: #ffffff; /* Requerido en Chrome para que aplique appearance:none */
+  border: 1px solid #DDDBDA;
+  text-indent: 0.01px !important;
+  text-overflow: '' !important;
+}
+
+select.slds-select::-ms-expand,
+.slds-select_container select::-ms-expand {
+  display: none !important;
+}
+
+/* Remover cualquier otra flecha nativa anómala */
+select.slds-select::-webkit-scrollbar {
+  display: none;
+}
+
+/* 5. Fix for Lucide Icons inside SLDS Inputs */
+.slds-input-has-icon_left .slds-input {
+  padding-left: 2rem !important;
+}
+
+.slds-input-has-icon_right .slds-input {
+  padding-right: 2rem !important;
+}

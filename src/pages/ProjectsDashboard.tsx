@@ -1,49 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
-import { db } from '../config/firebase';
-import { collection, query, getDocs, where, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import styles from './SettingsDashboard.module.css';
+import { crmService, type Project } from '../services/crmService';
+import { saasService, type Tenant } from '../services/saasService';
 
 export default function ProjectsDashboard() {
   const { userProfile } = useCRM();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [tenants, setTenants] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal y Forms
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({
-    tenantId: '',
+    tenant_id: '',
     name: ''
   });
   const [createProjectError, setCreateProjectError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userProfile) return;
 
     const fetchAll = async () => {
       setLoading(true);
+      setFetchError(null);
       try {
         if (userProfile.role === 'owner') {
-          const [tenantsSnap, projectsSnap] = await Promise.all([
-            getDocs(collection(db, 'tenants')),
-            getDocs(collection(db, 'projects'))
+          const [fetchedTenants, fetchedProjects] = await Promise.all([
+            saasService.getTenants(),
+            crmService.getProjects()
           ]);
-          setTenants(tenantsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-          setProjects(projectsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+          setTenants(fetchedTenants);
+          setProjects(fetchedProjects);
         } else {
           // Manager
-          const [tenantSnap, projectsSnap] = await Promise.all([
-            getDocs(query(collection(db, 'tenants'), where('__name__', '==', userProfile.tenantId))),
-            getDocs(query(collection(db, 'projects'), where('tenantId', '==', userProfile.tenantId)))
-          ]);
-          setTenants(tenantSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-          setProjects(projectsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+          const fetchedProjects = await crmService.getProjects(userProfile.tenantId);
+          setProjects(fetchedProjects);
         }
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        console.error('Error fetching data:', err);
+        setFetchError(err.message || JSON.stringify(err));
       } finally {
         setLoading(false);
       }
@@ -55,7 +53,9 @@ export default function ProjectsDashboard() {
     e.preventDefault();
     setCreateProjectError('');
 
-    if (!newProject.tenantId) {
+    const targetTenantId = userProfile?.role === 'owner' ? newProject.tenant_id : userProfile?.tenantId;
+
+    if (!targetTenantId) {
       setCreateProjectError('Por favor selecciona una empresa dueña.');
       return;
     }
@@ -64,34 +64,38 @@ export default function ProjectsDashboard() {
       return;
     }
 
-    const selectedTenant = tenants.find(t => t.id === newProject.tenantId);
-    if (selectedTenant) {
-      const plan = selectedTenant.plan || 'starter';
-      const tenantProjectsCount = projects.filter(p => p.tenantId === newProject.tenantId).length;
-      
-      if (plan === 'starter' && tenantProjectsCount >= 1) {
-        setCreateProjectError('Límite Starter alcanzado (Máx 1 proyecto). Actualiza la empresa a plan PRO.');
-        return;
-      }
-      if (plan === 'pro' && tenantProjectsCount >= 3) {
-        setCreateProjectError('Límite PRO alcanzado (Máx 3 proyectos). Actualiza a ENTERPRISE para ilimitado.');
-        return;
+    if (userProfile?.role === 'owner') {
+      const selectedTenant = tenants.find(t => t.id === targetTenantId);
+      if (selectedTenant) {
+        const plan = selectedTenant.plan_id || 'starter';
+        const tenantProjectsCount = projects.filter(p => p.tenant_id === targetTenantId).length;
+        
+        if (plan === 'starter' && tenantProjectsCount >= 1) {
+          setCreateProjectError('Límite Starter alcanzado (Máx 1 proyecto). Actualiza la empresa a plan PRO.');
+          return;
+        }
+        if (plan === 'pro' && tenantProjectsCount >= 3) {
+          setCreateProjectError('Límite PRO alcanzado (Máx 3 proyectos). Actualiza a ENTERPRISE para ilimitado.');
+          return;
+        }
       }
     }
     
     setIsCreating(true);
     try {
-      const projRef = doc(collection(db, 'projects'));
-      const projectData = {
+      const created = await crmService.createProject({
         name: newProject.name.trim(),
-        tenantId: newProject.tenantId,
-        status: 'active',
-        createdAt: serverTimestamp()
-      };
-      await setDoc(projRef, projectData);
-      setProjects(prev => [{ id: projRef.id, ...projectData, createdAt: new Date() }, ...prev]);
+        tenant_id: targetTenantId,
+        status: 'active'
+      });
+      // Attach tenant name if we are owner
+      if (userProfile?.role === 'owner') {
+        const tName = tenants.find(t => t.id === targetTenantId)?.name;
+        created.tenants = { name: tName || 'Desconocido' };
+      }
+      setProjects(prev => [created, ...prev]);
       setIsProjectModalOpen(false);
-      setNewProject({ tenantId: '', name: '' });
+      setNewProject({ tenant_id: '', name: '' });
     } catch (err) {
       console.error(err);
       setCreateProjectError('Error al crear el proyecto.');
@@ -100,9 +104,9 @@ export default function ProjectsDashboard() {
     }
   };
 
-  const handleUpdateProjectStatus = async (projectId: string, newStatus: string) => {
+  const handleUpdateProjectStatus = async (projectId: string, newStatus: any) => {
     try {
-      await updateDoc(doc(db, 'projects', projectId), { status: newStatus });
+      await crmService.updateProjectStatus(projectId, newStatus);
       setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: newStatus } : p));
     } catch (e) {
       console.error('Error updating project status', e);
@@ -111,97 +115,206 @@ export default function ProjectsDashboard() {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
-          <h2 className={styles.title}>Proyectos Inmobiliarios</h2>
-          <p className={styles.subtitle}>Gestión de Desarrollos y Condominios</p>
-        </div>
-      </div>
-
-      <div className={styles.panelCard}>
-        <div className={styles.panelHeader}>
-          <h2 className={styles.panelTitle}>Listado de Proyectos</h2>
-          <button onClick={() => setIsProjectModalOpen(true)} className={styles.btnPrimary}>
-            <Plus size={16} /> Nuevo Proyecto
-          </button>
-        </div>
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                {userProfile?.role === 'owner' && <th className={styles.th}>Empresa Dueña</th>}
-                <th className={styles.th}>Nombre del Proyecto</th>
-                <th className={styles.th}>Estado</th>
-                <th className={styles.th}>Ubicación</th>
-                <th className={`${styles.th} ${styles.thRight}`}>Unidades Totales</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? <tr><td colSpan={5} className={styles.td} style={{textAlign: 'center'}}>Cargando...</td></tr> : projects.map(p => (
-                <tr key={p.id} className={styles.tr}>
-                  {userProfile?.role === 'owner' && (
-                    <td className={`${styles.td} ${styles.textMuted}`}>{tenants.find(t => t.id === p.tenantId)?.name || 'N/A'}</td>
-                  )}
-                  <td className={`${styles.td} ${styles.fontSemibold}`}>{p.name}</td>
-                  <td className={styles.td}>
-                    <select 
-                      value={p.status || 'active'}
-                      onChange={(e) => handleUpdateProjectStatus(p.id, e.target.value)}
-                      className={`${styles.selectPlan} ${(!p.status || p.status === 'active') ? styles.statusActive : p.status === 'sold_out' ? styles.statusSold : styles.statusInactive}`}
-                      style={{ fontSize: '12px', padding: '4px 8px', width: 'auto' }}
-                    >
-                      <option value="active">ACTIVO</option>
-                      <option value="inactive">INACTIVO</option>
-                      <option value="sold_out">VENDIDO</option>
-                    </select>
-                  </td>
-                  <td className={`${styles.td} ${styles.textMuted}`}>--</td>
-                  <td className={`${styles.td} ${styles.tdRight}`}>--</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {isProjectModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3>Registrar Nuevo Proyecto</h3>
-              <button onClick={() => setIsProjectModalOpen(false)} className={styles.btnClose}><X size={20} /></button>
-            </div>
-            
-            <div className={styles.modalBody}>
-              <form onSubmit={handleCreateProject}>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Empresa Dueña</label>
-                  <select required value={newProject.tenantId} onChange={e => setNewProject({ ...newProject, tenantId: e.target.value })} className={styles.formSelect}>
-                    <option value="">Seleccione a qué inmobiliaria pertenece...</option>
-                    {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Nombre del Proyecto</label>
-                  <input type="text" required value={newProject.name} onChange={e => setNewProject({ ...newProject, name: e.target.value })} className={styles.formInput} placeholder="Ej. Condominio Las Palmas" />
-                </div>
-
-                {createProjectError && (
-                  <div style={{ backgroundColor: '#fef2f2', border: '1px solid #f87171', color: '#b91c1c', padding: '12px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
-                    {createProjectError}
+    <div>
+      {/* Page Header (SLDS) */}
+      <div className="slds-page-header" style={{ backgroundColor: 'transparent', border: 'none', padding: '0 0 24px 0' }}>
+        <div className="slds-page-header__row">
+          <div className="slds-page-header__col-title">
+            <div className="slds-media">
+              <div className="slds-media__figure">
+                <span className="slds-icon_container slds-icon-standard-account" style={{ color: 'white' }}>
+                  <svg className="slds-icon slds-page-header__icon" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                </span>
+              </div>
+              <div className="slds-media__body">
+                <div className="slds-page-header__name">
+                  <div className="slds-page-header__name-title">
+                    <h1>
+                      <span className="slds-page-header__title slds-truncate" title="Proyectos Inmobiliarios">Proyectos Inmobiliarios</span>
+                    </h1>
                   </div>
-                )}
-
-                <div className={styles.modalFooter}>
-                  <button type="button" onClick={() => setIsProjectModalOpen(false)} className={styles.btnCancel}>Cancelar</button>
-                  <button type="submit" disabled={isCreating} className={styles.btnPrimary}>{isCreating ? 'Creando...' : 'Crear Proyecto'}</button>
                 </div>
-              </form>
+                <p className="slds-page-header__name-meta">Gestión de Desarrollos y Condominios</p>
+              </div>
+            </div>
+          </div>
+          <div className="slds-page-header__col-actions">
+            <div className="slds-page-header__controls">
+              <div className="slds-page-header__control">
+                <button className="slds-button slds-button_brand" onClick={() => setIsProjectModalOpen(true)}>
+                  <Plus size={16} className="slds-m-right_x-small" /> Nuevo Proyecto
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Listado */}
+      <article className="slds-card">
+        <div className="slds-card__header slds-grid">
+          <header className="slds-media slds-media_center slds-has-flexi-truncate">
+            <div className="slds-media__body">
+              <h2 className="slds-card__header-title">
+                <span className="slds-text-heading_small slds-truncate">Listado de Proyectos</span>
+              </h2>
+            </div>
+          </header>
+        </div>
+        <div className="slds-card__body slds-card__body_inner" style={{ padding: 0 }}>
+          <div className="slds-scrollable_y">
+            <table className="slds-table slds-table_cell-buffer slds-table_bordered slds-table_hover">
+              <thead>
+                <tr className="slds-line-height_reset">
+                  {userProfile?.role === 'owner' && <th className="slds-text-title_caps" scope="col"><div className="slds-truncate">Empresa Dueña</div></th>}
+                  <th className="slds-text-title_caps" scope="col"><div className="slds-truncate">Nombre del Proyecto</div></th>
+                  <th className="slds-text-title_caps" scope="col"><div className="slds-truncate">Estado</div></th>
+                  <th className="slds-text-title_caps" scope="col"><div className="slds-truncate">Ubicación</div></th>
+                  <th className="slds-text-title_caps" scope="col" style={{textAlign: 'right'}}><div className="slds-truncate">Unidades Totales</div></th>
+                </tr>
+              </thead>
+              <tbody>
+                {fetchError ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>
+                      <strong>Error al cargar proyectos desde Supabase:</strong> {fetchError}<br/>
+                      <small>Por favor verifica que ejecutaste el script SQL de proyectos.</small>
+                    </td>
+                  </tr>
+                ) : loading ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <div className="slds-spinner slds-spinner_small" role="status">
+                        <span className="slds-assistive-text">Cargando...</span>
+                        <div className="slds-spinner__dot-a"></div>
+                        <div className="slds-spinner__dot-b"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : projects.map(p => (
+                  <tr key={p.id} className="slds-hint-parent">
+                    {userProfile?.role === 'owner' && (
+                      <td data-label="Empresa Dueña">
+                        <div className="slds-truncate slds-text-color_weak">{p.tenants?.name || 'N/A'}</div>
+                      </td>
+                    )}
+                    <td data-label="Nombre del Proyecto">
+                      <div className="slds-truncate slds-text-title_bold">{p.name}</div>
+                    </td>
+                    <td data-label="Estado">
+                      <select 
+                        className="slds-select"
+                        value={p.status || 'active'}
+                        onChange={(e) => handleUpdateProjectStatus(p.id, e.target.value)}
+                        style={{ 
+                          width: '140px', 
+                          height: '2rem', 
+                          padding: '0 8px', 
+                          fontSize: '12px',
+                          backgroundColor: p.status === 'sold_out' ? '#e5f3e7' : p.status === 'inactive' ? '#fef0ef' : 'white',
+                          color: p.status === 'sold_out' ? '#2e844a' : p.status === 'inactive' ? '#ba0517' : '#0176d3',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        <option value="active">ACTIVO</option>
+                        <option value="inactive">INACTIVO</option>
+                        <option value="sold_out">VENDIDO</option>
+                      </select>
+                    </td>
+                    <td data-label="Ubicación">
+                      <div className="slds-truncate slds-text-color_weak">--</div>
+                    </td>
+                    <td data-label="Unidades Totales" style={{textAlign: 'right'}}>
+                      <div className="slds-truncate">--</div>
+                    </td>
+                  </tr>
+                ))}
+                {!loading && projects.length === 0 && (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <div className="slds-text-color_weak">No hay proyectos registrados.</div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      {/* Modal Creación SLDS */}
+      {isProjectModalOpen && (
+        <>
+          <section role="dialog" tabIndex={-1} className="slds-modal slds-fade-in-open">
+            <div className="slds-modal__container">
+              <div className="slds-modal__header">
+                <button 
+                  className="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" 
+                  title="Cerrar"
+                  onClick={() => setIsProjectModalOpen(false)}
+                >
+                  <X size={24} style={{ color: '#000' }} />
+                  <span className="slds-assistive-text">Cerrar</span>
+                </button>
+                <h1 className="slds-modal__title slds-hyphenate">Registrar Nuevo Proyecto</h1>
+              </div>
+              <div className="slds-modal__content slds-p-around_medium">
+                <form id="create-project-form" onSubmit={handleCreateProject}>
+                  
+                  {userProfile?.role === 'owner' && (
+                    <div className="slds-form-element slds-m-bottom_small">
+                      <label className="slds-form-element__label">Empresa Dueña <abbr className="slds-required" title="Requerido">*</abbr></label>
+                      <div className="slds-form-element__control">
+                        <select 
+                          required 
+                          className="slds-select"
+                          value={newProject.tenant_id} 
+                          onChange={e => setNewProject({ ...newProject, tenant_id: e.target.value })}
+                        >
+                          <option value="">Seleccione a qué inmobiliaria pertenece...</option>
+                          {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="slds-form-element slds-m-bottom_small">
+                    <label className="slds-form-element__label">Nombre del Proyecto <abbr className="slds-required" title="Requerido">*</abbr></label>
+                    <div className="slds-form-element__control">
+                      <input 
+                        type="text" 
+                        required 
+                        className="slds-input" 
+                        value={newProject.name} 
+                        onChange={e => setNewProject({ ...newProject, name: e.target.value })} 
+                        placeholder="Ej. Condominio Las Palmas" 
+                      />
+                    </div>
+                  </div>
+
+                  {createProjectError && (
+                    <div className="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small" role="alert">
+                      <h2>{createProjectError}</h2>
+                    </div>
+                  )}
+
+                </form>
+              </div>
+              <div className="slds-modal__footer">
+                <button className="slds-button slds-button_neutral" onClick={() => setIsProjectModalOpen(false)}>Cancelar</button>
+                <button form="create-project-form" type="submit" disabled={isCreating} className="slds-button slds-button_brand">
+                  {isCreating ? 'Creando...' : 'Crear Proyecto'}
+                </button>
+              </div>
+            </div>
+          </section>
+          <div className="slds-backdrop slds-backdrop_open"></div>
+        </>
       )}
     </div>
   );

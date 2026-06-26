@@ -12,7 +12,8 @@ import AgentAnalyticsDashboard from './pages/AgentAnalyticsDashboard';
 import AdvancedReportsDashboard from './pages/AdvancedReportsDashboard';
 import FinanceDashboard from './pages/FinanceDashboard';
 import LoginPage from './pages/LoginPage';
-import CompaniesDashboard from './pages/CompaniesDashboard';
+import CompaniesDashboard from './pages/owner/CompaniesDashboard';
+import SaaSOperations from './pages/owner/SaaSOperations';
 import TeamDashboard from './pages/TeamDashboard';
 import ProjectsDashboard from './pages/ProjectsDashboard';
 import TemplatesDashboard from './pages/TemplatesDashboard';
@@ -56,7 +57,14 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function HomeRoute() {
   const { userProfile } = useCRM();
-  if (userProfile?.role === 'owner' || userProfile?.role === 'manager') {
+  if (userProfile?.role === 'owner') {
+    return (
+      <CorporateLayout>
+        <CompaniesDashboard />
+      </CorporateLayout>
+    );
+  }
+  if (userProfile?.role === 'manager') {
     return (
       <CorporateLayout>
         <AdminDashboard />
@@ -115,6 +123,13 @@ export default function App() {
             <AuthGuard>
               <CorporateLayout>
                 <CompaniesDashboard />
+              </CorporateLayout>
+            </AuthGuard>
+          } />
+          <Route path="/saas/*" element={
+            <AuthGuard>
+              <CorporateLayout>
+                <SaaSOperations />
               </CorporateLayout>
             </AuthGuard>
           } />

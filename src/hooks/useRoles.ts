@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import type { RolePermission } from '../types/definitions';
 
 export function useRoles(tenantId: string | undefined) {
@@ -14,22 +13,31 @@ export function useRoles(tenantId: string | undefined) {
       return;
     }
 
-    const q = query(collection(db, `tenants/${tenantId}/roles`));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const loadedRoles = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as RolePermission[];
-      
-      setRoles(loadedRoles);
-      setLoading(false);
-    }, (error) => {
-      console.error('Error fetching roles:', error);
-      setLoading(false);
-    });
+    const fetchRoles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('roles')
+          .select('*')
+          .eq('tenant_id', tenantId);
 
-    return () => unsubscribe();
+        if (error) throw error;
+        
+        const loadedRoles = (data || []).map(row => ({
+          id: row.id,
+          name: row.name,
+          permissions: row.permissions
+        })) as RolePermission[];
+        
+        setRoles(loadedRoles);
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+        setRoles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoles();
   }, [tenantId]);
 
   return { roles, loading };

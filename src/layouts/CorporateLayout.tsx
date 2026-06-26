@@ -98,42 +98,62 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
       { name: 'Gestión de Cobranzas', path: '/cobranzas', icon: CreditCard },
       { name: 'Reporte Comercial', path: '/reportes', icon: BarChart3 }
     ] : []),
-      ...(userProfile?.role === 'owner' || userProfile?.role === 'manager' ? [
-      {
-        name: 'Analítica de Equipo',
-        icon: BarChart3,
-        subItems: [
-          { name: 'Visión General', path: '/' },
-          { name: 'Reportes Avanzados', path: '/reportes-avanzados' },
-          { name: 'Reporte por Agente', path: '/analitica-agentes' },
-          { name: 'Rendimiento y SLA', path: '/rendimiento' }
-        ]
-      },
-      { name: 'Pipeline Global', path: '/comercial', icon: Briefcase },
       ...(userProfile?.role === 'owner' ? [
-        { name: 'Inmobiliarias', path: '/empresas', icon: Building2 }
+        { name: 'Inmobiliarias', path: '/empresas', icon: Building2 },
+        { name: 'Proyectos Globales', path: '/proyectos', icon: FolderKanban },
+        { 
+          name: 'Operaciones SaaS', 
+          icon: Settings,
+          subItems: [
+            { name: 'Gestión de Planes', path: '/saas/planes' },
+            { name: 'Plantillas Semilla', path: '/saas/plantillas' },
+            { name: 'Facturación', path: '/saas/facturacion' },
+            { name: 'Auditoría Global', path: '/saas/auditoria' },
+            { name: 'Comunicados Globales', path: '/saas/comunicados' }
+          ]
+        }
       ] : []),
-      { 
-        name: 'Gestión Operativa',
-        icon: Users,
-        subItems: [
-          { name: 'Equipo y Usuarios', path: '/equipo' },
-          { name: 'Proyectos', path: '/proyectos' },
-          { name: 'Plantillas de Contratos', path: '/plantillas' }
-        ]
-      },
-      { 
-        name: 'Configuración Técnica', 
-        icon: Settings,
-        subItems: [
-          { name: 'Modelo de Datos', path: '/configuracion?tab=campos' },
-          { name: 'Roles y Permisos', path: '/configuracion?tab=roles' },
-          { name: 'Automatizaciones', path: '/configuracion?tab=workflows' },
-          { name: 'Registro de Auditoría', path: '/configuracion?tab=auditoria' },
-          { name: 'Reglas de Negocio (SLA)', path: '/configuracion?tab=reglas' }
-        ]
-      }
-    ] : [])
+      ...(userProfile?.role === 'manager' ? [
+        {
+          name: 'Analítica de Equipo',
+          icon: BarChart3,
+          subItems: [
+            { name: 'Visión General', path: '/' },
+            { name: 'Reportes Avanzados', path: '/reportes-avanzados' },
+            { name: 'Reporte por Agente', path: '/analitica-agentes' },
+            { name: 'Rendimiento y SLA', path: '/rendimiento' }
+          ]
+        },
+        { 
+          name: 'Pipeline Global', 
+          icon: Briefcase,
+          subItems: [
+            { name: 'Gestión Activa', path: '/comercial' },
+            { name: 'Previsión de Ventas', path: '/comercial/prevision' }
+          ]
+        },
+        { 
+          name: 'Gestión Operativa',
+          icon: Users,
+          subItems: [
+            { name: 'Equipo y Usuarios', path: '/equipo' },
+            { name: 'Proyectos', path: '/proyectos' },
+            { name: 'Plantillas de Contratos', path: '/plantillas' }
+          ]
+        },
+        { 
+          name: 'Configuración Inmobiliaria', 
+          icon: Settings,
+          subItems: [
+            { name: 'Modelo de Datos', path: '/configuracion?tab=campos' },
+            { name: 'Roles y Permisos', path: '/configuracion?tab=roles' },
+            { name: 'Integraciones (Webhooks)', path: '/configuracion?tab=integraciones' },
+            { name: 'Reglas de Asignación', path: '/configuracion?tab=asignacion' },
+            { name: 'Reglas de Negocio (SLA)', path: '/configuracion?tab=reglas' },
+            { name: 'Registro de Auditoría', path: '/configuracion?tab=auditoria' }
+          ]
+        }
+      ] : [])
   ];
 
   useEffect(() => {

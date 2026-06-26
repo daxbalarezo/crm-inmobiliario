@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import { useCRM } from '../context/CRMContext';
+import { useGlobalData } from '../context/GlobalDataProvider';
 import type { Lead, UserProfile, LeadActivity } from '../types/definitions';
 
 export interface AgentGlobalStats {
@@ -35,6 +35,7 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
   const [agentsList, setAgentsList] = useState<UserProfile[]>([]);
 
   // Raw data
+  const { leads: globalLeads, loading: globalLoading } = useGlobalData();
   const [allAgentLeads, setAllAgentLeads] = useState<Lead[]>([]);
   const [allAgentActivities, setAllAgentActivities] = useState<LeadActivity[]>([]);
 
@@ -49,23 +50,29 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
   }, [tenantId, agentId]);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !globalLoading) {
       computeStats();
     }
-  }, [timeRange, stageFilter, allAgentLeads, allAgentActivities, loading]);
+  }, [timeRange, stageFilter, allAgentLeads, allAgentActivities, loading, globalLoading]);
 
   const loadAgents = async () => {
     try {
-      let usersSnap;
-      if (userProfile?.role === 'owner') {
-        usersSnap = await getDocs(collection(db, 'users'));
-      } else {
-        usersSnap = await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId)));
+      let query = supabase.from('users').select('*');
+      if (userProfile?.role !== 'owner') {
+        query = query.eq('tenant_id', tenantId);
       }
-      const fetchedUsers = usersSnap.docs.map(d => {
-        const data = d.data() as UserProfile;
-        return { ...data, uid: d.id, name: String(data.name || '').toUpperCase() };
-      }).filter(u => u.role === 'agent');
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const fetchedUsers = (data || []).map(row => ({
+        uid: row.uid,
+        tenantId: row.tenant_id,
+        role: row.role,
+        name: String(row.name || '').toUpperCase(),
+        email: row.email,
+        assignedProjectIds: row.assigned_project_ids || []
+      }) as UserProfile).filter(u => u.role === 'agent');
+      
       setAgentsList(fetchedUsers);
     } catch (e) {
       console.error("Error loading agents", e);
@@ -75,11 +82,27 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
   const loadAgentData = async () => {
     setLoading(true);
     try {
-      const leadsSnap = await getDocs(query(collection(db, 'leads'), where('tenantId', '==', tenantId), where('assignedTo', '==', agentId)));
-      const fetchedLeads = leadsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Lead));
+      // Filtrar leads globales en RAM
+      const fetchedLeads = globalLeads.filter(l => l.tenantId === tenantId && l.assignedTo === agentId);
       
-      const actsSnap = await getDocs(query(collection(db, 'lead_activities'), where('tenantId', '==', tenantId), where('userId', '==', agentId)));
-      const fetchedActivities = actsSnap.docs.map(d => ({ id: d.id, ...d.data() } as LeadActivity));
+      // Consultar actividades en Supabase
+      const { data: actsData, error: actsError } = await supabase
+        .from('lead_activities')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('user_id', agentId);
+
+      if (actsError) throw actsError;
+
+      const fetchedActivities = (actsData || []).map(row => ({
+        id: row.id,
+        leadId: row.lead_id,
+        tenantId: row.tenant_id,
+        userId: row.user_id,
+        type: row.type,
+        notes: row.notes,
+        createdAt: row.created_at
+      } as LeadActivity));
 
       setAllAgentLeads(fetchedLeads);
       setAllAgentActivities(fetchedActivities);
@@ -100,7 +123,7 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
     if (timeRange !== 'all') {
       rangedLeads = allAgentLeads.filter(l => {
         if (!l.createdAt) return false;
-        const leadDate = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
+        const leadDate = new Date(l.createdAt);
         if (isNaN(leadDate.getTime())) return false;
 
         if (timeRange === 'this_month') {
@@ -121,7 +144,7 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
 
       rangedActivities = allAgentActivities.filter(a => {
         if (!a.createdAt) return false;
-        const actDate = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const actDate = new Date(a.createdAt);
         if (isNaN(actDate.getTime())) return false;
 
         if (timeRange === 'this_month') {

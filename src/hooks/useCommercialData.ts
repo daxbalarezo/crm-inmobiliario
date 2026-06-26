@@ -1,89 +1,101 @@
-import { useState, useEffect, useRef } from 'react';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { useState, useEffect, useMemo } from 'react';
+import { supabase } from '../config/supabase';
 import { useCRM } from '../context/CRMContext';
+import { useGlobalData } from '../context/GlobalDataProvider';
 import type { Lead, Unit } from '../types/definitions';
 
 export function useCommercialData() {
-  const [leads, setLeads]         = useState<Lead[]>([]);
+  const { leads: globalLeads, loading: globalLoading } = useGlobalData();
   const [inventory, setInventory] = useState<Unit[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [loadingInventory, setLoadingInventory] = useState(true);
   const { authReady, userProfile, tenantId, activeProjectId } = useCRM();
 
-  useEffect(() => {
-    if (!authReady) return;
+  const effectiveProjectId = activeProjectId ?? 'all';
 
-    if (!userProfile || !tenantId) {
-      setLeads([]);
+  // Filtrar los leads globales en RAM según el rol y el proyecto activo
+  const leads = useMemo(() => {
+    if (!userProfile) return [];
+    
+    let filtered = globalLeads;
+
+    // Filtro por tenant (Manager/Agent)
+    if (userProfile.role !== 'owner') {
+      filtered = filtered.filter(l => l.tenantId === tenantId);
+    }
+
+    // Filtro por usuario (Agent)
+    if (userProfile.role === 'agent') {
+      filtered = filtered.filter(l => l.assignedTo === userProfile.uid);
+    }
+
+    // Filtro por proyecto
+    if (effectiveProjectId !== 'all') {
+      filtered = filtered.filter(l => l.projectId === effectiveProjectId);
+    }
+
+    // Ordenar por updatedAt descendente
+    return filtered.sort((a, b) => {
+      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [globalLeads, userProfile, tenantId, effectiveProjectId]);
+
+  useEffect(() => {
+    if (!authReady || !userProfile || !tenantId) {
       setInventory([]);
-      setLoading(false);
+      setLoadingInventory(false);
       return;
     }
 
-    const effectiveProjectId = activeProjectId ?? 'all';
-    setLoading(true);
+    const fetchInventory = async () => {
+      setLoadingInventory(true);
+      try {
+        let query = supabase.from('units').select('*');
+        
+        if (userProfile.role !== 'owner') {
+          query = query.eq('tenant_id', tenantId);
+        }
+        if (effectiveProjectId !== 'all') {
+          query = query.eq('project_id', effectiveProjectId);
+        }
 
-    // LEADS
-    const leadsRef = collection(db, 'leads');
-    let leadsQ;
-    
-    if (userProfile!.role === 'owner') {
-      if (effectiveProjectId === 'all') {
-        leadsQ = query(leadsRef, orderBy('updatedAt', 'desc'));
-      } else {
-        leadsQ = query(leadsRef, where('projectId', '==', effectiveProjectId), orderBy('updatedAt', 'desc'));
-      }
-    } else if (userProfile!.role === 'manager') {
-      if (effectiveProjectId === 'all') {
-        leadsQ = query(leadsRef, where('tenantId', '==', tenantId), orderBy('updatedAt', 'desc'));
-      } else {
-        leadsQ = query(leadsRef, where('tenantId', '==', tenantId), where('projectId', '==', effectiveProjectId), orderBy('updatedAt', 'desc'));
-      }
-    } else {
-      if (effectiveProjectId === 'all') {
-        leadsQ = query(leadsRef, where('tenantId', '==', tenantId), where('assignedTo', '==', userProfile!.uid), orderBy('updatedAt', 'desc'));
-      } else {
-        leadsQ = query(leadsRef, where('tenantId', '==', tenantId), where('projectId', '==', effectiveProjectId), where('assignedTo', '==', userProfile!.uid), orderBy('updatedAt', 'desc'));
-      }
-    }
+        const { data, error } = await query;
+        if (error) throw error;
 
-    const unsubscribeLeads = onSnapshot(leadsQ, (snap) => {
-      setLeads(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Lead[]);
-      setLoading(false);
-    }, (err) => {
-      console.error('Leads error:', err.message);
-      setLeads([]);
-      setLoading(false);
-    });
+        // Mapeo a camelCase
+        const mappedUnits: Unit[] = (data || []).map(row => ({
+          id: row.id,
+          tenantId: row.tenant_id,
+          projectId: row.project_id,
+          customId: row.custom_id,
+          group: row.group,
+          type: row.type,
+          area: row.area,
+          price: row.price,
+          price2k: row.price_2k,
+          price5k: row.price_5k,
+          priceCash: row.price_cash,
+          status: row.status,
+          description: row.description
+        }));
 
-    // INVENTORY
-    let inventoryQ;
-    if (userProfile!.role === 'owner') {
-      if (effectiveProjectId === 'all') {
-        inventoryQ = query(collection(db, 'inventory'));
-      } else {
-        inventoryQ = query(collection(db, 'inventory'), where('projectId', '==', effectiveProjectId));
+        setInventory(mappedUnits);
+      } catch (err) {
+        console.error('Inventory error:', err);
+        setInventory([]);
+      } finally {
+        setLoadingInventory(false);
       }
-    } else {
-      if (effectiveProjectId === 'all') {
-        inventoryQ = query(collection(db, 'inventory'), where('tenantId', '==', tenantId));
-      } else {
-        inventoryQ = query(collection(db, 'inventory'), where('tenantId', '==', tenantId), where('projectId', '==', effectiveProjectId));
-      }
-    }
-
-    const unsubscribeInventory = onSnapshot(inventoryQ, (snap) => {
-      setInventory(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Unit[]);
-    }, (err) => {
-      console.error('Inventory error:', err.message);
-      setInventory([]);
-    });
-
-    return () => {
-      unsubscribeLeads();
-      unsubscribeInventory();
     };
-  }, [authReady, userProfile, tenantId, activeProjectId]);
 
-  return { leads, inventory, loading };
+    fetchInventory();
+
+  }, [authReady, userProfile, tenantId, effectiveProjectId]);
+
+  return { 
+    leads, 
+    inventory, 
+    loading: globalLoading || loadingInventory 
+  };
 }

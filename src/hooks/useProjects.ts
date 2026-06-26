@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import { useCRM } from '../context/CRMContext';
 import type { Project } from '../types/definitions';
 
@@ -21,20 +20,25 @@ export function useProjects() {
     async function fetchProjects() {
       setLoadingProjects(true);
       try {
-        let q;
-        if (userProfile.role === 'owner') {
-          // El owner ve todos los proyectos de todas las inmobiliarias
-          q = query(collection(db, 'projects'));
-        } else {
-          q = query(
-            collection(db, 'projects'),
-            where('tenantId', '==', tenantId)
-          );
+        let query = supabase.from('projects').select('*');
+        if (userProfile.role !== 'owner') {
+          query = query.eq('tenant_id', tenantId);
         }
         
-        const snap = await getDocs(q);
+        const { data, error } = await query;
+        if (error) throw error;
+        
         if (!cancelled) {
-          setProjects(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Project[]);
+          const mapped = (data || []).map(row => ({
+            id: row.id,
+            tenantId: row.tenant_id,
+            name: row.name,
+            address: row.address,
+            description: row.description,
+            status: row.status,
+            createdAt: row.created_at
+          } as Project));
+          setProjects(mapped);
         }
       } catch (err: any) {
         console.error('Projects fetch error:', err.message);

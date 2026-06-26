@@ -1,38 +1,68 @@
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import { useCRM } from '../context/CRMContext';
 import type { CustomFieldDefinition } from '../types/definitions';
 
-export function useTenantSchema(entityType: 'lead' = 'lead') {
+export function useTenantSchema(entityType: 'lead' | 'project' = 'lead') {
   const { tenantId } = useCRM();
   const [fields, setFields] = useState<CustomFieldDefinition[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!tenantId) {
+    if (!tenantId || tenantId === 'global') {
       setFields([]);
       setLoading(false);
       return;
     }
 
-    // e.g. path: tenants/TENANT_ID/schema_lead
-    const schemaRef = collection(db, 'tenants', tenantId, `schema_${entityType}`);
-    const q = query(schemaRef, orderBy('order', 'asc'));
+    const fetchSchema = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('tenants')
+          .select('fields')
+          .eq('id', tenantId)
+          .single();
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as CustomFieldDefinition[];
-      setFields(data);
-      setLoading(false);
-    }, (error) => {
-      console.error('Error fetching tenant schema:', error);
-      setLoading(false);
-    });
+        if (error) throw error;
+        
+        let allFields: CustomFieldDefinition[] = data?.fields || [];
+        // Filtrar por entityType, asumiendo que los que no tienen entityType son 'lead' por retrocompatibilidad
+        let filteredFields = allFields.filter(f => (f.entityType || 'lead') === entityType);
+        
+        // Ordenar por 'order'
+        filteredFields.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        setFields(filteredFields);
+      } catch (err) {
+        console.error('Error fetching tenant schema from Supabase:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => unsubscribe();
+    fetchSchema();
+
+    // Configurar Supabase Realtime para cambios en los fields del tenant
+    const channel = supabase
+      .channel(`tenant_schema_${tenantId}_${entityType}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tenants', filter: `id=eq.${tenantId}` },
+        (payload) => {
+          const updatedTenant = payload.new;
+          if (updatedTenant && updatedTenant.fields) {
+            let allFields: CustomFieldDefinition[] = updatedTenant.fields;
+            let filteredFields = allFields.filter(f => (f.entityType || 'lead') === entityType);
+            filteredFields.sort((a, b) => (a.order || 0) - (b.order || 0));
+            setFields(filteredFields);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [tenantId, entityType]);
 
   return { fields, loading };
