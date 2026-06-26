@@ -4,6 +4,38 @@ Este archivo mantiene un registro cronológico de todas las modificaciones impor
 
 ---
 
+## [2026-06-26] - Refactorización "Setup SLDS Puro" (Roles y Permisos)
+**Objetivo del cambio:** Mejorar la escalabilidad visual de la configuración de Roles.
+**Archivos modificados:** `RolesSettings.tsx`
+**Detalles:** 
+- Se migró al estándar puro de **Salesforce Lightning Design System (SLDS)**.
+- Se implementó una **Matriz de Permisos (CRED Table)** de alta densidad, permitiendo a los administradores visualizar permisos de lectura/escritura/eliminación para múltiples módulos (Leads, Inventario, Finanzas, Configuración) en una sola vista estructurada en tabla, reemplazando el antiguo diseño de tarjetas masivas.
+
+## [2026-06-26] - Resolución de Seguridad B2B (Error 500 al crear empleados)
+**Objetivo del cambio:** Arreglar el fallo en la creación interna de empleados (Managers añadiendo agentes) respetando el RLS estricto de Supabase.
+**Archivos modificados:** `TeamDashboard.tsx`
+**Detalles:** 
+- **Causa Raíz:** El Gatillo estricto de Postgres (`handle_new_user`) prohíbe crear usuarios si no existe una Invitación B2B previa, chocando con el flujo interno.
+- **Solución:** Se inyectó la creación de una invitación fantasma silenciosa usando los permisos RLS del Manager instantes antes de hacer el `signUp`. Además, se implementó `.toLowerCase()` forzado en el correo para evitar problemas de _Case Sensitivity_ en Supabase Auth, permitiendo la asignación correcta del `customRoleId`.
+
+## [2026-06-26] - Upgrade de Kanban (Estilo Salesforce Lightning)
+**Objetivo del cambio:** Enriquecer visual y operativamente el tablero de prospectos con métricas financieras.
+**Archivos modificados:** `KanbanBoard.tsx`, `LeadModal.tsx`
+**Detalles:** 
+- **Totales de Columna:** Cada etapa ahora incluye un totalizador de dinero en tiempo real, sumando el valor de proforma (`finalPrice`) de todos los leads en la columna.
+- **Tarjetas SLDS:** Las tarjetas ahora muestran una barra lateral heredando el color de su etapa. Además se resaltó de forma nativa el valor financiero en la tarjeta (ej. $150,000 USD).
+- **Tipografía:** Se ajustaron los tamaños tipográficos al estricto estándar SLDS corporativo (titulares a 13px MAYÚSCULAS, tarjetas a 14px y subtítulos a 12/13px) para mejor densidad de información.
+- **Asignación Manual:** Se habilitó un selector para cambiar manualmente la asignación del asesor (`assignedTo`) directamente desde el modal del Lead (Solo para Administradores).
+
+## [2026-06-26] - Optimistic UI (Mejoras de Rendimiento Drag&Drop)
+**Objetivo del cambio:** Eliminar la latencia visual al mover tarjetas entre etapas del Kanban.
+**Archivos modificados:** `GlobalDataProvider.tsx`, `useCommercialData.ts`, `CommercialDashboard.tsx`
+**Detalles:** 
+- Se exportó una nueva función `updateLeadOptimistically` desde el estado global, permitiendo sobreescribir la RAM instantáneamente.
+- Ahora, cuando el asesor hace *Drag&Drop* en el tablero, la tarjeta se mueve visualmente al instante (feedback a la velocidad de la luz), delegando la actualización a Postgres en background (asíncrono).
+
+---
+
 ## [2026-06-26] - Migración Comercial Fase 2: Embudo de Ventas Dinámico
 **Objetivo del cambio:** Desconectar el Tablero Comercial de Firebase y conectar el frontend a Supabase para heredar las etapas B2B personalizadas.
 **Archivos modificados:** `14_schema_leads_and_tenant_stages.sql`, `CommercialDashboard.tsx`, `KanbanBoard.tsx`, `LeadModal.tsx`, `definitions.ts`.
