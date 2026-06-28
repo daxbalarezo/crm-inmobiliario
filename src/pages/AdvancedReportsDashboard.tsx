@@ -19,10 +19,12 @@ export default function AdvancedReportsDashboard() {
   const { tenant, userProfile } = useCRM();
   const [reportType, setReportType] = useState<string>(initialType);
   const [timeRange, setTimeRange] = useState<string>('this_month');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [stageFilter, setStageFilter] = useState<string>('all');
 
-  const { loading, error, leads, activities, users } = useAdvancedReports(timeRange);
+  const { loading, error, leads, activities, users } = useAdvancedReports(timeRange, customStartDate, customEndDate);
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
@@ -38,7 +40,7 @@ export default function AdvancedReportsDashboard() {
     setSelectedSubFilter(null);
   }, [timeRange, selectedAgent, stageFilter, reportType]);
 
-  const dynamicStages = tenant?.stages || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
+  const dynamicStages = (tenant?.pipeline_stages?.length ? tenant.pipeline_stages.map(s => s.name) : null) || (tenant?.stages?.length ? tenant.stages : null) || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
 
   // Apply filters
   const filteredLeads = useMemo(() => {
@@ -57,10 +59,13 @@ export default function AdvancedReportsDashboard() {
     // Report Type specific filtering
     if (reportType === 'workload') {
       // Solo activos
-      result = result.filter(l => l.status !== 'VENDIDO' && l.status !== 'CERRADO' && l.status !== 'PERDIDO');
+      result = result.filter(l => {
+        const s = (l.status || '').toUpperCase();
+        return s !== 'VENDIDO' && s !== 'CERRADO' && s !== 'PERDIDO';
+      });
     } else if (reportType === 'loss_reasons') {
       // Solo perdidos
-      result = result.filter(l => l.status === 'PERDIDO');
+      result = result.filter(l => (l.status || '').toUpperCase() === 'PERDIDO');
     }
 
     return result;
@@ -328,7 +333,11 @@ export default function AdvancedReportsDashboard() {
                 ))}
               </Pie>
               <RechartsTooltip 
-                formatter={(value: any) => [value, 'Carga de Trabajo']}
+                formatter={(value: any, name: string) => {
+                  const total = data.reduce((sum, item) => sum + item.value, 0);
+                  const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  return [`${value} (${percent}%)`, 'Cantidad'];
+                }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
               />
               <Legend verticalAlign="bottom" height={36} iconType="circle" />
@@ -548,12 +557,35 @@ export default function AdvancedReportsDashboard() {
             <div className="slds-select_container" style={{ flex: '1', minWidth: '150px' }}>
               <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className="slds-select" title="Período">
                 <option value="all">Histórico Total</option>
+                <option value="today">Hoy</option>
+                <option value="this_week">Esta semana</option>
                 <option value="this_month">Este mes</option>
                 <option value="last_month">Mes pasado</option>
                 <option value="last_6_months">Últimos 6 meses</option>
                 <option value="this_year">Este año</option>
+                <option value="custom">Rango Personalizado</option>
               </select>
             </div>
+
+            {timeRange === 'custom' && (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input 
+                  type="date" 
+                  className="slds-input" 
+                  value={customStartDate}
+                  onChange={e => setCustomStartDate(e.target.value)}
+                  style={{ width: '130px' }}
+                />
+                <span>-</span>
+                <input 
+                  type="date" 
+                  className="slds-input" 
+                  value={customEndDate}
+                  onChange={e => setCustomEndDate(e.target.value)}
+                  style={{ width: '130px' }}
+                />
+              </div>
+            )}
 
             <div className="slds-select_container" style={{ flex: '1', minWidth: '150px' }}>
               <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} className="slds-select" title="Asesor">
@@ -570,7 +602,9 @@ export default function AdvancedReportsDashboard() {
                 {dynamicStages.map(s => (
                   <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                 ))}
-                <option value="PERDIDO">PERDIDO</option>
+                {!dynamicStages.some(s => s.toUpperCase() === 'PERDIDO') && (
+                  <option value="PERDIDO">PERDIDO</option>
+                )}
               </select>
             </div>
           </div>

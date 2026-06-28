@@ -6,7 +6,9 @@ import { BarChart2 } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [timeRange, setTimeRange] = useState<string>('this_month');
-  const { loading, globalStats, funnelData, sourceData, workloadData, lossReasonData, activityData } = useAdminMetrics(timeRange);
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+  const { loading, globalStats, funnelData, sourceData, workloadData, lossReasonData, activityData } = useAdminMetrics(timeRange, customStartDate, customEndDate);
 
   if (loading) {
     return (
@@ -43,18 +45,40 @@ export default function AdminDashboard() {
           </div>
           <div className="slds-page-header__col-actions">
             <div className="slds-page-header__controls">
-              <div className="slds-page-header__control">
+              <div className="slds-page-header__control" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {timeRange === 'custom' && (
+                  <>
+                    <input 
+                      type="date" 
+                      className="slds-input" 
+                      value={customStartDate}
+                      onChange={e => setCustomStartDate(e.target.value)}
+                      style={{ width: '130px' }}
+                    />
+                    <span>-</span>
+                    <input 
+                      type="date" 
+                      className="slds-input" 
+                      value={customEndDate}
+                      onChange={e => setCustomEndDate(e.target.value)}
+                      style={{ width: '130px' }}
+                    />
+                  </>
+                )}
                 <div className="slds-select_container">
                   <select 
                     value={timeRange} 
                     onChange={e => setTimeRange(e.target.value)}
                     className="slds-select"
                   >
+                    <option value="today">Hoy</option>
+                    <option value="this_week">Esta semana</option>
                     <option value="this_month">Este mes</option>
                     <option value="last_month">Mes pasado</option>
                     <option value="last_6_months">Últimos 6 meses</option>
                     <option value="this_year">Este año</option>
                     <option value="all">Histórico Total</option>
+                    <option value="custom">Rango Personalizado</option>
                   </select>
                 </div>
               </div>

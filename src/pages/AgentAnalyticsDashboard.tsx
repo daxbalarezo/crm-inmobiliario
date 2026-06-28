@@ -64,7 +64,7 @@ export default function AgentAnalyticsDashboard() {
     document.body.removeChild(link);
   };
 
-  const dynamicStages = tenant?.stages || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
+  const dynamicStages = (tenant?.pipeline_stages?.length ? tenant.pipeline_stages.map(s => s.name) : null) || (tenant?.stages?.length ? tenant.stages : null) || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
 
   return (
     <div className="slds-grid slds-grid_vertical slds-p-around_none slds-m-bottom_large">
@@ -115,6 +115,8 @@ export default function AgentAnalyticsDashboard() {
                 onChange={e => setTimeRange(e.target.value)}
                 className="slds-select"
               >
+                <option value="today">Hoy</option>
+                <option value="this_week">Esta semana</option>
                 <option value="this_month">Este mes</option>
                 <option value="last_month">Mes pasado</option>
                 <option value="last_6_months">Últimos 6 meses</option>
@@ -133,7 +135,9 @@ export default function AgentAnalyticsDashboard() {
                 {dynamicStages.map(s => (
                   <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                 ))}
-                <option value="PERDIDO">PERDIDO</option>
+                {!dynamicStages.some(s => s.toUpperCase() === 'PERDIDO') && (
+                  <option value="PERDIDO">PERDIDO</option>
+                )}
               </select>
             </div>
           </div>
@@ -282,7 +286,11 @@ export default function AgentAnalyticsDashboard() {
                       <XAxis type="number" axisLine={{ stroke: '#cbd5e1' }} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
                       <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} width={80} />
                       <RechartsTooltip 
-                        formatter={(value: any) => [`${value} leads`, 'Volumen']}
+                        formatter={(value: any, name: string) => {
+                          const total = funnelData.reduce((sum, item) => sum + item.value, 0);
+                          const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                          return [`${value} prospectos (${percent}%)`, 'Volumen'];
+                        }}
                         cursor={{ fill: 'rgba(0,0,0,0.04)' }}
                         contentStyle={{ borderRadius: '4px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
                       />

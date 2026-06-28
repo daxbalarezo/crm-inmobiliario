@@ -13,7 +13,7 @@ import IntegrationsSettings from './settings/IntegrationsSettings';
 import AssignmentRulesSettings from './settings/AssignmentRulesSettings';
 
 export default function SettingsDashboard() {
-  const { userProfile, tenantId } = useCRM();
+  const { userProfile, tenantId, tenant, activeProjectId } = useCRM();
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'campos';
   
@@ -26,22 +26,31 @@ export default function SettingsDashboard() {
 
     setIsSeeding(true);
     try {
-      const { data: fetchedUsers, error } = await supabase
+      const { data: allUsers, error } = await supabase
         .from('users')
         .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('role', 'agent');
+        .eq('tenant_id', tenantId);
         
       if (error) throw error;
+      
+      const fetchedUsers = allUsers.filter(u => u.role !== 'owner' && u.role !== 'manager');
       
       if (fetchedUsers.length === 0) {
         alert('Debes tener al menos 1 asesor registrado en la plataforma para generar datos.');
         setIsSeeding(false);
         return;
       }
+      
+      const stages = tenant?.pipeline_stages || [];
+      if (stages.length === 0) {
+        alert("La empresa no tiene un embudo de ventas configurado. Configura el modelo de datos primero.");
+        setIsSeeding(false);
+        return;
+      }
 
       await clearTestData(tenantId);
-      await seedTestData(tenantId, fetchedUsers);
+      const projectIdToUse = activeProjectId || '4e137da0-3ea5-4c91-92a4-7408fbd0fb07';
+      await seedTestData(tenantId, fetchedUsers, stages, projectIdToUse);
       alert('¡Datos generados exitosamente! Por favor recarga la página para ver las analíticas pobladas.');
     } catch (e) {
       console.error(e);

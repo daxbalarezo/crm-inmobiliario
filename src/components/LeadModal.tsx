@@ -16,8 +16,9 @@ interface Props {
 }
 
 const SOURCES = [
-  'Facebook Formularios', 'TikTok Formularios',
-  'Base de Datos', 'Orgánicos', 'Feria', 'Referidos',
+  'TikTok', 'Facebook Ads', 'Instagram Ads', 
+  'Tráfico Orgánico', 'Referido', 'Ferias Inmobiliarias', 
+  'Portales Inmobiliarios', 'WhatsApp', 'Walk-in / Letrero', 'Google Ads'
 ];
 
 export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, agents }: Props) {
@@ -46,7 +47,7 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, age
   if (!isOpen) return null;
 
   const dynamicSources = tenant?.sources || SOURCES;
-  const dynamicStages = tenant?.pipeline_stages?.map(s => s.name) || tenant?.stages || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
+  const dynamicStages = (tenant?.pipeline_stages?.length ? tenant.pipeline_stages.map(s => s.name) : null) || (tenant?.stages?.length ? tenant.stages : null) || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
 
   const isEditing = !!lead?.id;
   const update = (patch: Partial<Lead>) => setFormData(p => ({ ...p, ...patch }));
@@ -229,11 +230,13 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, age
                                   onChange={e => update({ lossReason: e.target.value })}
                                 >
                                   <option value="">Seleccionar motivo...</option>
-                                  <option value="Precio/Presupuesto">Precio/Presupuesto insuficiente</option>
-                                  <option value="Competencia">Compró a la competencia</option>
-                                  <option value="Crédito Rechazado">Crédito hipotecario rechazado</option>
-                                  <option value="Incontactable">No contesta / Incontactable</option>
-                                  <option value="Proyecto no encaja">El proyecto no encaja con lo que busca</option>
+                                  <option value="Precio / Presupuesto">Precio / Presupuesto insuficiente</option>
+                                  <option value="Perdido ante competidor">Perdido ante competidor</option>
+                                  <option value="No hay decisión / Pospuesto">No hay decisión / Proyecto pospuesto</option>
+                                  <option value="No encaja / Características">Falta de funcionalidades / No encaja</option>
+                                  <option value="No contesta / Incontactable">No contesta / Incontactable</option>
+                                  <option value="Financiamiento rechazado">Crédito / Financiamiento rechazado</option>
+                                  <option value="Fuera de Perfil">No califica / Fuera del Perfil</option>
                                   <option value="Otro">Otro motivo</option>
                                 </select>
                               </div>

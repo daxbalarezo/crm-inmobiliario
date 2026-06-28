@@ -4,7 +4,7 @@ import { useCRM } from '../context/CRMContext';
 import { useGlobalData } from '../context/GlobalDataProvider';
 import type { Lead, UserProfile } from '../types/definitions';
 
-export function useAdvancedReports(timeRange: string = 'this_month') {
+export function useAdvancedReports(timeRange: string = 'this_month', customStartDate?: string, customEndDate?: string) {
   const { tenantId, userProfile } = useCRM();
   const { leads: globalLeads, loading: globalLoading } = useGlobalData();
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,7 @@ export function useAdvancedReports(timeRange: string = 'this_month') {
   useEffect(() => {
     if (!tenantId || globalLoading) return;
     loadData();
-  }, [tenantId, timeRange, globalLoading]);
+  }, [tenantId, timeRange, customStartDate, customEndDate, globalLoading]);
 
   const loadData = async () => {
     setLoading(true);
@@ -44,7 +44,16 @@ export function useAdvancedReports(timeRange: string = 'this_month') {
       let endDate: Date | null = null;
       const now = new Date();
       
-      if (timeRange === 'this_month') {
+      if (timeRange === 'custom' && customStartDate && customEndDate) {
+        startDate = new Date(`${customStartDate}T00:00:00`);
+        endDate = new Date(`${customEndDate}T23:59:59`);
+      } else if (timeRange === 'today') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      } else if (timeRange === 'this_week') {
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        startDate = new Date(now.getFullYear(), now.getMonth(), diff);
+      } else if (timeRange === 'this_month') {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       } else if (timeRange === 'last_month') {
         startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);

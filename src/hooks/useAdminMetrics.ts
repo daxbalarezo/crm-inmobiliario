@@ -62,7 +62,7 @@ export interface WorkloadData {
   activeLeads: number;
 }
 
-export function useAdminMetrics(timeRange: string) {
+export function useAdminMetrics(timeRange: string, customStartDate?: string, customEndDate?: string) {
   const { tenantId, userProfile, tenant } = useCRM();
   const { leads: globalLeads, loading: globalLoading } = useGlobalData();
   const slaTargetHours = tenant?.slaTargetHours || 2;
@@ -96,9 +96,9 @@ export function useAdminMetrics(timeRange: string) {
 
   useEffect(() => {
     if (!loading) {
-      computeStats(allLeads, users, allActivities, timeRange);
+      computeStats(allLeads, users, allActivities, timeRange, customStartDate, customEndDate);
     }
-  }, [timeRange, allLeads, users, allActivities, loading]);
+  }, [timeRange, customStartDate, customEndDate, allLeads, users, allActivities, loading]);
 
   const loadData = async () => {
     setLoading(true);
@@ -154,7 +154,7 @@ export function useAdminMetrics(timeRange: string) {
     setAllLeads(fetchedLeads);
   }, [globalLeads, tenantId, userProfile?.role]);
 
-  const computeStats = (leadsData: Lead[], usersData: UserProfile[], activitiesData: LeadActivity[], range: string) => {
+  const computeStats = (leadsData: Lead[], usersData: UserProfile[], activitiesData: LeadActivity[], range: string, customStart?: string, customEnd?: string) => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
@@ -162,13 +162,35 @@ export function useAdminMetrics(timeRange: string) {
     let filteredLeads = leadsData;
     let filteredActivities = activitiesData;
 
-    if (range !== 'all') {
+    if (range === 'custom' && customStart && customEnd) {
+      const startD = new Date(`${customStart}T00:00:00`);
+      const endD = new Date(`${customEnd}T23:59:59`);
+      filteredLeads = leadsData.filter(l => {
+        if (!l.createdAt) return false;
+        const leadDate = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
+        if (isNaN(leadDate.getTime())) return false;
+        return leadDate >= startD && leadDate <= endD;
+      });
+      filteredActivities = activitiesData.filter(a => {
+        if (!a.createdAt) return false;
+        const actDate = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        if (isNaN(actDate.getTime())) return false;
+        return actDate >= startD && actDate <= endD;
+      });
+    } else if (range !== 'all') {
       filteredLeads = leadsData.filter(l => {
         if (!l.createdAt) return false;
         const leadDate = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
         if (isNaN(leadDate.getTime())) return false;
 
-        if (range === 'this_month') {
+        if (range === 'today') {
+          return leadDate.getFullYear() === currentYear && leadDate.getMonth() === currentMonth && leadDate.getDate() === now.getDate();
+        } else if (range === 'this_week') {
+          const day = now.getDay();
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+          const startOfWeek = new Date(currentYear, currentMonth, diff);
+          return leadDate >= startOfWeek;
+        } else if (range === 'this_month') {
           return leadDate.getFullYear() === currentYear && leadDate.getMonth() === currentMonth;
         } else if (range === 'last_month') {
           const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
@@ -189,7 +211,14 @@ export function useAdminMetrics(timeRange: string) {
         const actDate = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
         if (isNaN(actDate.getTime())) return false;
 
-        if (range === 'this_month') {
+        if (range === 'today') {
+          return actDate.getFullYear() === currentYear && actDate.getMonth() === currentMonth && actDate.getDate() === now.getDate();
+        } else if (range === 'this_week') {
+          const day = now.getDay();
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+          const startOfWeek = new Date(currentYear, currentMonth, diff);
+          return actDate >= startOfWeek;
+        } else if (range === 'this_month') {
           return actDate.getFullYear() === currentYear && actDate.getMonth() === currentMonth;
         } else if (range === 'last_month') {
           const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;

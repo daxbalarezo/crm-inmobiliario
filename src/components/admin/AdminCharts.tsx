@@ -76,7 +76,11 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#706E6B' }} />
                 <YAxis dataKey="stage" type="category" width={110} axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#444444' }} />
                 <RechartsTooltip 
-                  formatter={(value: number) => [value, 'Prospectos']}
+                  formatter={(value: number) => {
+                    const total = funnelData.reduce((sum, item) => sum + item.count, 0);
+                    const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                    return [`${value} (${percent}%)`, 'Prospectos'];
+                  }}
                   cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
@@ -128,7 +132,11 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
                     <Cell key={`cell-${index}`} fill={SLDS_CATEGORICAL_COLORS[index % SLDS_CATEGORICAL_COLORS.length]} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(value: number) => [value, 'Prospectos']} contentStyle={{ borderRadius: '4px', border: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0,0,0,0.1)' }} />
+                <RechartsTooltip formatter={(value: number) => {
+                  const total = sourceData.reduce((sum, item) => sum + item.value, 0);
+                  const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  return [`${value} (${percent}%)`, 'Prospectos'];
+                }} contentStyle={{ borderRadius: '4px', border: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0,0,0,0.1)' }} />
                 <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#444' }} />
               </PieChart>
             </ResponsiveContainer>
@@ -162,7 +170,11 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#706E6B' }} />
                 <YAxis dataKey="name" type="category" width={80} axisLine={false} tickLine={false} tickFormatter={formatName} tick={{ fontSize: 13, fill: '#444444' }} />
                 <RechartsTooltip 
-                  formatter={(value: number) => [value, 'Leads Activos']}
+                  formatter={(value: number) => {
+                    const total = workloadData.reduce((sum, item) => sum + item.activeLeads, 0);
+                    const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                    return [`${value} (${percent}%)`, 'Leads Activos'];
+                  }}
                   cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
@@ -199,7 +211,11 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#706E6B' }} />
                 <YAxis dataKey="name" type="category" width={80} axisLine={false} tickLine={false} tickFormatter={formatName} tick={{ fontSize: 13, fill: '#444444' }} />
                 <RechartsTooltip 
-                  formatter={(value: number) => [value, 'Acciones Registradas']}
+                  formatter={(value: number) => {
+                    const total = activityData.reduce((sum, item) => sum + item.activities, 0);
+                    const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                    return [`${value} (${percent}%)`, 'Acciones Registradas'];
+                  }}
                   cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
@@ -247,7 +263,11 @@ export default function AdminCharts({ funnelData, sourceData, workloadData, loss
                     <Cell key={`cell-loss-${index}`} fill={SLDS_CATEGORICAL_COLORS[(index + 4) % SLDS_CATEGORICAL_COLORS.length]} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(value: number) => [value, 'Casos Perdidos']} contentStyle={{ borderRadius: '4px', border: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0,0,0,0.1)' }} />
+                <RechartsTooltip formatter={(value: number) => {
+                  const total = lossReasonData.reduce((sum, item) => sum + item.count, 0);
+                  const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  return [`${value} (${percent}%)`, 'Casos Perdidos'];
+                }} contentStyle={{ borderRadius: '4px', border: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0,0,0,0.1)' }} />
                 <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#444' }} />
               </PieChart>
             </ResponsiveContainer>

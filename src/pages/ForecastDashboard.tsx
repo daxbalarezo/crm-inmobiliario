@@ -146,7 +146,7 @@ export default function ForecastDashboard() {
             </tr>
           </thead>
           <tbody>
-            {(tenant?.stages || Object.keys(defaultProbabilities)).map(stage => {
+            {((tenant?.pipeline_stages?.length ? tenant.pipeline_stages.map(s => s.name) : null) || (tenant?.stages?.length ? tenant.stages : null) || Object.keys(defaultProbabilities)).map(stage => {
               const stageLeads = filteredLeads.filter(l => l.status === stage);
               const count = stageLeads.length;
               let total = 0;
