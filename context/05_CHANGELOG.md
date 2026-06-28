@@ -4,6 +4,14 @@ Este archivo mantiene un registro cronológico de todas las modificaciones impor
 
 ---
 
+## [2026-06-28] - Mejoras de UX en Analíticas y Filtros de Fecha Personalizados
+**Objetivo del cambio:** Potenciar las herramientas de inteligencia de negocios (BI) ofreciendo a los gerentes porcentajes exactos en todos los gráficos y permitiendo búsquedas temporales granulares (Custom Date Ranges).
+**Archivos modificados:** `AgentAnalyticsDashboard.tsx`, `AdvancedReportsDashboard.tsx`, `AdminCharts.tsx`, `useAdminMetrics.ts`, `useAdvancedReports.ts`, `SettingsDashboard.tsx`, `dataSeeder.ts`.
+**Detalles:**
+- **Porcentajes en Gráficos (Tooltips):** Se inyectó una capa de cálculo matemático en los `formatter` de Recharts. Ahora todos los gráficos de barras y pastel del sistema (Visión General, Analítica de Agentes, Explorador de Datos) muestran el porcentaje `(%)` de participación junto al valor absoluto al pasar el mouse por encima.
+- **Rango de Fechas Personalizado:** Se introdujo la opción "Rango Personalizado" en los selectores de período (`timeRange`). Al seleccionarlo, se despliegan dos controles `<input type="date">` nativos. Los hooks de métricas (`useAdminMetrics`, `useAdvancedReports`) fueron reescritos para interceptar y filtrar la data milimétricamente desde las `00:00:00` del día inicial hasta las `23:59:59` del día final, resolviendo la limitante histórica de los filtros predefinidos.
+- **Fijación del Contexto de Proyecto en Sembrador:** Se corrigió un bug donde los prospectos falsos creados desde Configuración (`SettingsDashboard.tsx`) nacían huérfanos sin `project_id`. Ahora el script `dataSeeder.ts` inyecta automáticamente el proyecto activo en cada registro para que los leads de prueba rendericen y fluyan correctamente en los Kanban Boards filtrados.
+
 ## [2026-06-28] - Corrección Crítica de Métricas (Dashboard) y Data Seeding (Supabase)
 **Objetivo del cambio:** Restaurar el cálculo preciso de las proyecciones de venta y funnel de conversión tras la adopción de los embudos numerados, y estabilizar la generación de prospectos falsos hacia Supabase.
 **Archivos modificados:** `useAdminMetrics.ts`, `dataSeeder.ts`, `CommercialDashboard.tsx`, `useWorkflows.ts`, `LeadModal.tsx`
