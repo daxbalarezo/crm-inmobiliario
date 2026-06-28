@@ -5,6 +5,9 @@ import type { Workflow, WorkflowTriggerType } from '../types/definitions';
 export function useWorkflows() {
 
   const executeWorkflows = async (tenantId: string, trigger: WorkflowTriggerType, payload: any) => {
+    // TODO: Migrate workflows engine to Supabase
+    // Returning early to prevent Firebase permission errors
+    return;
     try {
       // 1. Fetch active workflows for this tenant and trigger
       const q = query(

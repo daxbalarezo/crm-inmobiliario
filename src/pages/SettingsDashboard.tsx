@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { Settings, Database, Users, Link as LinkIcon, Shuffle, ShieldAlert, FileText } from 'lucide-react';
 import { supabase } from '../config/supabase';

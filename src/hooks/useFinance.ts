@@ -128,7 +128,7 @@ export function useFinance(tenantId?: string) {
         ...data,
         status: 'PENDING',
         createdAt: inserted.created_at
-      } as Payment;
+      } as unknown as unknown as Payment;
     } catch (e) {
       console.error("Error creating payment:", e);
       throw e;

@@ -1,7 +1,7 @@
 // src/pages/FollowUpsDashboard.tsx
 import React, { useState, useMemo } from 'react';
 import { 
-  Search, Filter, Calendar as CalendarIcon, List, PhoneCall, 
+  Search, Filter, Calendar as CalendarIcon, List,  
   MessageCircle, CheckCircle, Clock, AlertCircle, MapPin, Building,
   ChevronDown, ChevronRight
 } from 'lucide-react';

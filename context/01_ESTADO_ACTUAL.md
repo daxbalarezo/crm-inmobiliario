@@ -8,6 +8,7 @@
 - **Panel de Dueño (CompaniesDashboard):** Arquitectura de nivel Enterprise (Estilo Salesforce/Twenty) completada. Cuenta con List Views interactivas, métricas computadas de uso de inquilinos (queries relacionales a Supabase), Split Views (Paneles laterales de detalle) y capacidad de Suplantación de Identidad (Impersonation).
 - **Migración de Negocio (ProjectsDashboard):** Migrado completamente de Firebase a Supabase (`crmService.ts`). UI refactorizada para usar estrictamente clases globales SLDS.
 - **SettingsDashboard:** Migrado completamente a Supabase.
+- **Limpieza Profunda (Build Pipeline):** Refactorización masiva de componentes para eliminar módulos CSS huérfanos (`AdminDashboard.module.css`) y reparación de errores de tipado en TypeScript. Pipeline de Vite ajustado para despliegues fluidos.
 
 ## En Progreso (A medias)
 - **Migración Restante (Fase 2):** Diversos paneles (`AdminDashboard`, etc.) y el inyector de datos de prueba (`dataSeeder.ts`) aún contienen referencias a `firebase/firestore`. Deben refactorizarse para usar `supabase.from()`.

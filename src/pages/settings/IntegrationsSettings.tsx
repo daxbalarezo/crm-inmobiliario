@@ -1,4 +1,3 @@
-import React from 'react';
 import { Copy, Facebook, MessageCircle } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 

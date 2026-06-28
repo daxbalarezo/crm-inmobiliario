@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import { useCRM } from '../context/CRMContext';
+import { useGlobalData } from '../context/GlobalDataProvider';
 import type { Lead, UserProfile, LeadActivity } from '../types/definitions';
 
 // Extendemos Lead con una propiedad temporal para la vista de SLA
@@ -34,6 +34,7 @@ export interface GlobalStats {
   avgConv: number;
   topAgent: { name: string; conv: number; sales: number } | null;
   projectedRevenue: number;
+  actualRevenue: number;
 }
 
 export interface LossReasonData {
@@ -63,6 +64,7 @@ export interface WorkloadData {
 
 export function useAdminMetrics(timeRange: string) {
   const { tenantId, userProfile, tenant } = useCRM();
+  const { leads: globalLeads, loading: globalLoading } = useGlobalData();
   const slaTargetHours = tenant?.slaTargetHours || 2;
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AgentStats[]>([]);
@@ -73,7 +75,8 @@ export function useAdminMetrics(timeRange: string) {
     totalReservations: 0,
     avgConv: 0,
     topAgent: null,
-    projectedRevenue: 0
+    projectedRevenue: 0,
+    actualRevenue: 0
   });
   
   const [funnelData, setFunnelData] = useState<FunnelData[]>([]);
@@ -87,9 +90,9 @@ export function useAdminMetrics(timeRange: string) {
   const [users, setUsers] = useState<UserProfile[]>([]);
 
   useEffect(() => {
-    if (!tenantId) return;
+    if (!tenantId || globalLoading) return;
     loadData();
-  }, [tenantId]);
+  }, [tenantId, globalLoading]);
 
   useEffect(() => {
     if (!loading) {
@@ -100,36 +103,56 @@ export function useAdminMetrics(timeRange: string) {
   const loadData = async () => {
     setLoading(true);
     try {
-      let usersSnap;
-      let leadsSnap;
-      let actsSnap;
+      let usersQuery = supabase.from('users').select('*');
+      let actsQuery = supabase.from('lead_activities').select('*');
 
-      if (userProfile?.role === 'owner') {
-        usersSnap = await getDocs(collection(db, 'users'));
-        leadsSnap = await getDocs(collection(db, 'leads'));
-        actsSnap = await getDocs(collection(db, 'lead_activities'));
-      } else {
-        usersSnap = await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId)));
-        leadsSnap = await getDocs(query(collection(db, 'leads'), where('tenantId', '==', tenantId)));
-        actsSnap = await getDocs(query(collection(db, 'lead_activities'), where('tenantId', '==', tenantId)));
+      if (userProfile?.role !== 'owner') {
+        usersQuery = usersQuery.eq('tenant_id', tenantId);
+        actsQuery = actsQuery.eq('tenant_id', tenantId);
       }
 
-      const fetchedUsers = usersSnap.docs.map(d => {
-        const data = d.data() as UserProfile;
-        return { ...data, uid: d.id, name: String(data.name || '').toUpperCase() };
-      }).filter(u => u.role === 'agent');
+      const [usersRes, actsRes] = await Promise.all([
+        usersQuery,
+        actsQuery
+      ]);
+
+      if (usersRes.error) throw usersRes.error;
+      if (actsRes.error) throw actsRes.error;
+
+      const fetchedUsers = (usersRes.data || []).map(row => ({
+        uid: row.uid,
+        tenantId: row.tenant_id,
+        role: row.role,
+        name: String(row.name || '').toUpperCase(),
+        email: row.email
+      }) as UserProfile).filter(u => u.role !== 'owner' && u.role !== 'manager');
       setUsers(fetchedUsers);
       
-      const fetchedLeads = leadsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Lead));
-      setAllLeads(fetchedLeads);
-
-      const fetchedActivities = actsSnap.docs.map(d => ({ id: d.id, ...d.data() } as LeadActivity));
+      const fetchedActivities = (actsRes.data || []).map(row => ({
+        id: row.id,
+        leadId: row.lead_id,
+        tenantId: row.tenant_id,
+        userId: row.user_id,
+        type: row.type,
+        notes: row.notes,
+        createdAt: row.created_at,
+        metadata: row.metadata
+      }) as LeadActivity);
       setAllActivities(fetchedActivities);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
   };
+
+  // Sync globalLeads a allLeads dinámicamente para soportar Realtime
+  useEffect(() => {
+    let fetchedLeads = globalLeads;
+    if (userProfile?.role !== 'owner') {
+      fetchedLeads = fetchedLeads.filter(l => l.tenantId === tenantId);
+    }
+    setAllLeads(fetchedLeads);
+  }, [globalLeads, tenantId, userProfile?.role]);
 
   const computeStats = (leadsData: Lead[], usersData: UserProfile[], activitiesData: LeadActivity[], range: string) => {
     const now = new Date();
@@ -222,86 +245,32 @@ export function useAdminMetrics(timeRange: string) {
     };
     
     let projectedRevenue = 0;
+    let actualRevenue = 0;
 
     const workloadCounts = new Map<string, number>(); // agent uid -> active leads
     usersData.forEach(u => workloadCounts.set(u.uid, 0));
 
     filteredLeads.forEach(l => {
-      if (!l.assignedTo) return;
-      const stat = agentStatsMap.get(l.assignedTo);
-      if (!stat) return;
-
-      stat.totalLeads++;
+      // Global Logic (Applies to ALL leads regardless of assignment)
       
-      if (l.status === 'VENDIDO' || l.status === 'CERRADO') {
-        stat.closedLeads++;
-        totalClosed++;
-        if (l.savedProforma?.finalPrice) {
-          stat.totalVolume += l.savedProforma.finalPrice;
-        }
-      }
-      
-      if (l.status === 'SEPARACION') {
-        stat.reservations++;
-        totalReservations++;
-      }
-
-      if (l.firstContactAt && l.createdAt) {
-        const created = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
-        const first = l.firstContactAt?.toDate ? l.firstContactAt.toDate() : new Date(l.firstContactAt);
-        
-        if (!isNaN(created.getTime()) && !isNaN(first.getTime())) {
-          const diffHours = (first.getTime() - created.getTime()) / (1000 * 60 * 60);
-          if (diffHours >= 0) {
-            stat.totalContactedLeads++;
-            
-            const slaLead: SLALead = { ...l, _ttfcHours: diffHours };
-
-            if (diffHours <= slaTargetHours) {
-              stat.slaCompliantLeads++;
-              stat.compliantLeadsList.push(slaLead);
-            } else {
-              stat.nonCompliantLeadsList.push(slaLead);
-            }
-
-            if (diffHours > stat.maxTTFC_hours) {
-              stat.maxTTFC_hours = diffHours;
-              stat.worstLead = slaLead;
-            }
-
-            const current = ttfcSums.get(stat.uid) || { totalHours: 0, count: 0 };
-            ttfcSums.set(stat.uid, {
-              totalHours: current.totalHours + diffHours,
-              count: current.count + 1
-            });
-          }
-        }
-      } else {
-        // No contact logged
-        const created = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt || Date.now());
-        if (!isNaN(created.getTime())) {
-          const diffHours = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
-          if (diffHours > slaTargetHours) {
-            stat.uncontactedLeads++;
-            stat.uncontactedLeadsList.push({ ...l, _ttfcHours: diffHours });
-          }
-        }
-      }
+      const statusStr = (l.status || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
       // Funnel Logic
-      if (l.status === 'VENDIDO' || l.status === 'CERRADO') {
+      if (statusStr.includes('VENDIDO') || statusStr.includes('CERRADO')) {
         stageCounts['VENDIDO']++;
-      } else if (l.status === 'SEPARACION') {
+        totalClosed++;
+      } else if (statusStr.includes('SEPARACION') || statusStr.includes('SEPARACIONES')) {
         stageCounts['SEPARACION']++;
-      } else if (l.status === 'VISITA') {
+        totalReservations++;
+      } else if (statusStr.includes('VISITA') || statusStr.includes('VISITAS')) {
         stageCounts['VISITA']++;
-      } else if (l.status === 'EN_NEGOCIACION' || l.status === 'EN NEGOCIACION') {
+      } else if (statusStr.includes('NEGOCIACION') || statusStr.includes('NEGOCIACIONES')) {
         stageCounts['EN_NEGOCIACION']++;
-      } else if (l.status === 'SIN_CONTACTAR' || l.status === 'SIN CONTACTAR' || l.status === 'CONTACTADO') {
+      } else if (statusStr.includes('SIN CONTACTAR') || statusStr.includes('CONTACTADO') || statusStr.includes('CONTACTAR')) {
         stageCounts['SIN_CONTACTAR']++;
-      } else if (l.status === 'PROSPECTO' || l.status === 'NUEVO') {
+      } else if (statusStr.includes('PROSPECTO') || statusStr.includes('NUEVO')) {
         stageCounts['PROSPECTO']++;
-      } else if (l.status === 'PERDIDO') {
+      } else if (statusStr.includes('PERDIDO')) {
         stageCounts['PERDIDO']++;
       }
 
@@ -314,20 +283,89 @@ export function useAdminMetrics(timeRange: string) {
       }
 
       // Projected Revenue Logic (Leads in Negotiation or Separation)
-      if (l.status === 'EN NEGOCIACION' || l.status === 'SEPARACION') {
+      if (statusStr.includes('NEGOCIACION') || statusStr.includes('SEPARACION')) {
         const val = l.savedProforma?.finalPrice || Number(l.customData?.presupuesto) || 0;
         projectedRevenue += val;
       }
 
+      // Actual Revenue Logic (Leads Sold)
+      if (statusStr.includes('VENDIDO') || statusStr.includes('CERRADO')) {
+        const val = l.savedProforma?.finalPrice || Number(l.customData?.presupuesto) || 0;
+        actualRevenue += val;
+      }
+
       // Loss Reason Logic
-      if (l.status === 'PERDIDO') {
+      if (statusStr.includes('PERDIDO')) {
         const reason = l.lossReason || 'No especificado';
         lossReasonCounts.set(reason, (lossReasonCounts.get(reason) || 0) + 1);
       }
 
       // Workload Logic (Active leads: not VENDIDO, not PERDIDO, not CERRADO)
-      if (l.status !== 'VENDIDO' && l.status !== 'CERRADO' && l.status !== 'PERDIDO') {
-        workloadCounts.set(l.assignedTo, (workloadCounts.get(l.assignedTo) || 0) + 1);
+      if (!statusStr.includes('VENDIDO') && !statusStr.includes('CERRADO') && !statusStr.includes('PERDIDO')) {
+        if (l.assignedTo) {
+          workloadCounts.set(l.assignedTo, (workloadCounts.get(l.assignedTo) || 0) + 1);
+        }
+      }
+
+      // Agent-Specific Logic
+      if (l.assignedTo) {
+        const stat = agentStatsMap.get(l.assignedTo);
+        if (stat) {
+          stat.totalLeads++;
+          
+          if (statusStr === 'VENDIDO' || statusStr === 'CERRADO') {
+            stat.closedLeads++;
+            if (l.savedProforma?.finalPrice) {
+              stat.totalVolume += l.savedProforma.finalPrice;
+            }
+          }
+          
+          if (statusStr === 'SEPARACION' || statusStr === 'SEPARACIONES') {
+            stat.reservations++;
+          }
+
+          if (l.firstContactAt && l.createdAt) {
+            const created = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
+            const first = l.firstContactAt?.toDate ? l.firstContactAt.toDate() : new Date(l.firstContactAt);
+            
+            if (!isNaN(created.getTime()) && !isNaN(first.getTime())) {
+              const diffHours = (first.getTime() - created.getTime()) / (1000 * 60 * 60);
+              if (diffHours >= 0) {
+                stat.totalContactedLeads++;
+                
+                const slaLead: SLALead = { ...l, _ttfcHours: diffHours };
+
+                if (diffHours <= slaTargetHours) {
+                  stat.slaCompliantLeads++;
+                  stat.compliantLeadsList.push(slaLead);
+                } else {
+                  stat.nonCompliantLeadsList.push(slaLead);
+                }
+
+                if (diffHours > stat.maxTTFC_hours) {
+                  stat.maxTTFC_hours = diffHours;
+                  stat.worstLead = slaLead;
+                }
+
+                const current = ttfcSums.get(stat.uid) || { totalHours: 0, count: 0 };
+                ttfcSums.set(stat.uid, {
+                  totalHours: current.totalHours + diffHours,
+                  count: current.count + 1
+                });
+              }
+            }
+          } else {
+            // No contact logged
+            const created = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt || Date.now());
+            if (!isNaN(created.getTime())) {
+              const diffHours = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+              if (diffHours > slaTargetHours) {
+                stat.uncontactedLeads++;
+                stat.uncontactedLeadsList.push({ ...l, _ttfcHours: diffHours });
+              }
+            }
+          }
+        }
       }
     });
 
@@ -370,7 +408,8 @@ export function useAdminMetrics(timeRange: string) {
       totalReservations,
       avgConv: totalLeads > 0 ? (totalClosed / totalLeads) * 100 : 0,
       topAgent: topAgt,
-      projectedRevenue
+      projectedRevenue,
+      actualRevenue
     });
 
     // Format Data for Charts

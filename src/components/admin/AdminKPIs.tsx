@@ -1,6 +1,4 @@
 import React from 'react';
-import { Users, TrendingUp, Award, Activity, Star } from 'lucide-react';
-import styles from '../../pages/AdminDashboard.module.css';
 import type { GlobalStats } from '../../hooks/useAdminMetrics';
 
 interface AdminKPIsProps {
@@ -15,42 +13,50 @@ export default function AdminKPIs({ globalStats }: AdminKPIsProps) {
   };
 
   return (
-    <div className={styles.headerDetailRow}>
-      <div className={styles.detailItem}>
-        <p className={styles.detailLabel}>Total Leads</p>
-        <p className={styles.detailValue}>{globalStats.totalLeads}</p>
-      </div>
-      <div className={styles.detailItem}>
-        <p className={styles.detailLabel}>Proyección de Ventas</p>
-        <p className={styles.detailValue}>S/ {globalStats.projectedRevenue.toLocaleString('en-PE')}</p>
-      </div>
-      <div className={styles.detailItem}>
-        <p className={styles.detailLabel}>Total Agentes</p>
-        <p className={styles.detailValue}>{globalStats.totalAgents}</p>
-      </div>
-      <div className={styles.detailItem}>
-        <p className={styles.detailLabel}>Ventas Cerradas</p>
-        <p className={styles.detailValue}>{globalStats.totalClosed}</p>
-      </div>
-      <div className={styles.detailItem}>
-        <p className={styles.detailLabel}>Total Separaciones</p>
-        <p className={styles.detailValue}>{globalStats.totalReservations}</p>
-      </div>
-      <div className={styles.detailItem}>
-        <p className={styles.detailLabel}>Conversión Global</p>
-        <p className={styles.detailValue}>{globalStats.avgConv.toFixed(1)}%</p>
-      </div>
-      <div className={styles.detailItem}>
-        <p className={styles.detailLabel}>Mejor Agente</p>
-        <p className={styles.detailValue}>
+    <ul className="slds-page-header__detail-row" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap' }}>
+      <li className="slds-page-header__detail-block">
+        <div className="slds-text-title slds-truncate" title="Total Leads">Total Leads</div>
+        <div className="slds-truncate" title={globalStats.totalLeads.toString()}>{globalStats.totalLeads}</div>
+      </li>
+      <li className="slds-page-header__detail-block">
+        <div className="slds-text-title slds-truncate" title="Proyección de Ventas">Proyección de Ventas</div>
+        <div className="slds-truncate" title={`S/ ${globalStats.projectedRevenue.toLocaleString('en-PE')}`}>
+          S/ {globalStats.projectedRevenue.toLocaleString('en-PE')}
+        </div>
+      </li>
+      <li className="slds-page-header__detail-block">
+        <div className="slds-text-title slds-truncate" title="Total Agentes">Total Agentes</div>
+        <div className="slds-truncate" title={globalStats.totalAgents.toString()}>{globalStats.totalAgents}</div>
+      </li>
+      <li className="slds-page-header__detail-block">
+        <div className="slds-text-title slds-truncate" title="Ventas Cerradas">Ventas Cerradas</div>
+        <div className="slds-truncate" title={globalStats.totalClosed.toString()}>{globalStats.totalClosed}</div>
+      </li>
+      <li className="slds-page-header__detail-block">
+        <div className="slds-text-title slds-truncate" title="Volumen de Ventas">Volumen de Ventas</div>
+        <div className="slds-truncate" title={`S/ ${(globalStats.actualRevenue || 0).toLocaleString('en-PE')}`}>
+          S/ {(globalStats.actualRevenue || 0).toLocaleString('en-PE')}
+        </div>
+      </li>
+      <li className="slds-page-header__detail-block">
+        <div className="slds-text-title slds-truncate" title="Total Separaciones">Total Separaciones</div>
+        <div className="slds-truncate" title={globalStats.totalReservations.toString()}>{globalStats.totalReservations}</div>
+      </li>
+      <li className="slds-page-header__detail-block">
+        <div className="slds-text-title slds-truncate" title="Conversión Global">Conversión Global</div>
+        <div className="slds-truncate" title={`${globalStats.avgConv.toFixed(1)}%`}>{globalStats.avgConv.toFixed(1)}%</div>
+      </li>
+      <li className="slds-page-header__detail-block">
+        <div className="slds-text-title slds-truncate" title="Mejor Agente">Mejor Agente</div>
+        <div className="slds-truncate">
           {globalStats.topAgent ? formatName(globalStats.topAgent.name) : 'N/A'}
-        </p>
-        {globalStats.topAgent && (
-          <span className={styles.detailSubtext}>
-            {globalStats.topAgent.sales} ventas
-          </span>
-        )}
-      </div>
-    </div>
+          {globalStats.topAgent && (
+            <span className="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">
+              ({globalStats.topAgent.sales} ventas)
+            </span>
+          )}
+        </div>
+      </li>
+    </ul>
   );
 }

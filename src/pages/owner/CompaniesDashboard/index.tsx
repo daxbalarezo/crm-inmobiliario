@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Building2, Plus, Settings } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
@@ -19,8 +19,8 @@ export default function CompaniesDashboard() {
   
   const [selectedTenant, setSelectedTenant] = useState<any | null>(null);
   const [isTenantModalOpen, setIsTenantModalOpen] = useState(false);
-  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
-  const [planPrices, setPlanPrices] = useState({ starter: 49, pro: 99, enterprise: 299 });
+  
+  // const [planPrices, setPlanPrices] = useState({ starter: 49, pro: 99, enterprise: 299 });
 
   useEffect(() => {
     if (userProfile?.role !== 'owner') return;
@@ -149,9 +149,6 @@ export default function CompaniesDashboard() {
     }
   };
 
-  const handleSavePricing = (newPrices: { starter: number; pro: number; enterprise: number }) => {
-    // Deprecated: Las configuraciones de precios ya se manejan en PlanManagement
-  };
 
   if (userProfile?.role !== 'owner') {
     return <Navigate to="/" replace />;

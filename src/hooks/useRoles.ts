@@ -5,6 +5,7 @@ import type { RolePermission } from '../types/definitions';
 export function useRoles(tenantId: string | undefined) {
   const [roles, setRoles] = useState<RolePermission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (!tenantId) {
@@ -38,7 +39,9 @@ export function useRoles(tenantId: string | undefined) {
     };
 
     fetchRoles();
-  }, [tenantId]);
+  }, [tenantId, refreshTrigger]);
 
-  return { roles, loading };
+  const refreshRoles = () => setRefreshTrigger(prev => prev + 1);
+
+  return { roles, loading, refreshRoles };
 }

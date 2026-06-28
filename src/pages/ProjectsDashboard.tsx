@@ -131,20 +131,15 @@ export default function ProjectsDashboard() {
   };
 
   return (
-    <div>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Page Header (SLDS) */}
-      <div className="slds-page-header" style={{ backgroundColor: 'transparent', border: 'none', padding: '0 0 24px 0' }}>
+      <div className="slds-page-header slds-m-bottom_medium" style={{ backgroundColor: 'white' }}>
         <div className="slds-page-header__row">
           <div className="slds-page-header__col-title">
             <div className="slds-media">
               <div className="slds-media__figure">
-                <span className="slds-icon_container slds-icon-standard-account" style={{ color: 'white' }}>
-                  <svg className="slds-icon slds-page-header__icon" viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="14" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
-                  </svg>
+                <span className="slds-icon_container slds-icon-standard-account" title="Proyectos Inmobiliarios" style={{ color: 'white' }}>
+                  <Building2 size={32} className="slds-icon slds-page-header__icon" />
                 </span>
               </div>
               <div className="slds-media__body">
@@ -172,7 +167,7 @@ export default function ProjectsDashboard() {
       </div>
 
       {/* Listado */}
-      <article className="slds-card">
+      <article className="slds-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div className="slds-card__header slds-grid">
           <header className="slds-media slds-media_center slds-has-flexi-truncate">
             <div className="slds-media__body">
@@ -182,8 +177,8 @@ export default function ProjectsDashboard() {
             </div>
           </header>
         </div>
-        <div className="slds-card__body slds-card__body_inner" style={{ padding: 0 }}>
-          <div className="slds-scrollable_y">
+        <div className="slds-card__body slds-card__body_inner" style={{ padding: 0, flex: 1, overflowY: 'auto' }}>
+          <div className="slds-scrollable_y" style={{ height: '100%' }}>
             <table className="slds-table slds-table_cell-buffer slds-table_bordered slds-table_hover">
               <thead>
                 <tr className="slds-line-height_reset">
@@ -330,11 +325,11 @@ export default function ProjectsDashboard() {
             <div className="slds-modal__container">
               <div className="slds-modal__header">
                 <button 
-                  className="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" 
+                  className="slds-button slds-button_icon slds-modal__close" 
                   title="Cerrar"
                   onClick={() => setIsProjectModalOpen(false)}
                 >
-                  <X size={24} style={{ color: '#000' }} />
+                  <X size={24} className="slds-button__icon slds-button__icon_large" />
                   <span className="slds-assistive-text">Cerrar</span>
                 </button>
                 <h1 className="slds-modal__title slds-hyphenate">Registrar Nuevo Proyecto</h1>

@@ -1,7 +1,7 @@
 // src/layouts/CorporateLayout.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import LeadModal from '../components/LeadModal';
-import { Home, Briefcase, Package, Map, ChevronDown, Calendar, Bell, CreditCard, BarChart3, Settings, LogOut, FileText, Users, Building2, FolderKanban, LayoutTemplate, Search, Grip, Star, Plus, HelpCircle } from 'lucide-react';
+import { Home, Briefcase, Package, Map, ChevronDown, Calendar, Bell, CreditCard, BarChart3, Settings, LogOut, FileText, Users, Building2, FolderKanban,  Search, Grip, Star, Plus, HelpCircle } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useProjects } from '../hooks/useProjects';
@@ -76,8 +76,8 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
   const toggleMenu = (menuName: string) => {
     setExpandedMenus((prev) =>
       prev.includes(menuName)
-        ? prev.filter(name => name !== menuName)
-        : [...prev, menuName]
+        ? [] // Si ya está abierto, lo cerramos
+        : [menuName] // Si está cerrado, lo abrimos y cerramos los demás
     );
   };
 
@@ -114,42 +114,48 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
         }
       ] : []),
       ...(userProfile?.role === 'manager' ? [
-        {
-          name: 'Analítica de Equipo',
-          icon: BarChart3,
-          subItems: [
-            { name: 'Visión General', path: '/' },
-            { name: 'Reportes Avanzados', path: '/reportes-avanzados' },
-            { name: 'Reporte por Agente', path: '/analitica-agentes' },
-            { name: 'Rendimiento y SLA', path: '/rendimiento' }
-          ]
-        },
+        { name: 'Visión General', path: '/', icon: Home },
         { 
-          name: 'Pipeline Global', 
+          name: 'Ventas y Pipeline', 
           icon: Briefcase,
           subItems: [
-            { name: 'Gestión Activa', path: '/comercial' },
+            { name: 'Prospectos (Kanban)', path: '/comercial' },
             { name: 'Previsión de Ventas', path: '/comercial/prevision' }
           ]
         },
-        { 
-          name: 'Gestión Operativa',
-          icon: Users,
+        {
+          name: 'Analítica Avanzada',
+          icon: BarChart3,
           subItems: [
-            { name: 'Equipo y Usuarios', path: '/equipo' },
-            { name: 'Proyectos', path: '/proyectos' },
+            { name: 'Reportes Globales', path: '/reportes-avanzados' },
+            { name: 'Rendimiento de Agentes', path: '/analitica-agentes' },
+            { name: 'Auditoría SLA', path: '/rendimiento' }
+          ]
+        },
+        { 
+          name: 'Inventario y Operaciones',
+          icon: FolderKanban,
+          subItems: [
+            { name: 'Proyectos / Propiedades', path: '/proyectos' },
             { name: 'Plantillas de Contratos', path: '/plantillas' }
           ]
         },
         { 
-          name: 'Configuración Inmobiliaria', 
+          name: 'Gestión de Equipo',
+          icon: Users,
+          subItems: [
+            { name: 'Usuarios y Permisos', path: '/equipo' }
+          ]
+        },
+        { 
+          name: 'Configuración (Tenant)', 
           icon: Settings,
           subItems: [
-            { name: 'Modelo de Datos', path: '/configuracion?tab=campos' },
+            { name: 'Campos Personalizados', path: '/configuracion?tab=campos' },
             { name: 'Roles y Permisos', path: '/configuracion?tab=roles' },
-            { name: 'Integraciones (Webhooks)', path: '/configuracion?tab=integraciones' },
             { name: 'Reglas de Asignación', path: '/configuracion?tab=asignacion' },
             { name: 'Reglas de Negocio (SLA)', path: '/configuracion?tab=reglas' },
+            { name: 'Webhooks y APIs', path: '/configuracion?tab=integraciones' },
             { name: 'Registro de Auditoría', path: '/configuracion?tab=auditoria' }
           ]
         }
@@ -208,20 +214,24 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
         
         <div className={styles.topbarLeft}>
           <div className={styles.logoArea} ref={dropdownRef}>
-            <button 
-              className={styles.waffleBtn} 
-              title="App Launcher (Cambiar Proyecto)"
-              onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
-            >
-              <Grip size={20} />
-            </button>
+            {userProfile?.role !== 'owner' && (
+              <button 
+                className={styles.waffleBtn} 
+                title="App Launcher (Cambiar Proyecto)"
+                onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+              >
+                <Grip size={20} />
+              </button>
+            )}
             <h1 className={styles.logoText}>
-              {activeProjectId === 'all' || !activeProjectId 
-                ? 'VISIÓN GLOBAL' 
-                : projects.find(p => p.id === activeProjectId)?.name.toUpperCase() || 'INMOBILIARIA'}
+              {userProfile?.role === 'owner'
+                ? 'CENTRO DE CONTROL SAAS'
+                : activeProjectId === 'all' || !activeProjectId 
+                  ? 'VISIÓN GLOBAL' 
+                  : projects.find(p => p.id === activeProjectId)?.name.toUpperCase() || 'INMOBILIARIA'}
             </h1>
             
-            {isProjectDropdownOpen && (
+            {isProjectDropdownOpen && userProfile?.role !== 'owner' && (
               <div className={styles.customDropdown}>
                 <button 
                   className={`${styles.dropdownItem} ${(!activeProjectId || activeProjectId === 'all') ? styles.dropdownItemActive : ''}`}
@@ -267,29 +277,33 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
           <Search size={16} className={styles.searchIcon} />
           <input 
             type="text" 
-            placeholder="Buscar leads, proyectos o contactos..." 
+            placeholder={userProfile?.role === 'owner' ? "Buscar inmobiliarias o usuarios..." : "Buscar leads, proyectos o contactos..."} 
             className={styles.searchInput}
           />
         </div>
 
         <div className={styles.globalActions}>
           <div className={styles.iconGroup}>
-            <button className={styles.iconBtn} title="Favoritos">
-              <Star size={18} />
-            </button>
-            <button className={styles.iconBtn} title="Creación rápida">
-              <Plus size={18} />
-            </button>
-            <button className={styles.iconBtn} title="Ayuda de Salesforce">
-              <HelpCircle size={18} />
-            </button>
-            <button className={styles.iconBtn} title="Configuración">
-              <Settings size={18} />
-            </button>
-            <button className={styles.iconBtn} title="Notificaciones">
-              <Bell size={18} />
-              <span className={styles.notificationDot}></span>
-            </button>
+            {userProfile?.role !== 'owner' && (
+              <>
+                <button className={styles.iconBtn} title="Favoritos">
+                  <Star size={18} />
+                </button>
+                <button className={styles.iconBtn} title="Creación rápida">
+                  <Plus size={18} />
+                </button>
+                <button className={styles.iconBtn} title="Ayuda del Sistema">
+                  <HelpCircle size={18} />
+                </button>
+                <button className={styles.iconBtn} title="Configuración">
+                  <Settings size={18} />
+                </button>
+                <button className={styles.iconBtn} title="Notificaciones">
+                  <Bell size={18} />
+                  <span className={styles.notificationDot}></span>
+                </button>
+              </>
+            )}
           </div>
 
           <div className={styles.profileContainer} ref={profileRef}>

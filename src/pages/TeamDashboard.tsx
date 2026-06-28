@@ -34,11 +34,11 @@ export default function TeamDashboard() {
 
   // Roles and Effective Tenant
   const effectiveTenantId = userProfile?.role === 'owner' ? newUser.tenantId : userProfile?.tenantId;
-  const { roles: customRoles } = useRoles(effectiveTenantId || undefined);
+  const { roles: customRoles, refreshRoles } = useRoles(effectiveTenantId || undefined);
 
   // Generador Inteligente
   const [generatedUsername, setGeneratedUsername] = useState('');
-  const [isCheckingCollision, setIsCheckingCollision] = useState(false);
+  
   const [collisionError, setCollisionError] = useState('');
   const [createError, setCreateError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -93,7 +93,7 @@ export default function TeamDashboard() {
   }, [newUser.firstName, newUser.lastName]);
 
   const checkCollision = async (username: string) => {
-    setIsCheckingCollision(true);
+    
     setCollisionError('');
     try {
       const { data } = await supabase.from('users').select('uid').eq('email', `${username}@crm.local`);
@@ -114,7 +114,7 @@ export default function TeamDashboard() {
     } catch (err) {
       console.error(err);
     } finally {
-      setIsCheckingCollision(false);
+      
     }
   };
 
@@ -245,7 +245,7 @@ export default function TeamDashboard() {
           <div className="slds-page-header__col-actions">
             <div className="slds-page-header__controls">
               <div className="slds-page-header__control">
-                <button onClick={() => setIsUserModalOpen(true)} className="slds-button slds-button_brand">
+                <button onClick={() => { setIsUserModalOpen(true); refreshRoles(); }} className="slds-button slds-button_brand">
                   <Plus size={16} className="slds-button__icon slds-button__icon_left" />
                   Nuevo Empleado
                 </button>

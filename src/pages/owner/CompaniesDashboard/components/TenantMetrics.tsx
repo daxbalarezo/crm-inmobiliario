@@ -1,4 +1,3 @@
-import React from 'react';
 import { Building2, LineChart, DollarSign } from 'lucide-react';
 
 interface TenantMetricsProps {

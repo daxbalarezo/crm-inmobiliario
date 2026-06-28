@@ -6,7 +6,7 @@ interface EditSubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
   subscription: SaaSSubscription | null;
-  onSave: (id: string, updates: { current_period_end: string, status: string }) => Promise<void>;
+  onSave: (id: string, updates: { current_period_end: string, status: 'active' | 'past_due' | 'canceled' | 'pending_verification' }) => Promise<void>;
 }
 
 export default function EditSubscriptionModal({ isOpen, onClose, subscription, onSave }: EditSubscriptionModalProps) {

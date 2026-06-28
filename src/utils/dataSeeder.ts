@@ -1,14 +1,12 @@
-import { writeBatch, doc, collection, getDocs, query, where, deleteDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 
 const FIRST_NAMES = ['Juan', 'Maria', 'Carlos', 'Ana', 'Luis', 'Sofia', 'Jorge', 'Lucia', 'Miguel', 'Carmen', 'Pedro', 'Laura', 'Diego', 'Elena', 'Fernando', 'Paula'];
 const LAST_NAMES = ['Garcia', 'Rodriguez', 'Martinez', 'Lopez', 'Gonzalez', 'Perez', 'Sanchez', 'Romero', 'Suarez', 'Diaz', 'Flores', 'Ruiz', 'Torres', 'Ramirez', 'Cruz'];
 
 const SOURCES = ['Facebook', 'Instagram', 'Web', 'Referido', 'Google Ads', 'Presencial'];
-const STAGES = ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO', 'PERDIDO'];
+const STAGES = ['01 - Prospecto', '02 - Contactado', '03 - Negociación', '04 - Visita', '05 - Separación', '06 - Vendido', '07 - Perdido'];
 const LOSS_REASONS = ['Precio muy alto', 'Falta de crédito', 'Eligió a la competencia', 'Ya no está interesado', 'No contesta'];
 const INTEREST_LEVELS = ['Alto', 'Medio', 'Bajo'];
-const ACTIVITY_TYPES = ['call', 'email', 'meeting', 'note', 'whatsapp'];
 
 const randomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -16,125 +14,72 @@ const randomDate = (start: Date, end: Date) => new Date(start.getTime() + Math.r
 
 export async function clearTestData(tenantId: string) {
   if (!tenantId) return;
-  const leadsRef = collection(db, 'leads');
-  const actRef = collection(db, 'lead_activities');
-  
-  const leadsSnap = await getDocs(query(leadsRef, where('tenantId', '==', tenantId)));
-  const actSnap = await getDocs(query(actRef, where('tenantId', '==', tenantId)));
-  
-  let batch = writeBatch(db);
-  let opCount = 0;
-
-  const commitBatch = async () => {
-    if (opCount > 0) {
-      await batch.commit();
-      batch = writeBatch(db);
-      opCount = 0;
-    }
-  };
-
-  for (const doc of leadsSnap.docs) {
-    batch.delete(doc.ref);
-    opCount++;
-    if (opCount >= 400) await commitBatch();
+  try {
+    await supabase.from('leads').delete().eq('tenant_id', tenantId);
+    // await supabase.from('lead_activities').delete().eq('tenant_id', tenantId);
+  } catch (error) {
+    console.error("Error clearing test data:", error);
   }
-  for (const doc of actSnap.docs) {
-    batch.delete(doc.ref);
-    opCount++;
-    if (opCount >= 400) await commitBatch();
-  }
-  await commitBatch();
-};
+}
 
 export const seedTestData = async (tenantId: string, users: any[]) => {
   if (!tenantId || users.length === 0) {
     throw new Error("Se necesita un tenantId y una lista de asesores");
   }
 
-  const leadsRef = collection(db, 'leads');
-  const activitiesRef = collection(db, 'lead_activities');
-
-  let batch = writeBatch(db);
-  let opCount = 0;
-
-  const commitBatchIfNeeded = async () => {
-    if (opCount >= 400) {
-      await batch.commit();
-      batch = writeBatch(db);
-      opCount = 0;
-    }
-  };
-
   const now = new Date();
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(now.getMonth() - 6);
 
   const numLeads = 400;
+  const leadsToInsert = [];
   
   for (let i = 0; i < numLeads; i++) {
-    const leadDoc = doc(leadsRef);
     const assignedUser = randomItem(users);
-    
     const createdAt = randomDate(sixMonthsAgo, now);
     const status = randomItem(STAGES);
-    const isLost = status === 'PERDIDO';
+    const isLost = status === '07 - Perdido';
 
     const leadData: any = {
-      tenantId,
-      assignedTo: assignedUser.uid,
+      tenant_id: tenantId,
+      assigned_to: assignedUser.uid || assignedUser.id,
       name: `${randomItem(FIRST_NAMES)} ${randomItem(LAST_NAMES)}`,
       email: `test_${i}_${Date.now()}@example.com`,
       phone: `+51 9${randomInt(10000000, 99999999)}`,
       source: randomItem(SOURCES),
       status,
-      interestLevel: randomItem(INTEREST_LEVELS),
-      createdAt,
-      updatedAt: createdAt,
+      interest_level: randomItem(INTEREST_LEVELS),
+      created_at: createdAt.toISOString(),
+      updated_at: createdAt.toISOString(),
     };
 
     if (isLost) {
-      leadData.lossReason = randomItem(LOSS_REASONS);
+      leadData.loss_reason = randomItem(LOSS_REASONS);
     }
 
-    if (['EN_NEGOCIACION', 'SEPARACION', 'VENDIDO'].includes(status)) {
-      leadData.savedProforma = {
-        finalPrice: randomInt(50000, 300000)
+    // Lógica para inyectar presupuestos y montos según la etapa
+    if (status === '03 - Negociación') {
+      leadData.custom_data = {
+        presupuesto: randomInt(100000, 500000)
+      };
+    } else if (status === '05 - Separación' || status === '06 - Vendido') {
+      leadData.saved_proforma = {
+        finalPrice: randomInt(100000, 500000),
+        unitName: 'Dpto Seed',
+        proformaId: 'seed',
+        createdAt: new Date().toISOString()
       };
     }
 
-    if (status !== 'PROSPECTO') {
-      const firstContact = new Date(createdAt.getTime() + randomInt(1000 * 60 * 10, 1000 * 60 * 60 * 48)); // 10 min to 48 hours later
-      if (firstContact < now) {
-        leadData.firstContactAt = firstContact;
-      }
-    }
-
-    batch.set(leadDoc, leadData);
-    opCount++;
-    await commitBatchIfNeeded();
-
-    const numActivities = randomInt(1, 5);
-    for (let j = 0; j < numActivities; j++) {
-      const actDoc = doc(activitiesRef);
-      const actDate = randomDate(createdAt, now);
-      const activityType = randomItem(ACTIVITY_TYPES);
-      
-      const actData = {
-        tenantId,
-        leadId: leadDoc.id,
-        userId: assignedUser.uid,
-        type: activityType,
-        content: `Actividad autogenerada de tipo ${activityType}`,
-        createdAt: actDate
-      };
-      
-      batch.set(actDoc, actData);
-      opCount++;
-      await commitBatchIfNeeded();
-    }
+    leadsToInsert.push(leadData);
   }
 
-  if (opCount > 0) {
-    await batch.commit();
+  // Insertar en Supabase en bloques de 100
+  for (let i = 0; i < leadsToInsert.length; i += 100) {
+    const chunk = leadsToInsert.slice(i, i + 100);
+    const { error } = await supabase.from('leads').insert(chunk);
+    if (error) {
+      console.error("Error inserting seed chunk:", error);
+    }
   }
 };

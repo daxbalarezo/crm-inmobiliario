@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 import { saasService, type SaaSPlan } from '../../../services/saasService';
 import { supabase } from '../../../config/supabase';
+import { useCRM } from '../../../context/CRMContext';
 
 export default function PlanManagement() {
+  const { userProfile } = useCRM();
   const [plans, setPlans] = useState<SaaSPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,6 +50,15 @@ export default function PlanManagement() {
       for (const plan of plans) {
         await supabase.from('saas_plans').update(plan).eq('id', plan.id);
       }
+      
+      await saasService.logSaaSOperation(
+        'plans_updated',
+        'plan',
+        { message: 'Modificó los precios y características de los planes de suscripción', severity: 'WARNING' },
+        null,
+        userProfile?.uid
+      );
+
       alert("Planes guardados en la nube correctamente.");
     } catch (error) {
       console.error('Error saving plans:', error);

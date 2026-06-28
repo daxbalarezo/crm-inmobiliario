@@ -21,7 +21,7 @@ const defaultProbabilities: Record<string, number> = {
 };
 
 export default function CommercialDashboard() {
-  const { leads, inventory, loading, updateLeadOptimistically } = useCommercialData();
+  const { leads, inventory, loading, updateLeadOptimistically, addLeadOptimistically } = useCommercialData();
   const { tenantId, activeProjectId, userProfile, userPermissions, tenant } = useCRM();
   const { logEvent } = useAuditTrail(tenantId || '');
   const [searchTerm, setSearchTerm] = useState('');
@@ -101,16 +101,17 @@ export default function CommercialDashboard() {
   const handleSave = async (data: Partial<Lead>) => {
     if (!tenantId) return;
     
-    // Mapear de camelCase a snake_case para Supabase
     const payload: any = {
       name: data.name,
       email: data.email,
       phone: data.phone,
       status: data.status,
       interest_level: data.interestLevel,
-      notes: data.notes,
       saved_proforma: data.savedProforma,
-      assigned_to: data.assignedTo
+      assigned_to: data.assignedTo,
+      custom_data: data.customData,
+      source: data.source,
+      loss_reason: data.lossReason
     };
     
     if (editingLead?.id) {
@@ -146,6 +147,19 @@ export default function CommercialDashboard() {
       }
       
       if (newLead) {
+        addLeadOptimistically({
+          id: newLead.id,
+          tenantId: newLead.tenant_id,
+          projectId: newLead.project_id,
+          assignedTo: newLead.assigned_to,
+          name: newLead.name,
+          phone: newLead.phone,
+          email: newLead.email,
+          status: newLead.status,
+          interestLevel: newLead.interest_level,
+          createdAt: newLead.created_at,
+          updatedAt: newLead.updated_at
+        });
         executeWorkflows(tenantId, 'lead_created', { id: newLead.id, ...data, assignedTo: userProfile?.uid });
       }
     }
@@ -200,6 +214,130 @@ export default function CommercialDashboard() {
   const openNew = () => { setEditingLead(null); setShowLeadModal(true); };
   const openEdit = (lead: Lead) => { setEditingLead(lead); setShowLeadModal(true); };
 
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeedLeads = async () => {
+    if (!tenantId) return;
+    setIsSeeding(true);
+    try {
+      // 1. Obtener todos los usuarios del tenant
+      const { data: usersData, error: usersError } = await supabase.from('users').select('uid, name, role').eq('tenant_id', tenantId);
+      if (usersError) throw usersError;
+
+      // 2. Filtrar gerentes y owners (solo asesores)
+      const asesores = (usersData || []).filter(u => u.role !== 'owner' && u.role !== 'manager');
+      
+      if (asesores.length === 0) {
+        alert("No hay asesores creados en esta empresa. Por favor, asegúrate de que los usuarios no tengan rol 'Gerente'.");
+        setIsSeeding(false);
+        return;
+      }
+
+      // 3. Obtener etapas
+      const stages = tenant?.pipeline_stages || [];
+      if (stages.length === 0) {
+        alert("La empresa no tiene un embudo de ventas configurado.");
+        setIsSeeding(false);
+        return;
+      }
+
+      // 4. Generar 20 prospectos
+      const firstNames = ["Carlos", "Maria", "Jorge", "Ana", "Luis", "Elena", "Pedro", "Sofia", "Miguel", "Laura", "Diego", "Carmen"];
+      const lastNames = ["Gomez", "Perez", "Rodriguez", "Fernandez", "Lopez", "Martinez", "Sanchez", "Ramirez", "Torres", "Flores"];
+      const interests = ["Alto", "Medio", "Bajo"];
+      
+      const newLeads = [];
+      const numLeads = 20;
+
+      for (let i = 0; i < numLeads; i++) {
+        const asesor = asesores[i % asesores.length]; 
+        const stage = stages[i % stages.length]; 
+        const fName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const interest = interests[Math.floor(Math.random() * interests.length)];
+        const phone = "9" + Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+        
+        let custom_data = null;
+        let saved_proforma = null;
+
+        const normalizedStage = stage.name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        if (normalizedStage.includes('NEGOCIACION')) {
+          custom_data = { presupuesto: Math.floor(Math.random() * (500000 - 100000 + 1)) + 100000 };
+        } else if (normalizedStage.includes('SEPARACION') || normalizedStage.includes('VENDIDO') || normalizedStage.includes('CERRADO')) {
+          saved_proforma = {
+            finalPrice: Math.floor(Math.random() * (500000 - 100000 + 1)) + 100000,
+            unitName: 'Dpto Seed',
+            proformaId: 'seed',
+            createdAt: new Date().toISOString()
+          };
+        }
+
+        const newLead: any = {
+          tenant_id: tenantId,
+          project_id: activeProjectId === 'all' ? null : activeProjectId,
+          assigned_to: asesor.uid,
+          name: `${fName} ${lName}`,
+          email: `${fName.toLowerCase()}.${lName.toLowerCase()}@ejemplo.com`,
+          phone: phone,
+          status: stage.name,
+          interest_level: interest,
+        };
+
+        if (custom_data) newLead.custom_data = custom_data;
+        if (saved_proforma) newLead.saved_proforma = saved_proforma;
+
+        newLeads.push(newLead);
+      }
+
+      // 5. Insertar y obtener IDs
+      const { data: insertedLeads, error: insertLeadsError } = await supabase.from('leads').insert(newLeads).select('id, status, assigned_to');
+      if (insertLeadsError) throw insertLeadsError;
+
+      // 6. Generar actividades asociadas a los prospectos
+      if (insertedLeads) {
+        const newActivities = [];
+        for (const lead of insertedLeads) {
+          const asesor = asesores.find(a => a.uid === lead.assigned_to) || asesores[0];
+          const stageIndex = stages.findIndex(s => s.name === lead.status);
+          
+          newActivities.push({
+            tenant_id: tenantId,
+            lead_id: lead.id,
+            user_id: userProfile?.uid || asesor.uid,
+            user_name: userProfile?.name || asesor.name,
+            action_type: 'note',
+            description: `Registro inicial de contacto por campaña digital.`,
+            status: 'completed'
+          });
+
+          if (stageIndex > 0) {
+            newActivities.push({
+              tenant_id: tenantId,
+              lead_id: lead.id,
+              user_id: asesor.uid,
+              user_name: asesor.name,
+              action_type: 'call',
+              description: `Llamada de seguimiento pendiente para confirmar avance en ${lead.status}`,
+              status: 'pending',
+              due_date: new Date(Date.now() + 86400000 * (Math.floor(Math.random() * 5) + 1)).toISOString()
+            });
+          }
+        }
+        await supabase.from('lead_activities').insert(newActivities);
+      }
+
+      alert(`Se sembraron ${numLeads} prospectos con notas y tareas para ${asesores.length} asesores.`);
+      window.location.reload(); 
+
+    } catch (e: any) {
+      console.error(e);
+      alert("Error al sembrar datos: " + e.message);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   if (loading) return (
     <div className="slds-p-around_xx-large slds-text-align_center">
       <div role="status" className="slds-spinner slds-spinner_medium slds-spinner_brand">
@@ -211,7 +349,7 @@ export default function CommercialDashboard() {
   );
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="slds-grid slds-grid_vertical slds-p-around_none">
       
       {/* PAGE HEADER SLDS */}
       <div className="slds-page-header slds-m-bottom_medium" style={{ backgroundColor: 'white' }}>
@@ -240,6 +378,15 @@ export default function CommercialDashboard() {
           <div className="slds-page-header__col-actions">
             <div className="slds-page-header__controls">
               <div className="slds-page-header__control">
+                {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
+                  <button 
+                    className="slds-button slds-button_success slds-m-right_x-small" 
+                    onClick={handleSeedLeads}
+                    disabled={isSeeding}
+                  >
+                    <Plus size={14} className="slds-m-right_x-small" /> {isSeeding ? 'Sembrando...' : '🌱 Sembrar Datos'}
+                  </button>
+                )}
                 {userPermissions.leads.create && (
                   <button className="slds-button slds-button_brand" onClick={openNew}>
                     <Plus size={14} className="slds-m-right_x-small" /> Nuevo Prospecto

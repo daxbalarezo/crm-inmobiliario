@@ -1,4 +1,3 @@
-import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import ContractTemplateSettings from './settings/ContractTemplateSettings';

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Target, Clock, AlertCircle, PhoneCall, ArrowRight, Wallet, Users, Home as PropIcon, MessageSquare, Calendar, FileText, Activity } from 'lucide-react';
-import type { Lead } from '../types/definitions'; 
+import { Target, Clock,  PhoneCall,  Wallet, Users, Home as PropIcon, MessageSquare, Calendar, FileText, Activity } from 'lucide-react';
+ 
 import { useCommercialData } from '../hooks/useCommercialData';
 import { useCRM } from '../context/CRMContext';
 import styles from './HomeDashboard.module.css';

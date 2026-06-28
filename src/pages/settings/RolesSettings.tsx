@@ -18,6 +18,7 @@ const DEFAULT_NEW_ROLE: Omit<RolePermission, 'id'> = {
   permissions: {
     leads: { ...DEFAULT_MODULE_PERM },
     inventory: { ...DEFAULT_MODULE_PERM },
+    finance: { read: 'own', create: false, approve: false },
     settings: { manage: false }
   }
 };

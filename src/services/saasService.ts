@@ -156,5 +156,46 @@ export const saasService = {
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
+  },
+
+  async logSaaSOperation(
+    action: string, 
+    entityType: string, 
+    details: { message: string; severity?: 'INFO' | 'WARNING' | 'CRITICAL'; [key: string]: any },
+    tenantId?: string | null, 
+    userId?: string | null
+  ): Promise<void> {
+    const payload: any = {
+      action,
+      entity_type: entityType,
+      details_json: details
+    };
+    if (tenantId) payload.tenant_id = tenantId;
+    if (userId) payload.user_id = userId;
+
+    const { error } = await supabase.from('saas_audit_logs').insert([payload]);
+    if (error) console.error("Error logging SaaS operation:", error);
+  },
+
+  async getDatabaseUsage(): Promise<number> {
+    try {
+      const { data, error } = await supabase.rpc('get_database_size_bytes');
+      if (error) throw error;
+      return data || 0;
+    } catch (e) {
+      console.error("Error fetching db size:", e);
+      return 0;
+    }
+  },
+
+  async getStorageUsage(): Promise<number> {
+    try {
+      const { data, error } = await supabase.rpc('get_storage_size_bytes');
+      if (error) throw error;
+      return data || 0;
+    } catch (e) {
+      console.error("Error fetching storage size:", e);
+      return 0;
+    }
   }
 };

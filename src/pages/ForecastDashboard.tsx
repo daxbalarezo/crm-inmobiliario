@@ -1,12 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { useCommercialData } from '../hooks/useCommercialData';
-import styles from './AgentAnalyticsDashboard.module.css'; // We can use the same clean grid container
-import adminStyles from './AdminDashboard.module.css';
+
 
 export default function ForecastDashboard() {
   const { userProfile, tenant } = useCRM();
-  const { leads, loading, error } = useCommercialData();
+  const { leads, loading,  } = useCommercialData();
   const [selectedAgent, setSelectedAgent] = useState('all');
 
   // Probability Mapping for Forecast
@@ -62,56 +61,74 @@ export default function ForecastDashboard() {
 
   if (loading) {
     return (
-      <div className={styles.loaderContainer}>
-        <div className={styles.spinner}></div>
+      <div className="">
+        <div className=""></div>
       </div>
     );
   }
 
   return (
-    <div className={adminStyles.container}>
-      <div className={adminStyles.pageHeader}>
-        <div className={adminStyles.headerTopRow}>
-          <div className={adminStyles.headerTitleBlock}>
-            <div className={adminStyles.headerIcon} style={{ backgroundColor: '#0B5CAB' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            </div>
-            <div className={adminStyles.headerTextGroup}>
-              <p className={adminStyles.headerBreadcrumb}>Pipeline Global</p>
-              <h2 className={adminStyles.title}>Previsión de Ventas</h2>
+    <div className="slds-grid slds-grid_vertical slds-p-around_none">
+      <div className="slds-page-header slds-page-header_record-home slds-m-bottom_medium" style={{ backgroundColor: '#ffffff', borderRadius: '4px', borderBottom: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0, 0, 0, 0.10)' }}>
+        <div className="slds-page-header__row">
+          <div className="slds-page-header__col-title">
+            <div className="slds-media">
+              <div className="slds-media__figure">
+                <span className="slds-icon_container slds-icon-standard-performance" style={{ backgroundColor: '#0B5CAB', padding: '0.5rem', borderRadius: '0.25rem', display: 'inline-block' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </span>
+              </div>
+              <div className="slds-media__body">
+                <div className="slds-page-header__name">
+                  <div className="slds-page-header__name-title">
+                    <h1>
+                      <span className="slds-page-header__title slds-truncate" title="Previsión de Ventas">Previsión de Ventas</span>
+                    </h1>
+                  </div>
+                </div>
+                <p className="slds-page-header__name-meta">Pipeline Global</p>
+              </div>
             </div>
           </div>
         </div>
         
-        <div style={{ display: 'flex', padding: '12px 0 0 0', borderTop: '1px solid #DDDBDA', marginTop: '4px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        <div className="slds-page-header__row slds-page-header__row_details" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #DDDBDA' }}>
           
-          <div className={adminStyles.filterGroup} style={{ gap: '12px', flexWrap: 'wrap' }}>
+          <div className="slds-page-header__detail-row" style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="slds-grid slds-gutters" style={{ gap: '12px', flexWrap: 'wrap' }}>
             {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
-              <select 
-                className={adminStyles.timeFilter}
-                style={{ minWidth: '180px' }}
-                value={selectedAgent} 
-                onChange={e => setSelectedAgent(e.target.value)}
-              >
-                <option value="all">Todos los Asesores</option>
-                {agents.map(aId => <option key={aId} value={aId}>{aId}</option>)}
-              </select>
-            )}
-          </div>
-          
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span className={adminStyles.detailLabel} style={{ marginBottom: 0 }}>Total Pipeline</span>
-              <span className={adminStyles.detailValueBrand} style={{ fontSize: '18px' }}>
-                ${stats.montoTotal.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-              </span>
+                <div className="slds-select_container" style={{ width: 'fit-content' }}>
+                  <select 
+                    className="slds-select"
+                    style={{ minWidth: '180px' }}
+                    value={selectedAgent} 
+                    onChange={e => setSelectedAgent(e.target.value)}
+                  >
+                    <option value="all">Todos los Asesores</option>
+                    {agents.map(aId => <option key={aId} value={aId}>{aId}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span className={adminStyles.detailLabel} style={{ marginBottom: 0 }}>Pipeline Ponderado</span>
-              <span className={adminStyles.detailValueBrand} style={{ fontSize: '18px', color: '#54A77B' }}>
-                ${stats.montoPonderado.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-              </span>
-            </div>
+            
+            <ul className="slds-page-header__detail-row" style={{ display: 'flex', gap: '2rem', margin: 0, padding: 0 }}>
+              <li className="slds-page-header__detail-block">
+                <div className="slds-text-title slds-truncate" title="Total Pipeline">Total Pipeline</div>
+                <div className="slds-truncate">
+                  <span className="slds-text-heading_small" style={{ fontWeight: 600, color: '#0B5CAB' }}>
+                    ${stats.montoTotal.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+              </li>
+              <li className="slds-page-header__detail-block">
+                <div className="slds-text-title slds-truncate" title="Pipeline Ponderado">Pipeline Ponderado</div>
+                <div className="slds-truncate">
+                  <span className="slds-text-heading_small" style={{ fontWeight: 600, color: '#54A77B' }}>
+                    ${stats.montoPonderado.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+              </li>
+            </ul>
           </div>
         </div>
       </div>

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, Users, AlertCircle, CheckCircle, Clock, Upload, Edit2 } from 'lucide-react';
 import { saasService, type SaaSSubscription } from '../../../services/saasService';
+import { useCRM } from '../../../context/CRMContext';
 import EditSubscriptionModal from './EditSubscriptionModal';
 
 export default function BillingDashboard() {
+  const { userProfile } = useCRM();
   const [subscriptions, setSubscriptions] = useState<SaaSSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubscription, setSelectedSubscription] = useState<SaaSSubscription | null>(null);
@@ -34,6 +36,16 @@ export default function BillingDashboard() {
       setSubscriptions(prev => prev.map(sub => 
         sub.id === id ? { ...sub, status: 'active' } : sub
       ));
+      
+      const sub = subscriptions.find(s => s.id === id);
+      await saasService.logSaaSOperation(
+        'subscription_approved',
+        'subscription',
+        { message: `Aprobó depósito y reactivó suscripción de ${sub?.tenants?.name || 'Inmobiliaria Desconocida'}`, severity: 'INFO' },
+        sub?.tenant_id,
+        userProfile?.uid
+      );
+
       alert('Depósito aprobado y suscripción renovada exitosamente.');
     } catch (error) {
       console.error('Error approving deposit:', error);
@@ -41,11 +53,21 @@ export default function BillingDashboard() {
     }
   };
 
-  const handleSaveSubscription = async (id: string, updates: { current_period_end: string, status: string }) => {
+  const handleSaveSubscription = async (id: string, updates: { current_period_end: string, status: any }) => {
     await saasService.updateSubscriptionDetails(id, updates);
     setSubscriptions(prev => prev.map(sub => 
       sub.id === id ? { ...sub, ...updates } : sub
     ));
+    
+    const sub = subscriptions.find(s => s.id === id);
+    await saasService.logSaaSOperation(
+      'subscription_updated',
+      'subscription',
+      { message: `Actualizó datos de la suscripción de ${sub?.tenants?.name || 'Inmobiliaria Desconocida'}`, severity: 'INFO', updates },
+      sub?.tenant_id,
+      userProfile?.uid
+    );
+
     alert('Suscripción actualizada correctamente.');
   };
 
@@ -143,7 +165,10 @@ export default function BillingDashboard() {
       <div className="slds-card slds-p-around_medium">
         <div className="slds-grid slds-grid_align-spread slds-m-bottom_medium">
           <h3 className="slds-text-heading_small">Control de Suscripciones y Depósitos</h3>
-          <button className="slds-button slds-button_neutral">
+          <button 
+            className="slds-button slds-button_neutral"
+            onClick={() => alert("Próximamente: Aquí podrás subir los vouchers (transferencias o Yape) que te envíen las Inmobiliarias por WhatsApp, para renovar sus suscripciones de forma manual sin necesidad de Stripe/Tarjetas de Crédito.")}
+          >
             <Upload size={14} className="slds-m-right_xx-small" /> Registrar Pago Manualmente
           </button>
         </div>

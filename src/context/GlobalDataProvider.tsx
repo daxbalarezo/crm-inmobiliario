@@ -8,6 +8,7 @@ interface GlobalDataContextType {
   loading: boolean;
   error: string | null;
   updateLeadOptimistically: (id: string, patch: Partial<Lead>) => void;
+  addLeadOptimistically: (lead: Lead) => void;
 }
 
 const GlobalDataContext = createContext<GlobalDataContextType | null>(null);
@@ -120,8 +121,15 @@ export function GlobalDataProvider({ children }: { children: ReactNode }) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
   };
 
+  const addLeadOptimistically = (lead: Lead) => {
+    setLeads(prev => {
+      if (prev.some(l => l.id === lead.id)) return prev;
+      return [lead, ...prev];
+    });
+  };
+
   return (
-    <GlobalDataContext.Provider value={{ leads, loading, error, updateLeadOptimistically }}>
+    <GlobalDataContext.Provider value={{ leads, loading, error, updateLeadOptimistically, addLeadOptimistically }}>
       {children}
     </GlobalDataContext.Provider>
   );

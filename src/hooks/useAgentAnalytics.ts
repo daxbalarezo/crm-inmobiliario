@@ -71,7 +71,7 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
         name: String(row.name || '').toUpperCase(),
         email: row.email,
         assignedProjectIds: row.assigned_project_ids || []
-      }) as UserProfile).filter(u => u.role === 'agent');
+      }) as UserProfile).filter(u => u.role !== 'owner' && u.role !== 'manager');
       
       setAgentsList(fetchedUsers);
     } catch (e) {
@@ -179,27 +179,29 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
     };
 
     rangedLeads.forEach(l => {
+      const statusStr = (l.status || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
       // Projected Revenue
-      if (l.status === 'EN NEGOCIACION' || l.status === 'SEPARACION') {
+      if (statusStr === 'EN_NEGOCIACION' || statusStr === 'EN NEGOCIACION' || statusStr === 'NEGOCIACION' || statusStr === 'NEGOCIACIONES' || statusStr === 'SEPARACION' || statusStr === 'SEPARACIONES') {
         const val = l.savedProforma?.finalPrice || Number(l.customData?.presupuesto) || 0;
         projectedRevenue += val;
       }
 
-      if (l.status === 'VENDIDO' || l.status === 'CERRADO') {
+      if (statusStr === 'VENDIDO' || statusStr === 'CERRADO') {
         totalClosed++;
         stageCounts['VENDIDO']++;
-      } else if (l.status === 'SEPARACION') {
+      } else if (statusStr === 'SEPARACION' || statusStr === 'SEPARACIONES') {
         totalReservations++;
         stageCounts['SEPARACION']++;
-      } else if (l.status === 'VISITA') {
+      } else if (statusStr === 'VISITA' || statusStr === 'VISITAS') {
         stageCounts['VISITA']++;
-      } else if (l.status === 'EN_NEGOCIACION' || l.status === 'EN NEGOCIACION') {
+      } else if (statusStr === 'EN_NEGOCIACION' || statusStr === 'EN NEGOCIACION' || statusStr === 'NEGOCIACION' || statusStr === 'NEGOCIACIONES') {
         stageCounts['EN_NEGOCIACION']++;
-      } else if (l.status === 'SIN_CONTACTAR' || l.status === 'SIN CONTACTAR' || l.status === 'CONTACTADO') {
+      } else if (statusStr === 'SIN_CONTACTAR' || statusStr === 'SIN CONTACTAR' || statusStr === 'CONTACTADO') {
         stageCounts['SIN_CONTACTAR']++;
-      } else if (l.status === 'PROSPECTO' || l.status === 'NUEVO') {
+      } else if (statusStr === 'PROSPECTO' || statusStr === 'NUEVO') {
         stageCounts['PROSPECTO']++;
-      } else if (l.status === 'PERDIDO') {
+      } else if (statusStr === 'PERDIDO') {
         stageCounts['PERDIDO']++;
       }
     });

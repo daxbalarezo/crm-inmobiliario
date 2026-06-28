@@ -4,7 +4,7 @@ import type { Lead } from '../types/definitions';
 const TABLE_NAME = 'leads'; 
 
 const cleanPayload = (data: Partial<Lead>) => {
-  const payload = { ...data };
+  const payload: any = { ...data };
   if (payload.area) payload.area = Number(payload.area);
   if (payload.price) payload.price = Number(payload.price);
   return payload;

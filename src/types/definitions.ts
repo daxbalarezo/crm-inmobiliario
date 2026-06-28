@@ -33,6 +33,7 @@ export interface Tenant {
   createdAt?: any;
   fields?: CustomFieldDefinition[];
   saas_subscriptions?: any[];
+  slaTargetHours?: number;
 }
 
 export interface ModulePermissions {
@@ -97,9 +98,11 @@ export interface LeadActivity {
   leadId: string;
   userId: string;
   userName: string;
-  actionType: 'stage_change' | 'note_added' | 'task_completed' | 'email_sent' | 'contract_generated' | 'lead_created' | 'lead_assigned';
+  actionType: 'stage_change' | 'note_added' | 'task_completed' | 'email_sent' | 'whatsapp_sent' | 'contract_generated' | 'lead_created' | 'lead_assigned';
   description: string;
   metadata?: any;
+  dueDate?: string;
+  status?: 'open' | 'completed';
   createdAt: any;
 }
 

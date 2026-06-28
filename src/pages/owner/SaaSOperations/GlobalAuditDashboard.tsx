@@ -1,13 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { ShieldAlert, Database, ServerCrash, Activity, Download, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ShieldAlert, Database, ServerCrash, Activity, Download, Search, HardDrive,  } from 'lucide-react';
 import { saasService } from '../../../services/saasService';
+import { supabase } from '../../../config/supabase';
 
 export default function GlobalAuditDashboard() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dbSize, setDbSize] = useState<number>(0);
+  const [storageSize, setStorageSize] = useState<number>(0);
+  const DB_LIMIT_BYTES = 500 * 1024 * 1024; // 500MB
+  const STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024; // 1GB
 
   useEffect(() => {
     loadLogs();
+    
+    // Subscribe to realtime logs
+    const channel = supabase.channel('global_audit')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'saas_audit_logs' },
+        (payload) => {
+          setLogs(prev => [payload.new, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadLogs = async () => {
@@ -15,6 +35,12 @@ export default function GlobalAuditDashboard() {
       setLoading(true);
       const data = await saasService.getAuditLogs();
       setLogs(data);
+      
+      const size = await saasService.getDatabaseUsage();
+      setDbSize(size);
+
+      const sSize = await saasService.getStorageUsage();
+      setStorageSize(sSize);
     } catch (error) {
       console.error('Error loading audit logs:', error);
     } finally {
@@ -43,6 +69,59 @@ export default function GlobalAuditDashboard() {
     }
   };
 
+  const dbUsagePercentage = Math.min(100, Math.round((dbSize / DB_LIMIT_BYTES) * 100));
+  const storageUsagePercentage = Math.min(100, Math.round((storageSize / STORAGE_LIMIT_BYTES) * 100));
+  
+  // Calculate dynamic KPIs from the last 24 hours of logs
+  const now = new Date();
+  const last24hLogs = logs.filter(l => {
+    const logDate = new Date(l.created_at);
+    const diffHours = (now.getTime() - logDate.getTime()) / (1000 * 60 * 60);
+    return diffHours <= 24;
+  });
+  
+  const criticalErrors = last24hLogs.filter(l => l.details_json?.severity === 'CRITICAL').length;
+  const warnings = last24hLogs.filter(l => l.details_json?.severity === 'WARNING').length;
+
+  const handleExportCSV = () => {
+    if (filteredLogs.length === 0) return;
+    
+    const headers = ['Fecha y Hora', 'Inmobiliaria (Tenant)', 'Usuario', 'Accion / Evento', 'Severidad', 'Detalles'];
+    
+    const rows = filteredLogs.map(log => {
+      const date = new Date(log.created_at).toLocaleString();
+      const tenant = log.tenants?.name || 'Global';
+      const user = log.user_id || 'SYSTEM';
+      const action = log.action;
+      const severity = log.details_json?.severity || 'INFO';
+      
+      let details = log.details_json?.message || '';
+      if (!details && log.details_json?.attempted_email) {
+        details = `Intento fallido con: ${log.details_json.attempted_email}`;
+      } else if (!details) {
+        details = JSON.stringify(log.details_json || {});
+      }
+      
+      return [
+        `"${date}"`,
+        `"${tenant}"`,
+        `"${user}"`,
+        `"${action}"`,
+        `"${severity}"`,
+        `"${details.replace(/"/g, '""')}"`
+      ].join(',');
+    });
+    
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(','), ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Auditoria_Global_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div>
       <div className="slds-m-bottom_large">
@@ -51,56 +130,82 @@ export default function GlobalAuditDashboard() {
         </p>
       </div>
 
-      {/* HEALTH KPIs */}
-      <div className="slds-grid slds-gutters slds-m-bottom_large">
-        <div className="slds-col slds-size_1-of-3">
-          <div className="slds-card slds-p-around_medium" style={{ borderTop: '3px solid #2e844a' }}>
+      {/* HEALTH KPIs ROW 1 */}
+      <div className="slds-grid slds-gutters slds-m-bottom_medium">
+        <div className="slds-col slds-size_1-of-2">
+          <div className="slds-card slds-p-around_medium" style={{ borderTop: `3px solid ${dbUsagePercentage > 80 ? '#ba0517' : '#2e844a'}` }}>
             <div className="slds-media slds-media_center">
               <div className="slds-media__figure">
-                <span className="slds-icon_container slds-icon-standard-log-a-call" style={{ backgroundColor: '#2e844a', padding: '8px', borderRadius: '4px' }}>
+                <span className="slds-icon_container slds-icon-standard-log-a-call" style={{ backgroundColor: dbUsagePercentage > 80 ? '#ba0517' : '#2e844a', padding: '8px', borderRadius: '4px' }}>
                   <Database size={20} color="white" />
                 </span>
               </div>
               <div className="slds-media__body">
                 <p className="slds-text-heading_small slds-text-color_weak">Uso de Base de Datos</p>
-                <h2 className="slds-text-heading_large slds-m-top_xx-small">42%</h2>
-                <div className="slds-progress-bar slds-m-top_x-small" aria-valuemin={0} aria-valuemax={100} aria-valuenow={42} role="progressbar">
-                  <span className="slds-progress-bar__value slds-progress-bar__value_success" style={{ width: '42%' }}></span>
+                <h2 className="slds-text-heading_large slds-m-top_xx-small">{dbUsagePercentage}%</h2>
+                <div className="slds-progress-bar slds-m-top_x-small" aria-valuemin={0} aria-valuemax={100} aria-valuenow={dbUsagePercentage} role="progressbar">
+                  <span className={`slds-progress-bar__value ${dbUsagePercentage > 80 ? 'slds-theme_error' : 'slds-progress-bar__value_success'}`} style={{ width: `${dbUsagePercentage}%` }}></span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="slds-col slds-size_1-of-3">
-          <div className="slds-card slds-p-around_medium" style={{ borderTop: '3px solid #ba0517' }}>
+        <div className="slds-col slds-size_1-of-2">
+          <div className="slds-card slds-p-around_medium" style={{ borderTop: `3px solid ${storageUsagePercentage > 80 ? '#ba0517' : '#1b96ff'}` }}>
             <div className="slds-media slds-media_center">
               <div className="slds-media__figure">
-                <span className="slds-icon_container slds-icon-standard-log-a-call" style={{ backgroundColor: '#ba0517', padding: '8px', borderRadius: '4px' }}>
+                <span className="slds-icon_container slds-icon-standard-log-a-call" style={{ backgroundColor: storageUsagePercentage > 80 ? '#ba0517' : '#1b96ff', padding: '8px', borderRadius: '4px' }}>
+                  <HardDrive size={20} color="white" />
+                </span>
+              </div>
+              <div className="slds-media__body">
+                <p className="slds-text-heading_small slds-text-color_weak">Uso de Storage (Archivos)</p>
+                <h2 className="slds-text-heading_large slds-m-top_xx-small">{storageUsagePercentage}%</h2>
+                <div className="slds-progress-bar slds-m-top_x-small" aria-valuemin={0} aria-valuemax={100} aria-valuenow={storageUsagePercentage} role="progressbar">
+                  <span className={`slds-progress-bar__value ${storageUsagePercentage > 80 ? 'slds-theme_error' : ''}`} style={{ width: `${storageUsagePercentage}%`, backgroundColor: storageUsagePercentage > 80 ? undefined : '#1b96ff' }}></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* HEALTH KPIs ROW 2 */}
+      <div className="slds-grid slds-gutters slds-m-bottom_large">
+        <div className="slds-col slds-size_1-of-2">
+          <div className="slds-card slds-p-around_medium" style={{ borderTop: `3px solid ${criticalErrors > 0 ? '#ba0517' : '#2e844a'}` }}>
+            <div className="slds-media slds-media_center">
+              <div className="slds-media__figure">
+                <span className="slds-icon_container slds-icon-standard-log-a-call" style={{ backgroundColor: criticalErrors > 0 ? '#ba0517' : '#2e844a', padding: '8px', borderRadius: '4px' }}>
                   <ServerCrash size={20} color="white" />
                 </span>
               </div>
               <div className="slds-media__body">
-                <p className="slds-text-heading_small slds-text-color_weak">Errores 5xx (24h)</p>
-                <h2 className="slds-text-heading_large slds-m-top_xx-small">0</h2>
-                <p className="slds-text-body_small slds-text-color_success slds-m-top_xx-small">Sistema estable</p>
+                <p className="slds-text-heading_small slds-text-color_weak">Errores Críticos (24h)</p>
+                <h2 className="slds-text-heading_large slds-m-top_xx-small">{criticalErrors}</h2>
+                <p className={`slds-text-body_small slds-m-top_xx-small ${criticalErrors > 0 ? 'slds-text-color_error' : 'slds-text-color_success'}`}>
+                  {criticalErrors > 0 ? 'Atención requerida' : 'Sistema estable'}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="slds-col slds-size_1-of-3">
-          <div className="slds-card slds-p-around_medium" style={{ borderTop: '3px solid #ffb75d' }}>
+        <div className="slds-col slds-size_1-of-2">
+          <div className="slds-card slds-p-around_medium" style={{ borderTop: `3px solid ${warnings > 10 ? '#ba0517' : '#ffb75d'}` }}>
             <div className="slds-media slds-media_center">
               <div className="slds-media__figure">
-                <span className="slds-icon_container slds-icon-standard-account" style={{ backgroundColor: '#ffb75d', padding: '8px', borderRadius: '4px' }}>
+                <span className="slds-icon_container slds-icon-standard-account" style={{ backgroundColor: warnings > 10 ? '#ba0517' : '#ffb75d', padding: '8px', borderRadius: '4px' }}>
                   <Activity size={20} color="white" />
                 </span>
               </div>
               <div className="slds-media__body">
-                <p className="slds-text-heading_small slds-text-color_weak">Intentos Fallidos (24h)</p>
-                <h2 className="slds-text-heading_large slds-m-top_xx-small">12</h2>
-                <p className="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">En rangos normales</p>
+                <p className="slds-text-heading_small slds-text-color_weak">Advertencias (24h)</p>
+                <h2 className="slds-text-heading_large slds-m-top_xx-small">{warnings}</h2>
+                <p className="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                  {warnings > 10 ? 'Pico inusual detectado' : 'En rangos normales'}
+                </p>
               </div>
             </div>
           </div>
@@ -127,7 +232,7 @@ export default function GlobalAuditDashboard() {
               </div>
             </div>
             <div className="slds-col">
-              <button className="slds-button slds-button_neutral">
+              <button className="slds-button slds-button_neutral" onClick={handleExportCSV}>
                 <Download size={14} className="slds-m-right_xx-small" /> Exportar CSV
               </button>
             </div>
@@ -139,11 +244,8 @@ export default function GlobalAuditDashboard() {
             <table className="slds-table slds-table_cell-buffer slds-table_bordered">
               <thead>
                 <tr className="slds-line-height_reset">
-                  <th className="" scope="col">
+                  <th className="" scope="col" style={{ width: '180px' }}>
                     <div className="slds-truncate" title="Timestamp">Fecha y Hora</div>
-                  </th>
-                  <th className="" scope="col">
-                    <div className="slds-truncate" title="Severidad">Severidad</div>
                   </th>
                   <th className="" scope="col">
                     <div className="slds-truncate" title="Tenant">Inmobiliaria (Tenant)</div>
@@ -154,7 +256,7 @@ export default function GlobalAuditDashboard() {
                   <th className="" scope="col">
                     <div className="slds-truncate" title="Acción">Acción / Evento</div>
                   </th>
-                  <th className="" scope="col">
+                  <th className="" scope="col" style={{ width: '120px' }}>
                     <div className="slds-truncate" title="Severidad">Severidad</div>
                   </th>
                   <th className="" scope="col">
@@ -184,7 +286,13 @@ export default function GlobalAuditDashboard() {
                         {getSeverityBadge(severity)}
                       </td>
                       <td data-label="Detalles">
-                        <div className="slds-truncate" title={log.details_json?.message || ''}>{log.details_json?.message || ''}</div>
+                        <div className="slds-truncate" title={JSON.stringify(log.details_json)}>
+                          {log.details_json?.message 
+                            ? log.details_json.message 
+                            : log.details_json?.attempted_email 
+                              ? `Intento fallido con: ${log.details_json.attempted_email}` 
+                              : JSON.stringify(log.details_json || {})}
+                        </div>
                       </td>
                     </tr>
                     );

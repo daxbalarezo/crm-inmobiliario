@@ -564,6 +564,8 @@ input.searchInput:focus {
 }
 
 .submenuInner {
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 1px;

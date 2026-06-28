@@ -31,7 +31,7 @@ export function SalesLeaderboardChart({ stats }: PerformanceChartsProps) {
           <XAxis type="number" tickFormatter={(value) => `S/ ${value / 1000}k`} />
           <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
           <Tooltip 
-            formatter={(value: number) => [`S/ ${value.toLocaleString('en-PE')}`, 'Ventas Totales']}
+            formatter={(value: any) => [`S/ ${value.toLocaleString('en-PE')}`, 'Ventas Totales']}
             contentStyle={{ borderRadius: '4px', border: '1px solid #DDDBDA' }}
           />
           <Bar dataKey="Ventas" fill="#0176d3" radius={[0, 4, 4, 0]} />
@@ -83,7 +83,7 @@ export function SLAComplianceChart({ stats }: PerformanceChartsProps) {
             ))}
           </Pie>
           <Tooltip 
-            formatter={(value: number) => [`${value} leads`, 'Cantidad']}
+            formatter={(value: any) => [`${value} leads`, 'Cantidad']}
             contentStyle={{ borderRadius: '4px', border: '1px solid #DDDBDA' }}
           />
           <Legend verticalAlign="bottom" height={36} />

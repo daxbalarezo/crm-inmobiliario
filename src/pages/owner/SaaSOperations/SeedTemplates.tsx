@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { GitCommit, Plus, Clock, Save, GripVertical, Trash2 } from 'lucide-react';
 import { saasService, type SeedTemplate } from '../../../services/saasService';
 import { supabase } from '../../../config/supabase';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Shuffle, Users, UserPlus, UserMinus, Save } from 'lucide-react';
 import { supabase } from '../../config/supabase';
 import { useCRM } from '../../context/CRMContext';

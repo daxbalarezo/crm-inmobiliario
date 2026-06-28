@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, L
 import { useAdvancedReports } from '../hooks/useAdvancedReports';
 import styles from './AdvancedReportsDashboard.module.css';
 import agentStyles from './AgentAnalyticsDashboard.module.css';
-import adminStyles from './AdminDashboard.module.css';
+
 import LeadModal from '../components/LeadModal';
 import type { Lead } from '../types/definitions';
 import { useCRM } from '../context/CRMContext';
@@ -310,7 +310,7 @@ export default function AdvancedReportsDashboard() {
         <div className={agentStyles.sldsCardHeader} style={{ display: 'flex', alignItems: 'center' }}>
           <h2 className={agentStyles.sldsCardTitle} style={{ margin: 0 }}>Distribución</h2>
         </div>
-        <div style={{ flex: 1, minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        <div style={{ flex: 1, minHeight: '300px', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -323,12 +323,12 @@ export default function AdvancedReportsDashboard() {
                 dataKey="value"
                 nameKey="name"
               >
-                {data.map((entry, index) => (
+                {data.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={SLDS_CATEGORICAL_COLORS[index % SLDS_CATEGORICAL_COLORS.length]} />
                 ))}
               </Pie>
               <RechartsTooltip 
-                formatter={(value: number) => [value, 'Registros']}
+                formatter={(value: any) => [value, 'Carga de Trabajo']}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
               />
               <Legend verticalAlign="bottom" height={36} iconType="circle" />
@@ -506,55 +506,73 @@ export default function AdvancedReportsDashboard() {
   }
 
   return (
-    <div className={styles.container}>
-      <div className={adminStyles.pageHeader}>
-        <div className={adminStyles.headerTopRow}>
-          <div className={adminStyles.headerTitleBlock}>
-            <div className={adminStyles.headerIcon}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-            </div>
-            <div className={adminStyles.headerTextGroup}>
-              <p className={adminStyles.headerBreadcrumb}>Analíticas</p>
-              <h2 className={adminStyles.title}>Explorador de Datos</h2>
+    <div className="slds-grid slds-grid_vertical slds-p-around_none slds-m-bottom_large">
+      <div className="slds-page-header slds-page-header_record-home slds-m-bottom_medium" style={{ backgroundColor: '#ffffff', borderRadius: '4px', borderBottom: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0, 0, 0, 0.10)' }}>
+        <div className="slds-page-header__row">
+          <div className="slds-page-header__col-title">
+            <div className="slds-media">
+              <div className="slds-media__figure">
+                <span className="slds-icon_container slds-icon-standard-performance" style={{ backgroundColor: '#0B5CAB', padding: '0.5rem', borderRadius: '0.25rem', display: 'inline-block' }}>
+                  <BarChart3 style={{ color: 'white' }} size={24} />
+                </span>
+              </div>
+              <div className="slds-media__body">
+                <div className="slds-page-header__name">
+                  <div className="slds-page-header__name-title">
+                    <h1>
+                      <span className="slds-page-header__title slds-truncate" title="Explorador de Datos">Explorador de Datos</span>
+                    </h1>
+                  </div>
+                </div>
+                <p className="slds-page-header__name-meta">Analíticas</p>
+              </div>
             </div>
           </div>
           
           {/* Espacio reservado para Global Actions (Exportar, etc.) */}
-          <div></div>
+          <div className="slds-page-header__col-actions"></div>
         </div>
         
         {/* SLDS Filter Bar / Secondary Row */}
-        <div style={{ display: 'flex', padding: '12px 0 0 0', borderTop: '1px solid #DDDBDA', marginTop: '4px' }}>
-          <div className={adminStyles.filterGroup} style={{ gap: '12px', width: '100%', flexWrap: 'wrap' }}>
-            <select value={reportType} onChange={handleReportTypeChange} className={adminStyles.timeFilter} title="Tipo de Reporte" style={{ flex: '1', minWidth: '200px' }}>
-              <option value="source">Fuentes de Adquisición</option>
-              <option value="workload">Carga de Trabajo Activa</option>
-              <option value="loss_reasons">Análisis de Ventas Perdidas</option>
-              <option value="productivity">Métricas de Productividad</option>
-            </select>
+        <div className="slds-page-header__row slds-page-header__row_details" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #DDDBDA' }}>
+          <div style={{ display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap' }}>
+            <div className="slds-select_container" style={{ flex: '1', minWidth: '200px' }}>
+              <select value={reportType} onChange={handleReportTypeChange} className="slds-select" title="Tipo de Reporte">
+                <option value="source">Fuentes de Adquisición</option>
+                <option value="workload">Carga de Trabajo Activa</option>
+                <option value="loss_reasons">Análisis de Ventas Perdidas</option>
+                <option value="productivity">Métricas de Productividad</option>
+              </select>
+            </div>
 
-            <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className={adminStyles.timeFilter} title="Período" style={{ flex: '1', minWidth: '150px' }}>
-              <option value="all">Histórico Total</option>
-              <option value="this_month">Este mes</option>
-              <option value="last_month">Mes pasado</option>
-              <option value="last_6_months">Últimos 6 meses</option>
-              <option value="this_year">Este año</option>
-            </select>
+            <div className="slds-select_container" style={{ flex: '1', minWidth: '150px' }}>
+              <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className="slds-select" title="Período">
+                <option value="all">Histórico Total</option>
+                <option value="this_month">Este mes</option>
+                <option value="last_month">Mes pasado</option>
+                <option value="last_6_months">Últimos 6 meses</option>
+                <option value="this_year">Este año</option>
+              </select>
+            </div>
 
-            <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} className={adminStyles.timeFilter} title="Asesor" style={{ flex: '1', minWidth: '150px' }}>
-              <option value="all">Todos los asesores</option>
-              {users.map(u => (
-                <option key={u.uid} value={u.uid}>{u.name}</option>
-              ))}
-            </select>
+            <div className="slds-select_container" style={{ flex: '1', minWidth: '150px' }}>
+              <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} className="slds-select" title="Asesor">
+                <option value="all">Todos los asesores</option>
+                {users.map(u => (
+                  <option key={u.uid} value={u.uid}>{u.name}</option>
+                ))}
+              </select>
+            </div>
 
-            <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} className={adminStyles.timeFilter} title="Etapa" style={{ flex: '1', minWidth: '150px' }}>
-              <option value="all">Todas las etapas</option>
-              {dynamicStages.map(s => (
-                <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-              ))}
-              <option value="PERDIDO">PERDIDO</option>
-            </select>
+            <div className="slds-select_container" style={{ flex: '1', minWidth: '150px' }}>
+              <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} className="slds-select" title="Etapa">
+                <option value="all">Todas las etapas</option>
+                {dynamicStages.map(s => (
+                  <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                ))}
+                <option value="PERDIDO">PERDIDO</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>

@@ -36,7 +36,7 @@ export function useAdvancedReports(timeRange: string = 'this_month') {
         role: row.role,
         name: String(row.name || '').toUpperCase(),
         email: row.email
-      }) as UserProfile).filter(u => u.role === 'agent');
+      }) as UserProfile).filter(u => u.role !== 'owner' && u.role !== 'manager');
       setUsers(fetchedUsers);
       
       // Calculate Date Range

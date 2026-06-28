@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, Bell, AlertTriangle, Info, Clock } from 'lucide-react';
 import { saasService, type Broadcast } from '../../../services/saasService';
+import { useCRM } from '../../../context/CRMContext';
 
 export default function BroadcastsDashboard() {
+  const { userProfile } = useCRM();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [severity, setSeverity] = useState<'info' | 'warning' | 'critical'>('info');
@@ -40,6 +42,14 @@ export default function BroadcastsDashboard() {
         severity,
         target_scope: 'all_tenants'
       });
+      
+      await saasService.logSaaSOperation(
+        'broadcast_sent',
+        'broadcast',
+        { message: `Envió un comunicado global: ${title}`, severity: severity === 'info' ? 'INFO' : 'CRITICAL' },
+        null,
+        userProfile?.uid
+      );
       
       setTitle('');
       setMessage('');
@@ -143,22 +153,19 @@ export default function BroadcastsDashboard() {
                 <table className="slds-table slds-table_cell-buffer slds-table_bordered">
                   <thead>
                     <tr className="slds-line-height_reset">
-                      <th className="" scope="col">
+                      <th className="" scope="col" style={{ width: '180px' }}>
                         <div className="slds-truncate" title="Fecha">Fecha de Envío</div>
-                      </th>
-                      <th className="" scope="col">
-                        <div className="slds-truncate" title="Severidad">Severidad</div>
                       </th>
                       <th className="" scope="col">
                         <div className="slds-truncate" title="Título">Título</div>
                       </th>
-                      <th className="" scope="col">
+                      <th className="" scope="col" style={{ width: '150px' }}>
                         <div className="slds-truncate" title="Severidad">Severidad</div>
                       </th>
-                      <th className="" scope="col">
+                      <th className="" scope="col" style={{ width: '150px' }}>
                         <div className="slds-truncate" title="Alcance">Alcance</div>
                       </th>
-                      <th className="" scope="col">
+                      <th className="" scope="col" style={{ width: '120px' }}>
                         <div className="slds-truncate" title="Estado">Estado</div>
                       </th>
                     </tr>

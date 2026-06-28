@@ -5,7 +5,7 @@ import { useGlobalData } from '../context/GlobalDataProvider';
 import type { Lead, Unit } from '../types/definitions';
 
 export function useCommercialData() {
-  const { leads: globalLeads, loading: globalLoading, updateLeadOptimistically } = useGlobalData();
+  const { leads: globalLeads, loading: globalLoading, updateLeadOptimistically, addLeadOptimistically } = useGlobalData();
   const [inventory, setInventory] = useState<Unit[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
   const { authReady, userProfile, tenantId, activeProjectId } = useCRM();
@@ -33,10 +33,10 @@ export function useCommercialData() {
       filtered = filtered.filter(l => l.projectId === effectiveProjectId);
     }
 
-    // Ordenar por updatedAt descendente
+    // Ordenar por updatedAt (o createdAt si es nuevo) descendente
     return filtered.sort((a, b) => {
-      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
       return dateB - dateA;
     });
   }, [globalLeads, userProfile, tenantId, effectiveProjectId]);
@@ -97,6 +97,7 @@ export function useCommercialData() {
     leads, 
     inventory, 
     loading: globalLoading || loadingInventory,
-    updateLeadOptimistically
+    updateLeadOptimistically,
+    addLeadOptimistically
   };
 }

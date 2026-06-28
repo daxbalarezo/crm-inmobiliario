@@ -33,6 +33,20 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error("Login error detail:", err);
       setError(`Error: ${err.message || 'Credenciales incorrectas'}`);
+
+      // Registrar silenciosamente el intento fallido en Auditoría Global (SaaS)
+      supabase.from('saas_audit_logs').insert([{
+        action: 'LOGIN_FAILED',
+        entity_type: 'AUTH',
+        details_json: {
+          attempted_email: email, // El email original que tipeó el usuario
+          error_message: err.message,
+          timestamp: new Date().toISOString()
+        }
+      }]).then(({ error: logError }) => {
+        if (logError) console.error("Error guardando audit de login:", logError);
+      });
+
     } finally {
       setLoading(false);
     }

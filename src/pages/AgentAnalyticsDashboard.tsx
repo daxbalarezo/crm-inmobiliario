@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useAgentAnalytics } from '../hooks/useAgentAnalytics';
 import { useCRM } from '../context/CRMContext';
 import styles from './AgentAnalyticsDashboard.module.css';
-import adminStyles from './AdminDashboard.module.css';
-import { Users, TrendingUp, Award, Activity, BarChart3, Filter, Download, List } from 'lucide-react';
+
+import { Users, Download } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell } from 'recharts';
 import LeadModal from '../components/LeadModal';
 import type { Lead } from '../types/definitions';
@@ -67,61 +67,75 @@ export default function AgentAnalyticsDashboard() {
   const dynamicStages = tenant?.stages || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
 
   return (
-    <div className={styles.container}>
-      <div className={adminStyles.pageHeader}>
-        <div className={adminStyles.headerTopRow}>
-          <div className={adminStyles.headerTitleBlock}>
-            <div className={adminStyles.headerIcon}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-            </div>
-            <div className={adminStyles.headerTextGroup}>
-              <p className={adminStyles.headerBreadcrumb}>Analíticas</p>
-              <h2 className={adminStyles.title}>Reporte Detallado por Asesor</h2>
+    <div className="slds-grid slds-grid_vertical slds-p-around_none slds-m-bottom_large">
+      <div className="slds-page-header slds-page-header_record-home slds-m-bottom_medium" style={{ backgroundColor: '#ffffff', borderRadius: '4px', borderBottom: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0, 0, 0, 0.10)' }}>
+        <div className="slds-page-header__row">
+          <div className="slds-page-header__col-title">
+            <div className="slds-media">
+              <div className="slds-media__figure">
+                <span className="slds-icon_container slds-icon-standard-performance" style={{ backgroundColor: '#0176D3', padding: '0.5rem', borderRadius: '0.25rem', display: 'inline-block' }}>
+                  <Users style={{ color: 'white' }} size={24} />
+                </span>
+              </div>
+              <div className="slds-media__body">
+                <div className="slds-page-header__name">
+                  <div className="slds-page-header__name-title">
+                    <h1>
+                      <span className="slds-page-header__title slds-truncate" title="Reporte Detallado por Asesor">Reporte Detallado por Asesor</span>
+                    </h1>
+                  </div>
+                </div>
+                <p className="slds-page-header__name-meta">Analíticas</p>
+              </div>
             </div>
           </div>
-          <div></div>
+          <div className="slds-page-header__col-actions">
+          </div>
         </div>
         
         {/* SLDS Filter Bar / Secondary Row */}
-        <div style={{ display: 'flex', padding: '12px 0 0 0', borderTop: '1px solid #DDDBDA', marginTop: '4px' }}>
-          <div className={adminStyles.filterGroup} style={{ gap: '12px', width: '100%', flexWrap: 'wrap' }}>
-            <select 
-              value={selectedAgent} 
-              onChange={e => setSelectedAgent(e.target.value)}
-              className={adminStyles.timeFilter}
-              style={{ flex: '1', minWidth: '150px' }}
-            >
-              <option value="">Seleccione un asesor...</option>
-              {agentsList.map(a => (
-                <option key={a.uid} value={a.uid}>{a.name}</option>
-              ))}
-            </select>
+        <div className="slds-page-header__row slds-page-header__row_details" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #DDDBDA' }}>
+          <div style={{ display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap' }}>
+            <div className="slds-select_container" style={{ flex: '1', minWidth: '150px' }}>
+              <select 
+                value={selectedAgent} 
+                onChange={e => setSelectedAgent(e.target.value)}
+                className="slds-select"
+              >
+                <option value="">Seleccione un asesor...</option>
+                {agentsList.map(a => (
+                  <option key={a.uid} value={a.uid}>{a.name}</option>
+                ))}
+              </select>
+            </div>
 
-            <select 
-              value={timeRange} 
-              onChange={e => setTimeRange(e.target.value)}
-              className={adminStyles.timeFilter}
-              style={{ flex: '1', minWidth: '150px' }}
-            >
-              <option value="this_month">Este mes</option>
-              <option value="last_month">Mes pasado</option>
-              <option value="last_6_months">Últimos 6 meses</option>
-              <option value="this_year">Este año</option>
-              <option value="all">Histórico Total</option>
-            </select>
+            <div className="slds-select_container" style={{ flex: '1', minWidth: '150px' }}>
+              <select 
+                value={timeRange} 
+                onChange={e => setTimeRange(e.target.value)}
+                className="slds-select"
+              >
+                <option value="this_month">Este mes</option>
+                <option value="last_month">Mes pasado</option>
+                <option value="last_6_months">Últimos 6 meses</option>
+                <option value="this_year">Este año</option>
+                <option value="all">Histórico Total</option>
+              </select>
+            </div>
 
-            <select 
-              value={stageFilter} 
-              onChange={e => setStageFilter(e.target.value)}
-              className={adminStyles.timeFilter}
-              style={{ flex: '1', minWidth: '150px' }}
-            >
-              <option value="all">Todas las etapas</option>
-              {dynamicStages.map(s => (
-                <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-              ))}
-              <option value="PERDIDO">PERDIDO</option>
-            </select>
+            <div className="slds-select_container" style={{ flex: '1', minWidth: '150px' }}>
+              <select 
+                value={stageFilter} 
+                onChange={e => setStageFilter(e.target.value)}
+                className="slds-select"
+              >
+                <option value="all">Todas las etapas</option>
+                {dynamicStages.map(s => (
+                  <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                ))}
+                <option value="PERDIDO">PERDIDO</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -268,12 +282,12 @@ export default function AgentAnalyticsDashboard() {
                       <XAxis type="number" axisLine={{ stroke: '#cbd5e1' }} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
                       <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} width={80} />
                       <RechartsTooltip 
-                        formatter={(value: number) => [value, 'Prospectos']}
+                        formatter={(value: any) => [`${value} leads`, 'Volumen']}
                         cursor={{ fill: 'rgba(0,0,0,0.04)' }}
                         contentStyle={{ borderRadius: '4px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
                       />
                       <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
-                        {funnelData.map((entry, index) => (
+                        {funnelData.map((_entry, index) => (
                           <Cell key={`cell-${index}`} fill={SLDS_CATEGORICAL_COLORS[index % SLDS_CATEGORICAL_COLORS.length]} />
                         ))}
                       </Bar>

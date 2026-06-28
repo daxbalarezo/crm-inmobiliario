@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useAdminMetrics } from '../hooks/useAdminMetrics';
-import styles from './AdminDashboard.module.css';
 import LeaderboardTable from '../components/admin/LeaderboardTable';
 import SLATable from '../components/admin/SLATable';
 import { SalesLeaderboardChart, SLAComplianceChart } from '../components/admin/PerformanceCharts';
 import { useCRM } from '../context/CRMContext';
+import { Trophy } from 'lucide-react';
 
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<'performance' | 'sla'>('performance');
@@ -42,67 +42,82 @@ export default function LeaderboardPage() {
         line-height: normal !important;
       }
     `}</style>
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* 1. Cabecera Ejecutiva (Page Header) */}
-      <div className={styles.pageHeader}>
-        <div className={styles.headerTopRow}>
-          <div className={styles.headerTitleBlock}>
-            <div className={styles.headerIcon}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-            </div>
-            <div className={styles.headerTextGroup}>
-              <p className={styles.headerBreadcrumb}>Analíticas</p>
-              <h2 className={styles.title}>Panel de Rendimiento y Tiempos</h2>
+    <div className="slds-grid slds-grid_vertical slds-p-around_none slds-m-bottom_large">
+      
+      {/* HEADER SECTION */}
+      <div className="slds-page-header slds-page-header_record-home slds-m-bottom_medium" style={{ backgroundColor: '#ffffff', borderRadius: '4px', borderBottom: '1px solid #DDDBDA', boxShadow: '0 2px 2px 0 rgba(0, 0, 0, 0.10)' }}>
+        <div className="slds-page-header__row">
+          <div className="slds-page-header__col-title">
+            <div className="slds-media">
+              <div className="slds-media__figure">
+                <span className="slds-icon_container slds-icon-standard-performance" style={{ backgroundColor: '#F2CF5B', padding: '0.5rem', borderRadius: '0.25rem', display: 'inline-block' }}>
+                  <Trophy style={{ color: 'white' }} size={24} />
+                </span>
+              </div>
+              <div className="slds-media__body">
+                <div className="slds-page-header__name">
+                  <div className="slds-page-header__name-title">
+                    <h1>
+                      <span className="slds-page-header__title slds-truncate" title="Panel de Rendimiento y Tiempos">Panel de Rendimiento y Tiempos</span>
+                    </h1>
+                  </div>
+                </div>
+                <p className="slds-page-header__name-meta">Analíticas</p>
+              </div>
             </div>
           </div>
           
-          <div className={styles.filterGroup}>
-            <div className="slds-select_container">
-              <select 
-                className={`slds-select hide-native-arrow ${styles.timeFilter}`}
-                value={timeRange} 
-                onChange={e => setTimeRange(e.target.value)}
-              >
-                <option value="this_month">Este mes</option>
-                <option value="last_month">Mes pasado</option>
-                <option value="last_6_months">Últimos 6 meses</option>
-                <option value="this_year">Este año</option>
-                <option value="all">Histórico Total</option>
-              </select>
+          <div className="slds-page-header__col-actions">
+            <div className="slds-page-header__controls">
+              <div className="slds-page-header__control">
+                <div className="slds-select_container">
+                  <select 
+                    className="slds-select hide-native-arrow"
+                    value={timeRange} 
+                    onChange={e => setTimeRange(e.target.value)}
+                  >
+                    <option value="this_month">Este mes</option>
+                    <option value="last_month">Mes pasado</option>
+                    <option value="last_6_months">Últimos 6 meses</option>
+                    <option value="this_year">Este año</option>
+                    <option value="all">Histórico Total</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className={styles.headerDetailRow}>
-          <div className={styles.detailItem}>
-            <p className={styles.detailLabel}>VENTAS TOTALES</p>
-            <p className={styles.detailValue}>
-              S/ {globalStats.totalClosed.toLocaleString('en-PE')}
-            </p>
-          </div>
-          <div className={styles.detailItem}>
-            <p className={styles.detailLabel}>TASA DE CONVERSIÓN</p>
-            <p className={styles.detailValue}>
-              {globalStats.avgConv.toFixed(1)}%
-            </p>
-          </div>
-          <div className={styles.detailItem}>
-            <p className={styles.detailLabel}>CUMPLIMIENTO SLA</p>
-            <p className={styles.detailValue}>
-              <span className={globalSLARate >= 80 ? 'slds-text-color_success' : globalSLARate >= 50 ? 'slds-text-color_warning' : 'slds-text-color_error'}>
-                {globalSLARate.toFixed(1)}%
-              </span>
-            </p>
-            <span className={styles.detailSubtext}>
-              (Meta: {slaTargetHours}h)
-            </span>
-          </div>
-          <div className={styles.detailItem}>
-            <p className={styles.detailLabel}>TOTAL ASIGNADOS</p>
-            <p className={styles.detailValue}>
-              {globalStats.totalLeads}
-            </p>
-          </div>
+        <div className="slds-page-header__row slds-page-header__row_details" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #DDDBDA' }}>
+          <ul className="slds-page-header__detail-row">
+            <li className="slds-page-header__detail-block">
+              <div className="slds-text-title slds-truncate" title="VENTAS TOTALES">VENTAS TOTALES</div>
+              <div className="slds-truncate" title={`S/ ${globalStats.totalClosed.toLocaleString('en-PE')}`}>
+                <span className="slds-text-heading_small slds-text-color_success" style={{ fontWeight: 600 }}>S/ {globalStats.totalClosed.toLocaleString('en-PE')}</span>
+              </div>
+            </li>
+            <li className="slds-page-header__detail-block">
+              <div className="slds-text-title slds-truncate" title="TASA DE CONVERSIÓN">TASA DE CONVERSIÓN</div>
+              <div className="slds-truncate" title={`${globalStats.avgConv.toFixed(1)}%`}>
+                <span className="slds-text-heading_small" style={{ fontWeight: 600 }}>{globalStats.avgConv.toFixed(1)}%</span>
+              </div>
+            </li>
+            <li className="slds-page-header__detail-block">
+              <div className="slds-text-title slds-truncate" title="CUMPLIMIENTO SLA">CUMPLIMIENTO SLA</div>
+              <div className="slds-truncate" title={`${globalSLARate.toFixed(1)}%`}>
+                <span className={`slds-text-heading_small ${globalSLARate >= 80 ? 'slds-text-color_success' : globalSLARate >= 50 ? 'slds-text-color_warning' : 'slds-text-color_error'}`} style={{ fontWeight: 600 }}>
+                  {globalSLARate.toFixed(1)}%
+                </span>
+                <span className="slds-text-color_weak slds-m-left_x-small" style={{ fontSize: '0.75rem' }}>(Meta: {slaTargetHours}h)</span>
+              </div>
+            </li>
+            <li className="slds-page-header__detail-block">
+              <div className="slds-text-title slds-truncate" title="TOTAL ASIGNADOS">TOTAL ASIGNADOS</div>
+              <div className="slds-truncate" title={`${globalStats.totalLeads}`}>
+                <span className="slds-text-heading_small" style={{ fontWeight: 600 }}>{globalStats.totalLeads}</span>
+              </div>
+            </li>
+          </ul>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import styles from './App.module.css';
 import { CRMProvider, useCRM } from './context/CRMContext';
 import { GlobalDataProvider } from './context/GlobalDataProvider';
+import GlobalBroadcastListener from './components/GlobalBroadcastListener';
 import CorporateLayout from './layouts/CorporateLayout';
 import HomeDashboard from './pages/HomeDashboard';
 import CommercialDashboard from './pages/CommercialDashboard';
@@ -54,7 +55,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <GlobalBroadcastListener />
+      {children}
+    </>
+  );
 }
 
 function HomeRoute() {
