@@ -26,6 +26,7 @@ export function useRoles(tenantId: string | undefined) {
         const loadedRoles = (data || []).map(row => ({
           id: row.id,
           name: row.name,
+          base_role: row.base_role || 'agent',
           permissions: row.permissions
         })) as RolePermission[];
         

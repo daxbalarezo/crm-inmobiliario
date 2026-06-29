@@ -1,7 +1,7 @@
 // src/layouts/CorporateLayout.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import LeadModal from '../components/LeadModal';
-import { Home, Briefcase, Package, Map, ChevronDown, Calendar, Bell, CreditCard, BarChart3, Settings, LogOut, FileText, Users, Building2, FolderKanban,  Search, Grip, Star, Plus, HelpCircle } from 'lucide-react';
+import { Home, Briefcase, Package, Map, ChevronDown, Calendar, Bell, CreditCard, BarChart3, Settings, LogOut, FileText, Users, Building2, FolderKanban,  Search, Grip, Star, Plus, HelpCircle, DollarSign } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useProjects } from '../hooks/useProjects';
@@ -92,11 +92,19 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
         ]
       },
       { name: 'Gestión Comercial', path: '/comercial', icon: Briefcase },
+      { name: 'Oportunidades', path: '/opportunities', icon: DollarSign },
       { name: 'Seguimientos', path: '/seguimientos', icon: Calendar },
       ...(userPermissions?.finance?.read !== 'none' ? [{ name: 'Finanzas y Pagos', path: '/finanzas', icon: FileText }] : []),
       { name: 'Inventario', path: '/inventario', icon: Package },
       { name: 'Gestión de Cobranzas', path: '/cobranzas', icon: CreditCard },
       { name: 'Reporte Comercial', path: '/reportes', icon: BarChart3 }
+    ] : []),
+    ...(userProfile?.role === 'staff' ? [
+      { name: 'Inicio', path: '/', icon: Home },
+      ...(userPermissions?.leads?.read !== 'none' ? [{ name: 'Gestión Comercial', path: '/comercial', icon: Briefcase }] : []),
+      ...(userPermissions?.finance?.read !== 'none' ? [{ name: 'Finanzas y Pagos', path: '/finanzas', icon: FileText }] : []),
+      ...(userPermissions?.inventory?.read !== 'none' ? [{ name: 'Inventario', path: '/inventario', icon: Package }] : []),
+      ...(userPermissions?.settings?.manage ? [{ name: 'Configuración', path: '/configuracion', icon: Settings }] : [])
     ] : []),
       ...(userProfile?.role === 'owner' ? [
         { name: 'Inmobiliarias', path: '/empresas', icon: Building2 },
@@ -116,10 +124,11 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
       ...(userProfile?.role === 'manager' ? [
         { name: 'Visión General', path: '/', icon: Home },
         { 
-          name: 'Ventas y Pipeline', 
+          name: 'Embudo de Ventas', 
           icon: Briefcase,
           subItems: [
-            { name: 'Prospectos (Kanban)', path: '/comercial' },
+            { name: 'Prospectos', path: '/comercial' },
+            { name: 'Oportunidades', path: '/opportunities' },
             { name: 'Previsión de Ventas', path: '/comercial/prevision' }
           ]
         },
@@ -326,7 +335,7 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
                   <div className={styles.profileInfo}>
                     <div className={styles.profileName}>{userProfile?.name || 'Usuario'}</div>
                     <div className={styles.profileRole}>
-                      {userProfile?.role === 'owner' ? 'Dueño' : userProfile?.role === 'manager' ? 'Gerente' : userProfile?.role === 'agent' ? 'Asesor' : userProfile?.role}
+                      {userProfile?.roleName || userProfile?.role}
                     </div>
                   </div>
                 </div>

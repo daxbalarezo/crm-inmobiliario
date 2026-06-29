@@ -264,13 +264,13 @@ export function useAdminMetrics(timeRange: string, customStartDate?: string, cus
     const sourceCounts = new Map<string, number>();
     const lossReasonCounts = new Map<string, number>();
     const stageCounts = {
-      'PROSPECTO': 0,
-      'SIN_CONTACTAR': 0,
+      'NUEVO': 0,
+      'CONTACTADO': 0,
       'EN_NEGOCIACION': 0,
       'VISITA': 0,
       'SEPARACION': 0,
       'VENDIDO': 0,
-      'PERDIDO': 0
+      'DESCARTADO': 0
     };
     
     let projectedRevenue = 0;
@@ -295,12 +295,12 @@ export function useAdminMetrics(timeRange: string, customStartDate?: string, cus
         stageCounts['VISITA']++;
       } else if (statusStr.includes('NEGOCIACION') || statusStr.includes('NEGOCIACIONES')) {
         stageCounts['EN_NEGOCIACION']++;
-      } else if (statusStr.includes('SIN CONTACTAR') || statusStr.includes('CONTACTADO') || statusStr.includes('CONTACTAR')) {
-        stageCounts['SIN_CONTACTAR']++;
-      } else if (statusStr.includes('PROSPECTO') || statusStr.includes('NUEVO')) {
-        stageCounts['PROSPECTO']++;
-      } else if (statusStr.includes('PERDIDO')) {
-        stageCounts['PERDIDO']++;
+      } else if (statusStr.includes('CONTACTADO') || statusStr.includes('CONTACTAR')) {
+        stageCounts['CONTACTADO']++;
+      } else if (statusStr.includes('PROSPECTO') || statusStr.includes('NUEVO') || statusStr.includes('SIN CONTACTAR')) {
+        stageCounts['NUEVO']++;
+      } else if (statusStr.includes('DESCARTADO')) {
+        stageCounts['DESCARTADO']++;
       }
 
       // Source Logic
@@ -324,13 +324,13 @@ export function useAdminMetrics(timeRange: string, customStartDate?: string, cus
       }
 
       // Loss Reason Logic
-      if (statusStr.includes('PERDIDO')) {
+      if (statusStr.includes('DESCARTADO')) {
         const reason = l.lossReason || 'No especificado';
         lossReasonCounts.set(reason, (lossReasonCounts.get(reason) || 0) + 1);
       }
 
-      // Workload Logic (Active leads: not VENDIDO, not PERDIDO, not CERRADO)
-      if (!statusStr.includes('VENDIDO') && !statusStr.includes('CERRADO') && !statusStr.includes('PERDIDO')) {
+      // Workload Logic (Active leads: not VENDIDO, not DESCARTADO, not CERRADO)
+      if (!statusStr.includes('VENDIDO') && !statusStr.includes('CERRADO') && !statusStr.includes('DESCARTADO')) {
         if (l.assignedTo) {
           workloadCounts.set(l.assignedTo, (workloadCounts.get(l.assignedTo) || 0) + 1);
         }
@@ -443,37 +443,47 @@ export function useAdminMetrics(timeRange: string, customStartDate?: string, cus
 
     // Format Data for Charts
     setFunnelData([
-      { stage: 'Prospectos', count: stageCounts['PROSPECTO'] },
-      { stage: 'Sin Contactar', count: stageCounts['SIN_CONTACTAR'] },
+      { stage: 'Nuevos', count: stageCounts['NUEVO'] },
+      { stage: 'Contactados', count: stageCounts['CONTACTADO'] },
       { stage: 'Negociación', count: stageCounts['EN_NEGOCIACION'] },
       { stage: 'Visitas', count: stageCounts['VISITA'] },
       { stage: 'Separaciones', count: stageCounts['SEPARACION'] },
       { stage: 'Vendidos', count: stageCounts['VENDIDO'] },
-      { stage: 'Perdidos', count: stageCounts['PERDIDO'] }
+      { stage: 'Descartados', count: stageCounts['DESCARTADO'] }
     ]);
 
     const formattedSourceData = Array.from(sourceCounts.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
     setSourceData(formattedSourceData);
 
-    const formattedWorkloadData = Array.from(workloadCounts.entries()).map(([uid, activeLeads]) => {
-      const agent = usersData.find(u => u.uid === uid);
-      return {
-        name: agent ? agent.name.split(' ')[0] : 'Unknown',
-        activeLeads
-      };
-    }).sort((a, b) => b.activeLeads - a.activeLeads).slice(0, 10);
+    const formattedWorkloadData = Array.from(workloadCounts.entries())
+      .map(([uid, activeLeads]) => {
+        const agent = usersData.find(u => u.uid === uid);
+        if (!agent) return null;
+        return {
+          name: agent.name.split(' ')[0],
+          activeLeads
+        };
+      })
+      .filter((item): item is { name: string; activeLeads: number } => item !== null)
+      .sort((a, b) => b.activeLeads - a.activeLeads)
+      .slice(0, 10);
     setWorkloadData(formattedWorkloadData);
 
     const formattedLossReasons = Array.from(lossReasonCounts.entries()).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
     setLossReasonData(formattedLossReasons);
 
-    const formattedActivityData = Array.from(activityCounts.entries()).map(([uid, activities]) => {
-      const agent = usersData.find(u => u.uid === uid);
-      return {
-        name: agent ? agent.name.split(' ')[0] : 'Unknown',
-        activities
-      };
-    }).sort((a, b) => b.activities - a.activities).slice(0, 10);
+    const formattedActivityData = Array.from(activityCounts.entries())
+      .map(([uid, activities]) => {
+        const agent = usersData.find(u => u.uid === uid);
+        if (!agent) return null;
+        return {
+          name: agent.name.split(' ')[0],
+          activities
+        };
+      })
+      .filter((item): item is { name: string; activities: number } => item !== null)
+      .sort((a, b) => b.activities - a.activities)
+      .slice(0, 10);
     setActivityData(formattedActivityData);
 
   };

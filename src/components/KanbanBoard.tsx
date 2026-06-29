@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 import type { Lead } from '../types/definitions';
 import { useCRM } from '../context/CRMContext';
+import { formatPhoneNumber } from '../utils/helpers';
 interface KanbanBoardProps {
   leads: Lead[];
-  onLeadStatusChange: (leadId: string, newStatus: string) => Promise<void>;
+  onLeadStatusChange: (leadId: string, newStatus: string, extraData?: Partial<Lead>) => Promise<void>;
   onLeadClick: (lead: Lead) => void;
   isAdminMode?: boolean; // God mode flag
   agents?: {id: string, name: string}[];
@@ -12,28 +13,31 @@ interface KanbanBoardProps {
 
 const DEFAULT_PALETTE = ['#0176D3']; // Standard SLDS brand color
 
-const FALLBACK_STAGES = ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
+const FALLBACK_LEAD_STATUSES = ['NUEVO', 'CONTACTADO', 'DESCARTADO'];
 
 export default function KanbanBoard({ leads, onLeadStatusChange, onLeadClick, isAdminMode, agents }: KanbanBoardProps) {
   const { tenant } = useCRM();
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+  const [discardPrompt, setDiscardPrompt] = useState<{leadId: string, statusId: string} | null>(null);
+  const [lossReason, setLossReason] = useState('');
+  const [lossNotes, setLossNotes] = useState('');
 
   const columns = useMemo(() => {
-    if (tenant?.pipeline_stages && tenant.pipeline_stages.length > 0) {
-      return tenant.pipeline_stages.map((stage) => ({
-        id: stage.name, // Guardamos el nombre en el status del lead
-        title: stage.name,
-        color: stage.color || DEFAULT_PALETTE[0]
+    if (tenant?.lead_statuses && tenant.lead_statuses.length > 0) {
+      return tenant.lead_statuses.map((status) => ({
+        id: status.name, // Guardamos el nombre en el status del lead
+        title: status.name,
+        color: status.color || DEFAULT_PALETTE[0]
       }));
     }
     
     // Fallback si la inmobiliaria aún no heredó plantillas
-    return FALLBACK_STAGES.map((stage, index) => ({
-      id: stage,
-      title: stage.replace(/_/g, ' '),
+    return FALLBACK_LEAD_STATUSES.map((status, index) => ({
+      id: status,
+      title: status.replace(/_/g, ' '),
       color: DEFAULT_PALETTE[index % DEFAULT_PALETTE.length]
     }));
-  }, [tenant?.pipeline_stages]);
+  }, [tenant?.lead_statuses]);
 
   const handleDragStart = (e: React.DragEvent, leadId: string) => {
     setDraggedLeadId(leadId);
@@ -59,12 +63,15 @@ export default function KanbanBoard({ leads, onLeadStatusChange, onLeadClick, is
 
   const handleDrop = (e: React.DragEvent, statusId: string) => {
     e.preventDefault();
-    const leadId = e.dataTransfer.getData('text/plain');
-    if (leadId && leadId !== draggedLeadId) {
-      // Si por alguna razón el state no se seteó rápido
-      onLeadStatusChange(leadId, statusId);
-    } else if (draggedLeadId) {
-      onLeadStatusChange(draggedLeadId, statusId);
+    const leadId = e.dataTransfer.getData('text/plain') || draggedLeadId;
+    if (leadId) {
+      if (statusId === 'DESCARTADO') {
+        setDiscardPrompt({ leadId, statusId });
+        setLossReason('');
+        setLossNotes('');
+      } else {
+        onLeadStatusChange(leadId, statusId);
+      }
     }
     setDraggedLeadId(null);
   };
@@ -82,19 +89,11 @@ export default function KanbanBoard({ leads, onLeadStatusChange, onLeadClick, is
     return diffDays >= 14;
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
   return (
-    <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '16px', minHeight: 'calc(100vh - 250px)' }}>
+    <>
+      <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '16px', minHeight: 'calc(100vh - 250px)' }}>
       {columns.map(column => {
         const columnLeads = leads.filter(l => l.status === column.id);
-        const columnTotalValue = columnLeads.reduce((sum, l) => sum + (l.savedProforma?.finalPrice || 0), 0);
 
         return (
           <div 
@@ -118,9 +117,6 @@ export default function KanbanBoard({ leads, onLeadStatusChange, onLeadClick, is
                   {column.title}
                 </h2>
                 <span className="slds-badge slds-theme_shade" style={{ color: '#444', fontSize: '0.75rem' }}>{columnLeads.length}</span>
-              </div>
-              <div className="slds-m-top_xx-small" style={{ fontSize: '0.8125rem', color: '#444', fontWeight: 400 }}>
-                {formatCurrency(columnTotalValue)}
               </div>
             </div>
 
@@ -163,8 +159,8 @@ export default function KanbanBoard({ leads, onLeadStatusChange, onLeadClick, is
                       </p>
                     )}
 
-                    <p className="slds-text-color_weak slds-truncate" style={{ fontSize: '0.8125rem' }}>
-                      {lead.phone || 'Sin teléfono'}
+                    <p className="slds-text-color_weak slds-truncate" style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>
+                      {formatPhoneNumber(lead.phone) || 'Sin teléfono'}
                     </p>
                     
                     {isAdminMode && lead.assignedTo && (
@@ -181,6 +177,83 @@ export default function KanbanBoard({ leads, onLeadStatusChange, onLeadClick, is
           </div>
         );
       })}
-    </div>
+      </div>
+
+      {/* Modal de Descarte */}
+      {discardPrompt && (
+        <>
+          <div className="slds-backdrop slds-backdrop_open" style={{ zIndex: 9998 }}></div>
+          <section role="dialog" className="slds-modal slds-fade-in-open" style={{ zIndex: 9999 }}>
+            <div className="slds-modal__container" style={{ maxWidth: '400px' }}>
+              <header className="slds-modal__header slds-theme_error slds-theme_alert-texture">
+                <button 
+                  className="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                  onClick={() => setDiscardPrompt(null)}
+                >
+                  <X size={20} />
+                </button>
+                <h2 className="slds-text-heading_medium slds-text-color_inverse">Descartar Prospecto</h2>
+              </header>
+              <div className="slds-modal__content slds-p-around_medium">
+                <div className="slds-form-element slds-has-error slds-m-bottom_small">
+                  <label className="slds-form-element__label">
+                    <abbr className="slds-required" title="required">* </abbr>Motivo de Descarte
+                  </label>
+                  <div className="slds-form-element__control">
+                    <div className="slds-select_container">
+                      <select
+                        className="slds-select"
+                        value={lossReason}
+                        onChange={e => setLossReason(e.target.value)}
+                      >
+                        <option value="">Seleccionar motivo...</option>
+                        <option value="Datos Falsos / Incontactable">Datos Falsos / Incontactable</option>
+                        <option value="No le alcanza / No califica al crédito">No le alcanza / No califica al crédito</option>
+                        <option value="Compró a la competencia">Compró a la competencia</option>
+                        <option value="Ya no está interesado">Ya no está interesado</option>
+                        <option value="Busca otro tipo de inmueble">Busca otro tipo de inmueble</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="slds-form-element">
+                  <label className="slds-form-element__label">Notas (Opcional)</label>
+                  <div className="slds-form-element__control">
+                    <textarea 
+                      className="slds-textarea" 
+                      rows={2} 
+                      value={lossNotes}
+                      onChange={e => setLossNotes(e.target.value)}
+                      placeholder="Agrega comentarios adicionales..."
+                    />
+                  </div>
+                </div>
+              </div>
+              <footer className="slds-modal__footer">
+                <button 
+                  className="slds-button slds-button_neutral" 
+                  onClick={() => setDiscardPrompt(null)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="slds-button slds-button_destructive"
+                  disabled={!lossReason}
+                  onClick={() => {
+                    onLeadStatusChange(discardPrompt.leadId, discardPrompt.statusId, {
+                      lossReason,
+                      lossNotes
+                    });
+                    setDiscardPrompt(null);
+                  }}
+                >
+                  Confirmar Descarte
+                </button>
+              </footer>
+            </div>
+          </section>
+        </>
+      )}
+    </>
   );
 }

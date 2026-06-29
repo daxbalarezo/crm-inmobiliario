@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, CheckCircle2, MoreVertical, Power, PowerOff, CalendarOff, Edit, LogIn, Palmtree } from 'lucide-react';
+import { Plus, X, CheckCircle2, MoreVertical, Power, PowerOff, CalendarOff, Edit, LogIn } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useRoles } from '../hooks/useRoles';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../config/supabase';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -15,12 +16,54 @@ const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export default function TeamDashboard() {
   const { userProfile, impersonateUser } = useCRM();
-  const [users, setUsers] = useState<any[]>([]);
-  const [tenants, setTenants] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const queryKey = ['teamDashboard', userProfile?.tenantId, userProfile?.role];
+
+  const { data: dashboardData, isLoading: loading } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (userProfile?.role === 'owner') {
+        const [tenantsRes, usersRes, rolesRes] = await Promise.all([
+          supabase.from('tenants').select('*'),
+          supabase.from('users').select('*').order('created_at', { ascending: false }),
+          supabase.from('roles').select('*')
+        ]);
+        return {
+          tenants: tenantsRes.data || [],
+          users: (usersRes.data || []).map(u => ({ id: u.uid, ...u })),
+          globalRoles: rolesRes.data || []
+        };
+      } else {
+        const [tenantRes, usersRes, rolesRes] = await Promise.all([
+          supabase.from('tenants').select('*').eq('id', userProfile?.tenantId),
+          supabase.from('users').select('*').eq('tenant_id', userProfile?.tenantId).order('created_at', { ascending: false }),
+          supabase.from('roles').select('*').eq('tenant_id', userProfile?.tenantId)
+        ]);
+        return {
+          tenants: tenantRes.data || [],
+          users: (usersRes.data || []).map(u => ({ id: u.uid, ...u })),
+          globalRoles: rolesRes.data || []
+        };
+      }
+    },
+    enabled: !!userProfile
+  });
+
+  const users = dashboardData?.users || [];
+  const tenants = dashboardData?.tenants || [];
+  const globalRoles = dashboardData?.globalRoles || [];
+
+  const setUsers = (updater: any) => {
+    queryClient.setQueryData(queryKey, (oldData: any) => {
+      if (!oldData) return oldData;
+      const newUsers = typeof updater === 'function' ? updater(oldData.users) : updater;
+      return { ...oldData, users: newUsers };
+    });
+  };
 
   // Modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   
   // Forms
   const [newUser, setNewUser] = useState({
@@ -47,34 +90,7 @@ export default function TeamDashboard() {
   // Dropdown menus
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!userProfile) return;
-
-    const fetchAll = async () => {
-      setLoading(true);
-      try {
-        if (userProfile.role === 'owner') {
-          const { data: tenantsSnap } = await supabase.from('tenants').select('*');
-          const { data: usersSnap } = await supabase.from('users').select('*').order('created_at', { ascending: false });
-          
-          setTenants(tenantsSnap || []);
-          setUsers((usersSnap || []).map(u => ({ id: u.uid, ...u })));
-        } else {
-          // Manager
-          const { data: tenantSnap } = await supabase.from('tenants').select('*').eq('id', userProfile.tenantId);
-          const { data: usersSnap } = await supabase.from('users').select('*').eq('tenant_id', userProfile.tenantId);
-          
-          setTenants(tenantSnap || []);
-          setUsers((usersSnap || []).map(u => ({ id: u.uid, ...u })));
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAll();
-  }, [userProfile]);
+  // Funciones de utilidad y modales
 
   useEffect(() => {
     if (!newUser.firstName || !newUser.lastName) {
@@ -122,7 +138,7 @@ export default function TeamDashboard() {
     e.preventDefault();
     setCreateError('');
 
-    if (collisionError) return;
+    if (!editingUserId && collisionError) return;
     if (newUser.role === 'agent' && !newUser.customRoleId) {
       setCreateError('Por favor selecciona un rol personalizado.');
       return;
@@ -131,8 +147,24 @@ export default function TeamDashboard() {
     setIsCreating(true);
 
     try {
-      const fullEmail = `${generatedUsername}@crm.local`.toLowerCase();
       const finalRole = newUser.role === 'agent' ? newUser.customRoleId : newUser.role;
+      const fullName = `${newUser.firstName.trim()} ${newUser.lastName.trim()}`;
+
+      if (editingUserId) {
+        const updatePayload = {
+          name: fullName,
+          role: finalRole,
+          ...(userProfile?.role === 'owner' && newUser.tenantId ? { tenant_id: newUser.tenantId } : {})
+        };
+        const { error: updErr } = await supabase.from('users').update(updatePayload).eq('uid', editingUserId);
+        if (updErr) throw updErr;
+
+        setUsers(prev => prev.map(u => u.id === editingUserId ? { ...u, ...updatePayload } : u));
+        setIsUserModalOpen(false);
+        setEditingUserId(null);
+        setNewUser({ tenantId: '', firstName: '', lastName: '', role: 'manager', customRoleId: '', password: '' });
+      } else {
+        const fullEmail = `${generatedUsername}@crm.local`.toLowerCase();
 
       // 1. Generar invitación B2B en background
       const { data: invData, error: invError } = await supabase
@@ -165,7 +197,7 @@ export default function TeamDashboard() {
       const newDoc = {
         id: cred.user.id,
         uid: cred.user.id,
-        name: `${newUser.firstName.trim()} ${newUser.lastName.trim()}`,
+        name: fullName,
         email: fullEmail,
         role: finalRole,
         tenant_id: effectiveTenantId,
@@ -182,12 +214,13 @@ export default function TeamDashboard() {
       
       setNewUser({ tenantId: '', firstName: '', lastName: '', role: 'manager', customRoleId: '', password: '' });
 
+      }
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/weak-password') {
         setCreateError('La contraseña debe tener al menos 6 caracteres.');
       } else {
-        setCreateError('Hubo un error al crear el usuario. ' + err.message);
+        setCreateError('Hubo un error al procesar el usuario. ' + err.message);
       }
     } finally {
       setIsCreating(false);
@@ -245,7 +278,12 @@ export default function TeamDashboard() {
           <div className="slds-page-header__col-actions">
             <div className="slds-page-header__controls">
               <div className="slds-page-header__control">
-                <button onClick={() => { setIsUserModalOpen(true); refreshRoles(); }} className="slds-button slds-button_brand">
+                <button onClick={() => { 
+                  setEditingUserId(null);
+                  setNewUser({ tenantId: '', firstName: '', lastName: '', role: 'manager', customRoleId: '', password: '' });
+                  setIsUserModalOpen(true); 
+                  refreshRoles(); 
+                }} className="slds-button slds-button_brand">
                   <Plus size={16} className="slds-button__icon slds-button__icon_left" />
                   Nuevo Empleado
                 </button>
@@ -265,7 +303,7 @@ export default function TeamDashboard() {
             </div>
           </header>
         </div>
-        <div className="slds-card__body slds-card__body_inner">
+        <div className="slds-card__body slds-card__body_inner" style={{ paddingBottom: '150px' }}>
           <table className="slds-table slds-table_cell-buffer slds-table_bordered slds-table_hover">
             <thead>
               <tr className="slds-line-height_reset">
@@ -295,20 +333,21 @@ export default function TeamDashboard() {
                   <td data-label="Rol">
                     <div className="slds-truncate" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span className="slds-badge">
-                        {u.role === 'owner' ? 'DUEÑO' : u.role === 'manager' ? 'GERENTE' : u.role === 'agent' ? 'ASESOR' : u.role.toUpperCase()}
+                        {u.role === 'owner' ? 'DUEÑO' : u.role === 'manager' ? 'GERENTE' : u.role === 'agent' ? 'ASESOR' : 
+                          (globalRoles.find(r => r.id === u.role)?.name?.toUpperCase() || u.role.toUpperCase())}
                       </span>
                       {u.status === 'suspended' && (
                         <span className="slds-badge slds-theme_error">SUSPENDIDO</span>
                       )}
-                      {u.outOfOffice && (
+                      {u.out_of_office && (
                         <span className="slds-badge slds-theme_warning">
-                          <Palmtree size={12} style={{ display: 'inline', marginRight: '4px' }}/> OOO
+                          FUERA DE OFICINA
                         </span>
                       )}
                     </div>
                   </td>
-                  <td data-label="Acciones" className="slds-text-align_right">
-                    <div className="slds-truncate" style={{ position: 'relative' }}>
+                  <td data-label="Acciones" className="slds-text-align_right" style={{ overflow: 'visible' }}>
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
                       {u.role !== 'owner' && userProfile?.role === 'owner' && (
                         <button 
                           onClick={() => impersonateUser(u.id)}
@@ -330,13 +369,28 @@ export default function TeamDashboard() {
                         <div className="slds-dropdown slds-dropdown_right" style={{ position: 'absolute', right: 0, top: '100%', zIndex: 100 }}>
                           <ul className="slds-dropdown__list" role="menu">
                             <li className="slds-dropdown__item" role="presentation">
-                              <a href="#" role="menuitem" onClick={(e) => { e.preventDefault(); setActiveDropdown(null); }}>
+                              <a href="#" role="menuitem" onClick={(e) => { 
+                                e.preventDefault(); 
+                                const parts = (u.name || '').split(' ');
+                                const isStandard = ['owner', 'manager', 'agent'].includes(u.role);
+                                setNewUser({
+                                  tenantId: u.tenant_id || '',
+                                  firstName: parts.slice(0, -1).join(' ') || parts[0] || '',
+                                  lastName: parts.length > 1 ? parts.slice(-1)[0] : '',
+                                  role: isStandard ? u.role : 'agent',
+                                  customRoleId: isStandard ? '' : u.role,
+                                  password: ''
+                                });
+                                setEditingUserId(u.id);
+                                setIsUserModalOpen(true);
+                                setActiveDropdown(null); 
+                              }}>
                                 <span className="slds-truncate"><Edit size={14} className="slds-m-right_x-small"/> Editar Perfil</span>
                               </a>
                             </li>
                             <li className="slds-dropdown__item" role="presentation">
-                              <a href="#" role="menuitem" onClick={(e) => { e.preventDefault(); handleToggleOoo(u.id, u.outOfOffice); }}>
-                                <span className="slds-truncate"><CalendarOff size={14} className="slds-m-right_x-small"/> {u.outOfOffice ? 'Desactivar Ausencia' : 'Vacaciones/Ausencia'}</span>
+                              <a href="#" role="menuitem" onClick={(e) => { e.preventDefault(); handleToggleOoo(u.id, u.out_of_office); }}>
+                                <span className="slds-truncate"><CalendarOff size={14} className="slds-m-right_x-small"/> {u.out_of_office ? 'Desactivar Ausencia' : 'Vacaciones/Ausencia'}</span>
                               </a>
                             </li>
                             <li className="slds-has-divider_top-space" role="separator"></li>
@@ -369,12 +423,12 @@ export default function TeamDashboard() {
                 <button 
                   className="slds-button slds-button_icon slds-modal__close" 
                   title="Cerrar"
-                  onClick={() => { setIsUserModalOpen(false); setCreatedCredentials(null); }}
+                  onClick={() => { setIsUserModalOpen(false); setCreatedCredentials(null); setEditingUserId(null); }}
                 >
                   <X size={24} />
                   <span className="slds-assistive-text">Cerrar</span>
                 </button>
-                <h2 className="slds-text-heading_medium slds-hyphenate">{createdCredentials ? '¡Empleado Registrado!' : 'Registrar Empleado'}</h2>
+                <h2 className="slds-text-heading_medium slds-hyphenate">{editingUserId ? 'Editar Empleado' : (createdCredentials ? '¡Empleado Registrado!' : 'Registrar Empleado')}</h2>
               </header>
 
               <div className="slds-modal__content slds-p-around_medium">
@@ -432,26 +486,28 @@ export default function TeamDashboard() {
                       </div>
                     </div>
 
-                    <div className="slds-box slds-m-bottom_small" style={{ backgroundColor: '#f9f9f9', padding: '1rem' }}>
-                      <div className="slds-form-element">
-                        <label className="slds-form-element__label">Usuario / Correo de Acceso</label>
-                        <div className="slds-form-element__control slds-grid slds-grid_vertical-align-center">
-                          <input 
-                            type="text" 
-                            required 
-                            value={generatedUsername} 
-                            onChange={e => {
-                               setGeneratedUsername(e.target.value);
-                               checkCollision(e.target.value);
-                            }} 
-                            className="slds-input slds-m-right_small" 
-                            style={{fontSize: '16px', color: '#0176D3', fontWeight: 700, fontFamily: 'monospace'}} 
-                          />
-                          <span className="slds-text-color_weak">@crm.local</span>
+                    {!editingUserId && (
+                      <div className="slds-box slds-m-bottom_small" style={{ backgroundColor: '#f9f9f9', padding: '1rem' }}>
+                        <div className="slds-form-element">
+                          <label className="slds-form-element__label">Usuario / Correo de Acceso</label>
+                          <div className="slds-form-element__control slds-grid slds-grid_vertical-align-center">
+                            <input 
+                              type="text" 
+                              required 
+                              value={generatedUsername} 
+                              onChange={e => {
+                                 setGeneratedUsername(e.target.value);
+                                 checkCollision(e.target.value);
+                              }} 
+                              className="slds-input slds-m-right_small" 
+                              style={{fontSize: '16px', color: '#0176D3', fontWeight: 700, fontFamily: 'monospace'}} 
+                            />
+                            <span className="slds-text-color_weak">@crm.local</span>
+                          </div>
+                          {collisionError ? <div className="slds-text-color_error slds-m-top_xx-small">{collisionError}</div> : generatedUsername ? <div className="slds-text-color_success slds-m-top_xx-small">Disponible</div> : null}
                         </div>
-                        {collisionError ? <div className="slds-text-color_error slds-m-top_xx-small">{collisionError}</div> : generatedUsername ? <div className="slds-text-color_success slds-m-top_xx-small">Disponible</div> : null}
                       </div>
-                    </div>
+                    )}
 
                     <div className="slds-form-element slds-m-bottom_small">
                       <label className="slds-form-element__label">Rol del Sistema</label>
@@ -486,28 +542,30 @@ export default function TeamDashboard() {
                       </div>
                     )}
                     
-                    <div className="slds-form-element slds-m-bottom_small">
-                      <label className="slds-form-element__label">Contraseña Inicial</label>
-                      <div className="slds-form-element__control slds-grid slds-gutters">
-                        <div className="slds-col slds-size_3-of-4">
-                          <input type="text" required value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="slds-input" placeholder="Mínimo 6 caracteres" />
-                        </div>
-                        <div className="slds-col slds-size_1-of-4">
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-                              let pass = '';
-                              for(let i=0; i<8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
-                              setNewUser({...newUser, password: pass});
-                            }}
-                            className="slds-button slds-button_neutral slds-size_1-of-1"
-                          >
-                            Aleatoria
-                          </button>
+                    {!editingUserId && (
+                      <div className="slds-form-element slds-m-bottom_small">
+                        <label className="slds-form-element__label">Contraseña Inicial</label>
+                        <div className="slds-form-element__control slds-grid slds-gutters">
+                          <div className="slds-col slds-size_3-of-4">
+                            <input type="text" required value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="slds-input" placeholder="Mínimo 6 caracteres" />
+                          </div>
+                          <div className="slds-col slds-size_1-of-4">
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+                                let pass = '';
+                                for(let i=0; i<8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                                setNewUser({...newUser, password: pass});
+                              }}
+                              className="slds-button slds-button_neutral slds-size_1-of-1"
+                            >
+                              Aleatoria
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {createError && (
                       <div className="slds-notify slds-notify_alert slds-alert_error" role="alert">
@@ -521,14 +579,14 @@ export default function TeamDashboard() {
               <footer className="slds-modal__footer">
                 {createdCredentials ? (
                   <>
-                    <button onClick={() => { setIsUserModalOpen(false); setCreatedCredentials(null); }} className="slds-button slds-button_neutral">Cerrar</button>
+                    <button onClick={() => { setIsUserModalOpen(false); setCreatedCredentials(null); setEditingUserId(null); }} className="slds-button slds-button_neutral">Cerrar</button>
                     <button onClick={() => navigator.clipboard.writeText(`Credenciales CRM\nUsuario: ${createdCredentials.username}\nContraseña: ${createdCredentials.password}`)} className="slds-button slds-button_brand">Copiar al Portapapeles</button>
                   </>
                 ) : (
                   <>
-                    <button type="button" onClick={() => setIsUserModalOpen(false)} className="slds-button slds-button_neutral">Cancelar</button>
-                    <button type="submit" form="newUserForm" disabled={isCreating || !!collisionError} className="slds-button slds-button_brand">
-                      {isCreating ? 'Creando...' : 'Crear Usuario'}
+                    <button type="button" onClick={() => { setIsUserModalOpen(false); setEditingUserId(null); }} className="slds-button slds-button_neutral">Cancelar</button>
+                    <button type="submit" form="newUserForm" disabled={isCreating || (!editingUserId && !!collisionError)} className="slds-button slds-button_brand">
+                      {isCreating ? 'Guardando...' : editingUserId ? 'Guardar Cambios' : 'Crear Usuario'}
                     </button>
                   </>
                 )}

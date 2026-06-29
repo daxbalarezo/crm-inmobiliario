@@ -78,8 +78,16 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     return { id: tenantId, name: 'Empresa no encontrada', plan: 'starter' } as Tenant;
   };
 
-  const fetchPermissions = async (tenantId: string, roleName: string) => {
+  const fetchPermissions = async (tenantId: string, roleName: string, roleId?: string) => {
+    if (roleId) {
+      try {
+        const { data } = await supabase.from('roles').select('permissions').eq('id', roleId).single();
+        if (data && data.permissions) return data.permissions;
+      } catch (e) {}
+    }
+    
     if (roleName === 'owner' || roleName === 'manager') return MANAGER_PERMISSIONS;
+    if (roleName === 'staff') return { ...DEFAULT_PERMISSIONS, leads: { read: 'none', create: false, update: false, delete: false } };
     return DEFAULT_PERMISSIONS;
   };
 
@@ -93,27 +101,41 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           // Buscar perfil en tabla public.users
           const { data: snap } = await supabase.from('users').select('*').eq('uid', supabaseUser.id).maybeSingle();
           
-          let profile: UserProfile;
-          if (snap) {
-            profile = { 
-              uid: snap.uid, 
-              tenantId: snap.tenant_id,
-              role: snap.role,
-              name: snap.name,
-              email: snap.email,
-              assignedProjectIds: snap.assigned_project_ids || [],
-              status: snap.status
-            } as UserProfile;
-
-            if (profile.status === 'suspended') {
-              await supabase.auth.signOut();
-              alert('Tu cuenta ha sido suspendida. Contacta a tu administrador.');
-              return;
-            }
-          } else {
+          if (!snap) {
             // Error grave de seguridad/sincronización: El usuario está en Auth pero no en public.users o RLS bloquea su lectura.
             await supabase.auth.signOut();
             alert('Error crítico: Tu perfil no fue aprovisionado o no tienes permisos de lectura. Contacta a soporte.');
+            return;
+          }
+
+          let profile: UserProfile = { 
+            uid: snap.uid, 
+            tenantId: snap.tenant_id,
+            role: snap.role as 'owner' | 'manager' | 'agent' | 'staff',
+            name: snap.name,
+            email: snap.email,
+            assignedProjectIds: snap.assigned_project_ids || [],
+            status: snap.status
+          };
+
+            if (['owner', 'manager', 'agent', 'staff'].includes(snap.role)) {
+              profile.roleName = snap.role === 'owner' ? 'Dueño' : snap.role === 'manager' ? 'Gerente' : snap.role === 'staff' ? 'Staff' : 'Asesor';
+            } else {
+              // It's a custom UUID
+              profile.roleId = snap.role;
+              const { data: roleData } = await supabase.from('roles').select('name, base_role, permissions').eq('id', snap.role).single();
+              if (roleData) {
+                profile.role = (roleData.base_role || 'agent') as 'owner' | 'manager' | 'agent' | 'staff';
+                profile.roleName = roleData.name;
+              } else {
+                profile.role = 'agent';
+                profile.roleName = 'Asesor (Rol no encontrado)';
+              }
+            }
+
+          if (profile.status === 'suspended') {
+            await supabase.auth.signOut();
+            alert('Tu cuenta ha sido suspendida. Contacta a tu administrador.');
             return;
           }
           
@@ -128,7 +150,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             setTenantSubscription(null);
           }
 
-          const permissions = await fetchPermissions(profile.tenantId, profile.role);
+          const permissions = await fetchPermissions(profile.tenantId, profile.role, profile.roleId);
           setUserPermissions(permissions);
 
           if (profile.assignedProjectIds?.length > 0) {
@@ -158,14 +180,29 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     try {
       const { data: snap } = await supabase.from('users').select('*').eq('uid', targetUid).single();
       if (snap) {
-        const targetProfile = { 
+        let targetProfile = { 
           uid: snap.uid, 
           tenantId: snap.tenant_id,
-          role: snap.role,
+          role: snap.role as 'owner' | 'manager' | 'agent' | 'staff',
           name: snap.name,
           email: snap.email,
           assignedProjectIds: snap.assigned_project_ids || []
         } as UserProfile;
+
+        if (['owner', 'manager', 'agent', 'staff'].includes(snap.role)) {
+          targetProfile.roleName = snap.role === 'owner' ? 'Dueño' : snap.role === 'manager' ? 'Gerente' : snap.role === 'staff' ? 'Staff' : 'Asesor';
+        } else {
+          // It's a custom UUID
+          targetProfile.roleId = snap.role;
+          const { data: roleData } = await supabase.from('roles').select('name, base_role').eq('id', snap.role).single();
+          if (roleData) {
+            targetProfile.role = (roleData.base_role || 'agent') as 'owner' | 'manager' | 'agent' | 'staff';
+            targetProfile.roleName = roleData.name;
+          } else {
+            targetProfile.role = 'agent';
+            targetProfile.roleName = 'Asesor (Rol no encontrado)';
+          }
+        }
         
         setUserProfile(targetProfile);
         setIsImpersonating(true);
@@ -178,7 +215,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           setTenantSubscription(null);
         }
 
-        const permissions = await fetchPermissions(targetProfile.tenantId, targetProfile.role);
+        const permissions = await fetchPermissions(targetProfile.tenantId, targetProfile.role, targetProfile.roleId);
         setUserPermissions(permissions);
 
         if (targetProfile.assignedProjectIds?.length > 0) {
@@ -203,7 +240,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       setTenantSubscription(null);
     }
 
-    const permissions = await fetchPermissions(realUserProfile.tenantId, realUserProfile.role);
+    const permissions = await fetchPermissions(realUserProfile.tenantId, realUserProfile.role, realUserProfile.roleId);
     setUserPermissions(permissions);
   };
 

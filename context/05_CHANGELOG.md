@@ -4,6 +4,17 @@ Este archivo mantiene un registro cronológico de todas las modificaciones impor
 
 ---
 
+## [2026-06-29] - Estandarización de UX, Roles y Flujos de Prospectos
+**Objetivo del cambio:** Alinear la interfaz, nomenclatura y niveles de interés con las mejores prácticas de Salesforce, además de blindar la seguridad en la visualización y exportación de datos basada en los roles nativos del sistema.
+**Archivos modificados:** `CorporateLayout.tsx`, `CommercialDashboard.tsx`, `OpportunitiesDashboard.tsx`, `LeadModal.tsx`, `useAgentAnalytics.ts`, `dataSeeder.ts`.
+**Detalles:**
+- **Pipeline Rename:** Se eliminaron los anglicismos innecesarios en la interfaz, pasando de "Prospectos (Kanban)" a "Prospectos" y de "Ventas y Pipeline" a "Embudo de Ventas".
+- **Estado 'DESCARTADO':** Se reemplazó integralmente la etapa final "PERDIDO" por "DESCARTADO" tanto en la interfaz (modales, Kanban) como en las métricas subyacentes (`useAgentAnalytics.ts`) para representar correctamente el flujo comercial de prospectos que no calificaron, ajustando también el sembrador de datos (`dataSeeder.ts`).
+- **Niveles de Interés (Leads vs Oportunidades):** Tras consultoría basada en el modelo clásico de Salesforce, se reconfirmó y ratificó la estructura actual de datos: los Prospectos se califican visualmente y funcionalmente con Alto/Medio/Bajo, mientras que las Oportunidades utilizan porcentajes lógicos de probabilidad de cierre. 
+- **Trazabilidad Inmediata (Compact Layout):** Se inyectó la marca de tiempo exacta de creación de la base de datos ("Registrado el: dd/mm/aaaa") directamente en la cabecera del Modal de Prospectos y se respetó el tope de 4 campos clave en las tarjetas Kanban.
+- **Filtro Seguro de Roles de Asesores:** Se arregló un bug grave donde filtrar `eq('role', 'agent')` devolvía un array vacío y rompía la UI arrojando UUIDs. Se reimplementó una consulta inteligente hacia la tabla `roles` buscando el `base_role === 'agent'`, para luego filtrar a los asesores independientemente del alias que el administrador le haya dado a sus roles. El filtro desplegable ahora oculta correctamente a Gerentes y Propietarios.
+- **Exportación Masiva de CRM (Seguridad):** Se construyó e inyectó un botón exclusivo "Exportar CSV" en el `CommercialDashboard.tsx` para permitir que dueños y gerentes exporten toda la base de datos de leads o segmentos particulares según el filtro activo.
+
 ## [2026-06-28] - Mejoras de UX en Analíticas y Filtros de Fecha Personalizados
 **Objetivo del cambio:** Potenciar las herramientas de inteligencia de negocios (BI) ofreciendo a los gerentes porcentajes exactos en todos los gráficos y permitiendo búsquedas temporales granulares (Custom Date Ranges).
 **Archivos modificados:** `AgentAnalyticsDashboard.tsx`, `AdvancedReportsDashboard.tsx`, `AdminCharts.tsx`, `useAdminMetrics.ts`, `useAdvancedReports.ts`, `SettingsDashboard.tsx`, `dataSeeder.ts`.

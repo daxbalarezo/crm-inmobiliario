@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Users } from 'lucide-react';
+import { Plus, Search, Users, Download } from 'lucide-react';
 import { supabase } from '../config/supabase';
 import { useCommercialData } from '../hooks/useCommercialData';
 import { useCRM } from '../context/CRMContext';
+import { formatPhoneNumber } from '../utils/helpers';
 import { useAuditTrail } from '../hooks/useAuditTrail';
 import { useWorkflows } from '../hooks/useWorkflows';
 import { logActivityService } from '../services/activities';
@@ -12,8 +13,8 @@ import type { Lead } from '../types/definitions';
 
 // For Weighted Pipeline Calculation (Fallback)
 const defaultProbabilities: Record<string, number> = {
-  'PROSPECTO': 10,
-  'SIN_CONTACTAR': 5,
+  'NUEVO': 10,
+  'CONTACTADO': 20,
   'EN_NEGOCIACION': 40,
   'VISITA': 60,
   'SEPARACION': 90,
@@ -34,9 +35,12 @@ export default function CommercialDashboard() {
 
   React.useEffect(() => {
     if (userProfile?.role === 'owner' || userProfile?.role === 'manager') {
-      supabase.from('users').select('uid, name').eq('tenant_id', tenantId).then(({ data }) => {
+      supabase.from('users').select('uid, name, role').eq('tenant_id', tenantId).then(async ({ data }) => {
         if (data) {
-          setAgents(data.map(d => ({ id: d.uid, name: d.name })));
+          const { data: rolesData } = await supabase.from('roles').select('id, base_role').eq('tenant_id', tenantId);
+          const agentRoleIds = (rolesData || []).filter(r => r.base_role === 'agent').map(r => r.id);
+          const asesores = data.filter(d => agentRoleIds.includes(d.role));
+          setAgents(asesores.map(d => ({ id: d.uid, name: d.name })));
         }
       });
     }
@@ -69,32 +73,37 @@ export default function CommercialDashboard() {
         if (lastActivityTime) {
           const dateObj = lastActivityTime.toDate ? lastActivityTime.toDate() : new Date(lastActivityTime);
           const diffDays = Math.ceil(Math.abs(new Date().getTime() - dateObj.getTime()) / (1000 * 60 * 60 * 24));
-          matchesSavedView = diffDays >= 14 && !['VENDIDO', 'VENTA_CERRADA', 'NO_INTERESADO', 'VENTA_CAIDA'].includes(l.status);
+          const maxDays = tenant?.slaFollowUpDays || 14;
+          matchesSavedView = diffDays >= maxDays && l.status !== 'DESCARTADO';
         } else {
           matchesSavedView = false;
         }
       } else if (savedView === 'high_value') {
-        matchesSavedView = (l.savedProforma?.finalPrice || 0) > 0;
+        // Prospectos Calificados: Ya no son "NUEVOS" y tampoco están "DESCARTADOS"
+        matchesSavedView = l.status !== 'NUEVO' && l.status !== 'DESCARTADO';
       } else if (savedView === 'hot') {
-        matchesSavedView = ['SEPARACION', 'VISITA'].includes(l.status) && l.interestLevel === 'Alto';
+        // Alto Interés: Tienen el nivel de interés marcado como 'Alto'
+        matchesSavedView = l.interestLevel === 'Alto' && l.status !== 'DESCARTADO';
       }
 
       return matchesSearch && matchesAgent && matchesSavedView;
     });
   }, [leads, searchTerm, selectedAgentId, savedView]);
 
-  // Financial KPIs
+  // KPIs de Volumen (Sin dinero, purismo Salesforce)
   const kpis = useMemo(() => {
-    let montoTotal = 0;
-    let montoPonderado = 0;
-    filteredLeads.forEach(l => {
-      let amount = l.savedProforma?.finalPrice || 0;
-      const probability = getProbability(l.status) / 100;
-      montoTotal += amount;
-      montoPonderado += (amount * probability);
-    });
-    return { montoTotal, montoPonderado };
-  }, [filteredLeads, tenant]);
+    return { 
+      totalLeads: filteredLeads.length,
+      stalledLeads: filteredLeads.filter(l => {
+        const date = l.updatedAt || l.createdAt;
+        if (!date) return false;
+        const diffDays = Math.ceil(Math.abs(new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+        const maxDays = tenant?.slaFollowUpDays || 14;
+        return diffDays >= maxDays && l.status !== 'DESCARTADO';
+      }).length,
+      contactedLeads: filteredLeads.filter(l => l.status !== 'NUEVO' && l.status !== 'DESCARTADO').length
+    };
+  }, [filteredLeads, tenant?.slaFollowUpDays]);
 
   const { executeWorkflows } = useWorkflows();
 
@@ -115,6 +124,7 @@ export default function CommercialDashboard() {
     };
     
     if (editingLead?.id) {
+      updateLeadOptimistically(editingLead.id, data);
       const { error } = await supabase.from('leads').update(payload).eq('id', editingLead.id);
       if (error) {
         console.error("Error updating lead:", error);
@@ -181,9 +191,9 @@ export default function CommercialDashboard() {
     }
   };
 
-  const handleStatusChange = async (leadId: string, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatus: string, extraData?: Partial<Lead>) => {
     // 1. Actualización Optimista (feedback instantáneo)
-    updateLeadOptimistically(leadId, { status: newStatus });
+    updateLeadOptimistically(leadId, { status: newStatus, ...extraData });
 
     const lead = leads.find(l => l.id === leadId);
     
@@ -191,8 +201,11 @@ export default function CommercialDashboard() {
       status: newStatus,
     };
     
+    if (extraData?.lossReason) updates.loss_reason = extraData.lossReason;
+    if (extraData?.lossNotes !== undefined) updates.loss_notes = extraData.lossNotes;
+    
     // SLA tracking: if it's the first time changing status from default
-    if (lead && !lead.firstContactAt && newStatus !== 'PROSPECTO') {
+    if (lead && !lead.firstContactAt && newStatus !== 'NUEVO') {
       updates.first_contact_at = new Date().toISOString();
     }
 
@@ -348,6 +361,25 @@ export default function CommercialDashboard() {
     </div>
   );
 
+  const handleExportCSV = () => {
+    const headers = ['Nombre,Telefono,Etapa,Interes,Agente,Fecha Creacion'];
+    const rows = filteredLeads.map(lead => {
+      const agentName = agents.find(a => a.id === lead.assignedTo)?.name || 'Sin Asignar';
+      const dateObj = lead.createdAt?.toDate ? lead.createdAt.toDate() : new Date(lead.createdAt || Date.now());
+      return `"${lead.name}","${lead.phone || ''}","${lead.status}","${lead.interestLevel || ''}","${agentName}","${dateObj.toLocaleDateString()}"`;
+    });
+    
+    const csvContent = '\uFEFF' + headers.concat(rows).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Prospectos_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="slds-grid slds-grid_vertical slds-p-around_none">
       
@@ -367,7 +399,7 @@ export default function CommercialDashboard() {
                 <div className="slds-page-header__name">
                   <div className="slds-page-header__name-title">
                     <h1>
-                      <span className="slds-page-header__title slds-truncate" title="Pipeline Global">Pipeline Global</span>
+                      <span className="slds-page-header__title slds-truncate" title="Gestión de Prospectos">Gestión de Prospectos</span>
                     </h1>
                   </div>
                 </div>
@@ -377,14 +409,10 @@ export default function CommercialDashboard() {
           </div>
           <div className="slds-page-header__col-actions">
             <div className="slds-page-header__controls">
-              <div className="slds-page-header__control">
+              <div className="slds-page-header__control" style={{ display: 'flex', gap: '8px' }}>
                 {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
-                  <button 
-                    className="slds-button slds-button_success slds-m-right_x-small" 
-                    onClick={handleSeedLeads}
-                    disabled={isSeeding}
-                  >
-                    <Plus size={14} className="slds-m-right_x-small" /> {isSeeding ? 'Sembrando...' : '🌱 Sembrar Datos'}
+                  <button className="slds-button slds-button_outline-brand" onClick={handleExportCSV}>
+                    <Download size={14} className="slds-m-right_x-small" /> Exportar CSV
                   </button>
                 )}
                 {userPermissions.leads.create && (
@@ -427,9 +455,9 @@ export default function CommercialDashboard() {
                         onChange={e => setSavedView(e.target.value)}
                       >
                         <option value="all">Todos los Prospectos</option>
-                        <option value="stalled">Oportunidades Estancadas</option>
-                        <option value="high_value">Alto Valor (Cotizados)</option>
-                        <option value="hot">Cierres Calientes</option>
+                        <option value="stalled">Prospectos Estancados</option>
+                        <option value="high_value">Prospectos Calificados</option>
+                        <option value="hot">Alto Interés</option>
                       </select>
                     </div>
                   </div>
@@ -465,26 +493,22 @@ export default function CommercialDashboard() {
                   <span className="slds-text-heading_small">{filteredLeads.length}</span>
                 </div>
               </li>
-              {(userProfile?.role === 'owner' || userProfile?.role === 'manager') && (
-                <>
-                  <li className="slds-page-header__detail-block">
-                    <div className="slds-text-title slds-truncate" title="Pipeline">PIPELINE</div>
-                    <div className="slds-truncate" title={String(kpis.montoTotal)}>
-                      <span className="slds-text-heading_small slds-text-color_default">
-                        ${kpis.montoTotal >= 1000 ? `${(kpis.montoTotal / 1000).toFixed(1)}k` : kpis.montoTotal}
-                      </span>
-                    </div>
-                  </li>
-                  <li className="slds-page-header__detail-block">
-                    <div className="slds-text-title slds-truncate" title="Ponderado">PONDERADO</div>
-                    <div className="slds-truncate" title={String(kpis.montoPonderado)}>
-                      <span className="slds-text-heading_small slds-text-color_success">
-                        ${kpis.montoPonderado >= 1000 ? `${(kpis.montoPonderado / 1000).toFixed(1)}k` : kpis.montoPonderado}
-                      </span>
-                    </div>
-                  </li>
-                </>
-              )}
+              <li className="slds-page-header__detail-block" style={{ minWidth: '120px' }}>
+                <div className="slds-text-title" title="Estancados">ESTANCADOS</div>
+                <div className="slds-truncate" title={String(kpis.stalledLeads)}>
+                  <span className={`slds-text-heading_small ${kpis.stalledLeads > 0 ? 'slds-text-color_error' : 'slds-text-color_default'}`}>
+                    {kpis.stalledLeads}
+                  </span>
+                </div>
+              </li>
+              <li className="slds-page-header__detail-block" style={{ minWidth: '120px' }}>
+                <div className="slds-text-title" title="Contactados">CONTACTADOS</div>
+                <div className="slds-truncate" title={String(kpis.contactedLeads)}>
+                  <span className="slds-text-heading_small slds-text-color_success">
+                    {kpis.contactedLeads}
+                  </span>
+                </div>
+              </li>
             </ul>
           </div>
             
@@ -557,9 +581,9 @@ export default function CommercialDashboard() {
                       </div>
                     </td>
                     <td data-label="Teléfono">
-                      <div className="slds-truncate">{lead.phone || '-'}</div>
+                      <div className="slds-truncate">{formatPhoneNumber(lead.phone) || '-'}</div>
                     </td>
-                    <td data-label="Etapa">
+                    <td data-label="Estado">
                       <div className="slds-truncate">
                         <span className="slds-badge">{lead.status}</span>
                       </div>

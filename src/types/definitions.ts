@@ -1,9 +1,11 @@
-export type UserRole = 'owner' | 'manager' | 'agent';
+export type UserRole = 'owner' | 'manager' | 'agent' | 'staff';
 
 export interface UserProfile {
   uid: string;
   tenantId: string;
   role: UserRole;
+  roleName?: string;
+  roleId?: string;
   name: string;
   email: string;
   assignedProjectIds: string[];
@@ -28,12 +30,15 @@ export interface Tenant {
   plan: 'starter' | 'pro' | 'enterprise';
   status?: string;
   stages?: string[]; // Deprecated, use pipeline_stages
-  pipeline_stages?: PipelineStage[]; // NUEVO: Embudo dinámico B2B
+  lead_statuses?: PipelineStage[]; // Para Prospectos
+  pipeline_stages?: PipelineStage[]; // Para Oportunidades
   sources?: string[];
   createdAt?: any;
   fields?: CustomFieldDefinition[];
   saas_subscriptions?: any[];
   slaTargetHours?: number;
+  slaFollowUpDays?: number;
+  slaAutoReassignDays?: number;
 }
 
 export interface ModulePermissions {
@@ -46,6 +51,7 @@ export interface ModulePermissions {
 export interface RolePermission {
   id?: string;
   name: string; // e.g. "Líder de Ventas", "Administrativo"
+  base_role: UserRole;
   tenantId: string;
   permissions: {
     leads: ModulePermissions;
@@ -128,7 +134,53 @@ export interface Lead {
   createdAt?: any;
   savedProforma?: any;
   lossReason?: string; // Motivo de pérdida para analítica
+  lossNotes?: string; // Comentarios adicionales del descarte
   customData?: Record<string, any>; // Dynamic fields
+  
+  // Salesforce Purism: Conversión
+  isConverted?: boolean;
+  convertedAccountId?: string;
+  convertedContactId?: string;
+  convertedOpportunityId?: string;
+  convertedAt?: string;
+}
+
+export interface Account {
+  id: string;
+  tenantId: string;
+  name: string;
+  industry?: string;
+  website?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Contact {
+  id: string;
+  tenantId: string;
+  accountId: string;
+  firstName: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Opportunity {
+  id: string;
+  tenantId: string;
+  accountId: string;
+  contactId?: string;
+  projectId?: string;
+  assignedTo?: string;
+  name: string;
+  amount: number;
+  stage: string;
+  probability: number;
+  closeDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Unit {

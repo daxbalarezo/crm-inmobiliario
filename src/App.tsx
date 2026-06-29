@@ -22,6 +22,7 @@ import ProjectsDashboard from './pages/ProjectsDashboard';
 import TemplatesDashboard from './pages/TemplatesDashboard';
 import LeaderboardPage from './pages/LeaderboardPage';
 import SLAPage from './pages/SLAPage';
+import OpportunitiesDashboard from './pages/OpportunitiesDashboard';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, userProfile, tenant, authReady, logout } = useCRM();
@@ -105,6 +106,13 @@ export default function App() {
               <AuthGuard>
                 <CorporateLayout>
                   <CommercialDashboard />
+                </CorporateLayout>
+              </AuthGuard>
+            } />
+            <Route path="/opportunities" element={
+              <AuthGuard>
+                <CorporateLayout>
+                  <OpportunitiesDashboard />
                 </CorporateLayout>
               </AuthGuard>
             } />

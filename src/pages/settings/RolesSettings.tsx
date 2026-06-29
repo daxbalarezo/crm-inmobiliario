@@ -14,6 +14,7 @@ const DEFAULT_MODULE_PERM: ModulePermissions = {
 
 const DEFAULT_NEW_ROLE: Omit<RolePermission, 'id'> = {
   name: 'Nuevo Rol',
+  base_role: 'agent',
   tenantId: '',
   permissions: {
     leads: { ...DEFAULT_MODULE_PERM },
@@ -69,6 +70,7 @@ export default function RolesSettings() {
           .insert([{ 
             tenant_id: tenantId, 
             name: editingRole.name, 
+            base_role: editingRole.base_role,
             permissions: editingRole.permissions 
           }])
           .select()
@@ -79,7 +81,7 @@ export default function RolesSettings() {
       } else {
         const { error } = await supabase
           .from('roles')
-          .update({ name: editingRole.name, permissions: editingRole.permissions })
+          .update({ name: editingRole.name, base_role: editingRole.base_role, permissions: editingRole.permissions })
           .eq('id', editingRole.id);
           
         if (error) throw error;
@@ -178,7 +180,7 @@ export default function RolesSettings() {
         <div className="slds-col slds-size_4-of-5" style={{ padding: '0' }}>
           {editingRole ? (
             <div className="slds-form slds-form_stacked">
-              <div className="slds-p-around_large" style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+              <div className="slds-p-around_large" style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '24px' }}>
                 <div className="slds-form-element slds-size_1-of-2">
                   <label className="slds-form-element__label" style={{ fontWeight: 600 }}>Nombre del Rol</label>
                   <div className="slds-form-element__control">
@@ -189,6 +191,23 @@ export default function RolesSettings() {
                       placeholder="Ej. Asistente Comercial"
                       style={{ fontWeight: 600 }}
                     />
+                  </div>
+                </div>
+                <div className="slds-form-element slds-size_1-of-2">
+                  <label className="slds-form-element__label" style={{ fontWeight: 600 }}>Comportamiento (Rol Base)</label>
+                  <div className="slds-form-element__control">
+                    <div className="slds-select_container">
+                      <select 
+                        className="slds-select"
+                        value={editingRole.base_role}
+                        onChange={e => setEditingRole({ ...editingRole, base_role: e.target.value as any })}
+                        style={{ fontWeight: 600 }}
+                      >
+                        <option value="agent">Asesor (Dashboard Comercial)</option>
+                        <option value="manager">Gerente (Dashboard Analítico)</option>
+                        <option value="staff">Staff / Back-Office (Sin Dashboard)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -8,12 +8,20 @@ import styles from './DataModelSettings.module.css';
 export default function BusinessRulesSettings() {
   const { tenantId, tenant } = useCRM();
   const [slaHours, setSlaHours] = useState<number>(2);
+  const [slaFollowUpDays, setSlaFollowUpDays] = useState<number>(3);
+  const [slaAutoReassignDays, setSlaAutoReassignDays] = useState<number>(5);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (tenant?.slaTargetHours !== undefined) {
       setSlaHours(tenant.slaTargetHours);
+    }
+    if (tenant?.slaFollowUpDays !== undefined) {
+      setSlaFollowUpDays(tenant.slaFollowUpDays);
+    }
+    if (tenant?.slaAutoReassignDays !== undefined) {
+      setSlaAutoReassignDays(tenant.slaAutoReassignDays);
     }
   }, [tenant]);
 
@@ -26,7 +34,9 @@ export default function BusinessRulesSettings() {
     try {
       const tenantRef = doc(db, 'tenants', tenantId);
       await updateDoc(tenantRef, {
-        slaTargetHours: slaHours
+        slaTargetHours: slaHours,
+        slaFollowUpDays: slaFollowUpDays,
+        slaAutoReassignDays: slaAutoReassignDays
       });
       setMessage('Reglas de negocio actualizadas correctamente. Los cambios pueden tardar en reflejarse o requerir recargar la página.');
     } catch (error) {
@@ -66,6 +76,50 @@ export default function BusinessRulesSettings() {
                 style={{ width: '120px' }}
               />
               <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Horas</span>
+            </div>
+          </div>
+
+          <div className={styles.formGroup} style={{ maxWidth: '400px', marginTop: '24px' }}>
+            <label className={styles.formLabel} style={{ fontSize: '15px', fontWeight: 600 }}>
+              Frecuencia de Seguimiento (Días)
+            </label>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', marginTop: '4px' }}>
+              Tiempo máximo sin interacción antes de que un lead se considere "Frío" o estancado.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <input 
+                type="number" 
+                required 
+                min="1"
+                step="1"
+                value={slaFollowUpDays} 
+                onChange={e => setSlaFollowUpDays(parseInt(e.target.value))} 
+                className={styles.formInput} 
+                style={{ width: '120px' }}
+              />
+              <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Días</span>
+            </div>
+          </div>
+
+          <div className={styles.formGroup} style={{ maxWidth: '400px', marginTop: '24px' }}>
+            <label className={styles.formLabel} style={{ fontSize: '15px', fontWeight: 600 }}>
+              Auto-reasignación (Días inactivo)
+            </label>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', marginTop: '4px' }}>
+              Quitar el lead al asesor si no lo trabaja, y devolverlo al Pool. (Función futura).
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <input 
+                type="number" 
+                required 
+                min="1"
+                step="1"
+                value={slaAutoReassignDays} 
+                onChange={e => setSlaAutoReassignDays(parseInt(e.target.value))} 
+                className={styles.formInput} 
+                style={{ width: '120px' }}
+              />
+              <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Días</span>
             </div>
           </div>
 

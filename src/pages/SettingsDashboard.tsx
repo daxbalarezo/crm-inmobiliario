@@ -11,6 +11,7 @@ import AuditDashboard from './settings/AuditDashboard';
 import BusinessRulesSettings from './settings/BusinessRulesSettings';
 import IntegrationsSettings from './settings/IntegrationsSettings';
 import AssignmentRulesSettings from './settings/AssignmentRulesSettings';
+import StagesSettings from './settings/StagesSettings';
 
 export default function SettingsDashboard() {
   const { userProfile, tenantId, tenant, activeProjectId } = useCRM();
@@ -21,7 +22,7 @@ export default function SettingsDashboard() {
 
   const handleSeed = async () => {
     if (!tenantId) return;
-    const confirm = window.confirm('¿Estás seguro de BORRAR TODOS LOS DATOS ACTUALES y re-inyectar 400 prospectos nuevos? Esta acción no se puede deshacer.');
+    const confirm = window.confirm('¿Estás seguro de inyectar 30 prospectos de prueba a cada asesor activo en el sistema?');
     if (!confirm) return;
 
     setIsSeeding(true);
@@ -59,6 +60,22 @@ export default function SettingsDashboard() {
     setIsSeeding(false);
   };
 
+  const handleClearOnly = async () => {
+    if (!tenantId) return;
+    const confirm = window.confirm('¿Estás seguro de BORRAR TODOS LOS DATOS ACTUALES de prueba? Toda la información de prospectos y actividades se perderá irrevocablemente.');
+    if (!confirm) return;
+
+    setIsSeeding(true);
+    try {
+      await clearTestData(tenantId);
+      alert('¡Base de datos limpiada exitosamente! Por favor recarga la página para ver el sistema en blanco.');
+    } catch (e) {
+      console.error(e);
+      alert('Hubo un error al limpiar datos.');
+    }
+    setIsSeeding(false);
+  };
+
   if (userProfile?.role !== 'owner' && userProfile?.role !== 'manager') {
     return <Navigate to="/" replace />;
   }
@@ -66,6 +83,7 @@ export default function SettingsDashboard() {
   const getHeaderData = () => {
     switch (activeTab) {
       case 'campos': return { title: 'Modelo de Datos', icon: Database };
+      case 'etapas': return { title: 'Etapas de Negocio', icon: Database };
       case 'roles': return { title: 'Roles y Permisos', icon: Users };
       case 'integraciones': return { title: 'Integraciones (Webhooks)', icon: LinkIcon };
       case 'asignacion': return { title: 'Reglas de Asignación', icon: Shuffle };
@@ -109,13 +127,22 @@ export default function SettingsDashboard() {
             <div className="slds-page-header__controls">
               <div className="slds-page-header__control">
                 {activeTab === 'campos' && (
-                  <button 
-                    className="slds-button slds-button_destructive"
-                    onClick={handleSeed} 
-                    disabled={isSeeding}
-                  >
-                    {isSeeding ? 'Generando...' : 'Limpiar y Re-Sembrar (400 Leads)'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      className="slds-button slds-button_outline-brand"
+                      onClick={handleClearOnly} 
+                      disabled={isSeeding}
+                    >
+                      {isSeeding ? 'Procesando...' : 'Limpiar BD'}
+                    </button>
+                    <button 
+                      className="slds-button slds-button_destructive"
+                      onClick={handleSeed} 
+                      disabled={isSeeding}
+                    >
+                      {isSeeding ? 'Generando...' : 'Sembrar Datos (30 por Asesor)'}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -124,12 +151,38 @@ export default function SettingsDashboard() {
       </div>
 
       <div style={{ flex: 1 }}>
-        {activeTab === 'campos' && <DataModelSettings />}
-        {activeTab === 'roles' && <RolesSettings />}
-        {activeTab === 'integraciones' && <IntegrationsSettings />}
-        {activeTab === 'asignacion' && <AssignmentRulesSettings />}
-        {activeTab === 'auditoria' && <AuditDashboard />}
-        {activeTab === 'reglas' && <BusinessRulesSettings />}
+        <div className="slds-tabs_default">
+          <ul className="slds-tabs_default__nav" role="tablist">
+            <li className={`slds-tabs_default__item ${activeTab === 'campos' ? 'slds-is-active' : ''}`} title="Campos Personalizados">
+              <a className="slds-tabs_default__link" href="?tab=campos" id="tab-campos">Campos Personalizados</a>
+            </li>
+            <li className={`slds-tabs_default__item ${activeTab === 'etapas' ? 'slds-is-active' : ''}`} title="Etapas de Negocio">
+              <a className="slds-tabs_default__link" href="?tab=etapas" id="tab-etapas">Etapas de Negocio</a>
+            </li>
+            <li className={`slds-tabs_default__item ${activeTab === 'roles' ? 'slds-is-active' : ''}`} title="Roles y Permisos">
+              <a className="slds-tabs_default__link" href="?tab=roles" id="tab-roles">Roles y Permisos</a>
+            </li>
+            <li className={`slds-tabs_default__item ${activeTab === 'asignacion' ? 'slds-is-active' : ''}`} title="Reglas de Asignación">
+              <a className="slds-tabs_default__link" href="?tab=asignacion" id="tab-asignacion">Asignación Automática</a>
+            </li>
+            <li className={`slds-tabs_default__item ${activeTab === 'reglas' ? 'slds-is-active' : ''}`} title="Reglas de Negocio">
+              <a className="slds-tabs_default__link" href="?tab=reglas" id="tab-reglas">Reglas (SLA)</a>
+            </li>
+            <li className={`slds-tabs_default__item ${activeTab === 'auditoria' ? 'slds-is-active' : ''}`} title="Registro de Auditoría">
+              <a className="slds-tabs_default__link" href="?tab=auditoria" id="tab-auditoria">Auditoría (Logs)</a>
+            </li>
+          </ul>
+          
+          <div className="slds-tabs_default__content slds-show" style={{ padding: '1rem 0' }}>
+            {activeTab === 'campos' && <DataModelSettings />}
+            {activeTab === 'etapas' && <StagesSettings />}
+            {activeTab === 'roles' && <RolesSettings />}
+            {activeTab === 'integraciones' && <IntegrationsSettings />}
+            {activeTab === 'asignacion' && <AssignmentRulesSettings />}
+            {activeTab === 'reglas' && <BusinessRulesSettings />}
+            {activeTab === 'auditoria' && <AuditDashboard />}
+          </div>
+        </div>
       </div>
     </div>
   );

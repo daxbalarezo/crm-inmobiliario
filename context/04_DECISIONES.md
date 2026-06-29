@@ -47,3 +47,17 @@
 - Para la auditor铆a de eventos SaaS (facturaci贸n, creaci贸n de planes, env铆o de comunicados), se instrument贸 el c贸digo React para insertar registros directamente en `saas_audit_logs`.
 - Para el uso del disco en tiempo real, se dise帽贸 una funci贸n SQL RPC (`get_database_size_bytes`) con privilegios elevados (`SECURITY DEFINER`) que retorna `pg_database_size(current_database())` y se divide en el frontend entre un l铆mite fijo (ej. 500MB).
 **Beneficios:** Lectura 100% real y sin latencia de uso del almacenamiento nativo de Supabase sin requerir Management Tokens ni servidores backend, manteni茅ndose todo dentro del frontend con la SDK de Supabase.
+
+- **[UI/UX] Estandar de Comunicacion:** Se prohibe el uso de emojis y anglicismos informales en la interfaz. El CRM debe apegarse estrictamente a la nomenclatura corporativa y seriedad de Salesforce en espanol (ej. usar "Fuera de Oficina" en lugar de "OOO").
+
+## 9. Estrategia de Cach茅 Global (React Query + Supabase Realtime)
+**Contexto:** Las transiciones entre pantallas principales (Equipo, Leads, Dashboards) generaban parpadeos de carga y m煤ltiples peticiones de lectura redundantes a Supabase, lo cual afectaba la experiencia "premium" de usuario y preocupaba respecto a la optimizaci贸n de ancho de banda.
+**Decisi贸n:** Se instal贸 `@tanstack/react-query` para manejar todo el data-fetching as铆ncrono.
+- Se configur贸 un `staleTime` global de 10 segundos, asegurando navegaci贸n instant谩nea entre pesta帽as.
+- Se integr贸 el cach茅 de React Query junto con los canales de `Supabase Realtime` en el `GlobalDataProvider`. De esta forma, el cach茅 se mantiene vivo y se actualiza instant谩neamente v铆a WebSockets cuando otro miembro del equipo modifica un dato.
+**Beneficios:** Ahorro estimado del 40-70% en lecturas redundantes (bandwidth) y una experiencia de usuario que se siente tan r谩pida como una aplicaci贸n nativa.
+
+## 10. Filtrado Basado en 'Base Roles' (Custom Roles)
+**Contexto:** La empresa requiere personalizar el nombre visual de los roles (ej. llamar 'Broker' al Asesor). Al intentar filtrar a los agentes usando .eq('role', 'agent'), la consulta fallaba o devolv韆 listas vac韆s porque el campo ole en la tabla users almacena un UUID for醤eo de la tabla maestra oles.
+**Decisi髇:** Las consultas que necesiten restringir acceso o mostrar listas de un tipo de usuario en particular (ej. Asesores) primero extraer醤 el ID de la tabla oles donde el ase_role === 'agent', y luego usar醤 ese set de IDs para cruzar y filtrar la tabla users.
+**Beneficios:** Evita bugs de asignaci髇 cruzada y mantiene la flexibilidad absoluta para que cada Tenant personalice los t韙ulos corporativos de su equipo, salvaguardando la l骻ica interna inmutable a trav閟 de los ase_role.

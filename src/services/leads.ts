@@ -39,6 +39,7 @@ export const saveLeadService = async (
       first_contact_at: cleanData.firstContactAt,
       saved_proforma: cleanData.savedProforma,
       loss_reason: cleanData.lossReason,
+      loss_notes: cleanData.lossNotes,
       custom_data: cleanData.customData
     };
 

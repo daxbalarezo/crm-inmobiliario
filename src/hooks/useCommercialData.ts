@@ -18,6 +18,9 @@ export function useCommercialData() {
     
     let filtered = globalLeads;
 
+    // Salesforce Purism: Ocultar los leads que ya se convirtieron a Oportunidades
+    filtered = filtered.filter(l => !l.isConverted);
+
     // Filtro por tenant (Manager/Agent)
     if (userProfile.role !== 'owner') {
       filtered = filtered.filter(l => l.tenantId === tenantId);

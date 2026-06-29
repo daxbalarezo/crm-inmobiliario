@@ -4,6 +4,8 @@ import { X, Save, Trash2, User } from 'lucide-react';
 import type { Lead, CustomFieldDefinition } from '../types/definitions';
 import { useCRM } from '../context/CRMContext';
 import { useTenantSchema } from '../hooks/useTenantSchema';
+import { formatPhoneNumber } from '../utils/helpers';
+import { supabase } from '../config/supabase';
 import LeadTimeline from './LeadTimeline';
 
 interface Props {
@@ -32,22 +34,24 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, age
     if (!isOpen) return;
     if (lead) {
       setFormData(lead);
+      setActiveTab('activity');
     } else {
       setFormData({
-        status: tenant?.pipeline_stages?.[0]?.name || tenant?.stages?.[0] || 'PROSPECTO', // Fallback dinámico al 1er stage
+        status: tenant?.lead_statuses?.[0]?.name || 'NUEVO', // Fallback dinámico al 1er lead_status
         interestLevel: 'Medio',
         tenantId: tenantId ?? '',
         projectId: activeProjectId ?? '',
         assignedTo: userProfile?.uid ?? '',
         contactDate: new Date().toISOString(),
       });
+      setActiveTab('details');
     }
   }, [isOpen, lead, tenantId, activeProjectId, userProfile, tenant]);
 
   if (!isOpen) return null;
 
-  const dynamicSources = tenant?.sources || SOURCES;
-  const dynamicStages = (tenant?.pipeline_stages?.length ? tenant.pipeline_stages.map(s => s.name) : null) || (tenant?.stages?.length ? tenant.stages : null) || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
+  const dynamicSources = tenant?.sources?.length ? tenant.sources : SOURCES;
+  const dynamicStages = tenant?.lead_statuses?.length ? tenant.lead_statuses.map(s => s.name) : ['NUEVO', 'CONTACTADO', 'DESCARTADO'];
 
   const isEditing = !!lead?.id;
   const update = (patch: Partial<Lead>) => setFormData(p => ({ ...p, ...patch }));
@@ -68,6 +72,45 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, age
       console.error(err); 
     } finally { 
       setSaving(false); 
+    }
+  };
+
+  const handleConvert = async () => {
+    if (!lead?.id || !formData.name) return;
+    if (!window.confirm('¿Estás seguro de que deseas convertir este prospecto en una Cuenta, Contacto y Oportunidad?')) {
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.rpc('convert_lead', {
+        p_lead_id: lead.id,
+        p_account_name: formData.name + ' - Cuenta',
+        p_contact_first_name: formData.name.split(' ')[0] || 'Desconocido',
+        p_contact_last_name: formData.name.split(' ').slice(1).join(' ') || '',
+        p_opportunity_name: `Oportunidad: ${formData.name}`,
+        p_amount: 0
+      });
+      
+      if (error) throw error;
+      
+      // Auto-fix the stage to match the tenant's actual first pipeline stage
+      const opportunityId = data?.opportunity_id;
+      if (opportunityId) {
+        const correctStage = tenant?.pipeline_stages?.[0]?.name || 'NEGOCIACION';
+        await supabase.from('opportunities').update({ 
+          stage: correctStage,
+          probability: tenant?.pipeline_stages?.[0]?.probability || 10
+        }).eq('id', opportunityId);
+      }
+      
+      alert('¡Prospecto convertido exitosamente!');
+      onClose();
+    } catch (err: any) {
+      console.error('Error al convertir lead:', err);
+      alert('Error al convertir: ' + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -95,13 +138,23 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, age
                   {isEditing ? (formData.name || 'Prospecto') : 'Nuevo Prospecto'}
                 </h2>
                 {isEditing && formData.phone && (
-                  <p className="slds-text-color_weak slds-m-top_xxx-small">{formData.phone}</p>
+                  <p className="slds-text-color_weak slds-m-top_xxx-small">{formatPhoneNumber(formData.phone)}</p>
+                )}
+                {isEditing && lead?.createdAt && (
+                  <p className="slds-text-color_weak slds-m-top_xxx-small" style={{ fontSize: '0.75rem' }}>
+                    Registrado el: {lead.createdAt.toDate ? lead.createdAt.toDate().toLocaleDateString() : new Date(lead.createdAt).toLocaleDateString()}
+                  </p>
                 )}
               </div>
               {isEditing && (
                 <div>
-                  <button type="button" className="slds-button slds-button_brand" onClick={() => alert('La función de Conversión a Oportunidad y Cuenta está en construcción.')}>
-                    Convertir
+                  <button 
+                    type="button" 
+                    className="slds-button slds-button_brand" 
+                    onClick={handleConvert}
+                    disabled={saving}
+                  >
+                    {saving ? 'Convirtiendo...' : 'Convertir'}
                   </button>
                 </div>
               )}
@@ -161,10 +214,12 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, age
                             <div className="slds-select_container">
                               <select
                                 className="slds-select"
+                                required
                                 value={formData.assignedTo ?? ''}
                                 onChange={e => update({ assignedTo: e.target.value })}
                                 disabled={!(agents && agents.length > 0 && (userProfile?.role === 'owner' || userProfile?.role === 'manager'))}
                               >
+                                <option value="" disabled>-- Seleccione un Asesor --</option>
                                 {agents && agents.length > 0 ? (
                                   agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)
                                 ) : (
@@ -200,11 +255,25 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, age
                             <div className="slds-select_container">
                               <select
                                 className="slds-select"
-                                value={formData.status ?? (dynamicStages[0] || 'PROSPECTO')}
-                                onChange={e => update({ status: e.target.value })}
+                                value={formData.status ?? (dynamicStages[0] || 'NUEVO')}
+                                onChange={async (e) => {
+                                  const newStatus = e.target.value;
+                                  update({ status: newStatus });
+                                  // Auto-guardado al estilo Kanban (excepto DESCARTADO que requiere motivo)
+                                  if (isEditing && newStatus !== 'DESCARTADO') {
+                                    setSaving(true);
+                                    try {
+                                      await onSave({ ...formData, status: newStatus });
+                                    } catch (err) {
+                                      console.error(err);
+                                    } finally {
+                                      setSaving(false);
+                                    }
+                                  }
+                                }}
                               >
                                 {dynamicStages.map(s => <option key={s} value={s}>{s}</option>)}
-                                {!dynamicStages.includes('PERDIDO') && <option value="PERDIDO">PERDIDO</option>}
+                                {!dynamicStages.includes('DESCARTADO') && <option value="DESCARTADO">DESCARTADO</option>}
                               </select>
                             </div>
                           </div>
@@ -212,14 +281,14 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, age
                       </div>
                     </div>
 
-                    {/* Motivo de pérdida condicional */}
-                    {formData.status === 'PERDIDO' && (
+                    {/* Motivo de descarte condicional */}
+                    {(formData.status === 'DESCARTADO') && (
                       <div className="slds-grid slds-gutters slds-m-bottom_small">
                         <div className="slds-col slds-size_1-of-2"></div>
                         <div className="slds-col slds-size_1-of-2">
-                          <div className="slds-form-element slds-has-error">
+                          <div className="slds-form-element slds-has-error slds-m-bottom_small">
                             <label className="slds-form-element__label">
-                              <abbr className="slds-required" title="required">* </abbr>Motivo de Pérdida
+                              <abbr className="slds-required" title="required">* </abbr>Motivo de Descarte
                             </label>
                             <div className="slds-form-element__control">
                               <div className="slds-select_container">
@@ -230,16 +299,28 @@ export default function LeadModal({ isOpen, onClose, lead, onSave, onDelete, age
                                   onChange={e => update({ lossReason: e.target.value })}
                                 >
                                   <option value="">Seleccionar motivo...</option>
-                                  <option value="Precio / Presupuesto">Precio / Presupuesto insuficiente</option>
-                                  <option value="Perdido ante competidor">Perdido ante competidor</option>
-                                  <option value="No hay decisión / Pospuesto">No hay decisión / Proyecto pospuesto</option>
-                                  <option value="No encaja / Características">Falta de funcionalidades / No encaja</option>
-                                  <option value="No contesta / Incontactable">No contesta / Incontactable</option>
-                                  <option value="Financiamiento rechazado">Crédito / Financiamiento rechazado</option>
-                                  <option value="Fuera de Perfil">No califica / Fuera del Perfil</option>
-                                  <option value="Otro">Otro motivo</option>
+                                  <option value="Datos Falsos / Incontactable">Datos Falsos / Incontactable</option>
+                                  <option value="No le alcanza / No califica al crédito">No le alcanza / No califica al crédito</option>
+                                  <option value="Compró a la competencia">Compró a la competencia</option>
+                                  <option value="Ya no está interesado">Ya no está interesado</option>
+                                  <option value="Busca otro tipo de inmueble">Busca otro tipo de inmueble</option>
                                 </select>
                               </div>
+                            </div>
+                          </div>
+
+                          <div className="slds-form-element">
+                            <label className="slds-form-element__label">
+                              Notas de descarte (Opcional)
+                            </label>
+                            <div className="slds-form-element__control">
+                              <textarea
+                                className="slds-textarea"
+                                placeholder="Escribe detalles adicionales..."
+                                value={formData.lossNotes ?? ''}
+                                onChange={e => update({ lossNotes: e.target.value })}
+                                rows={2}
+                              />
                             </div>
                           </div>
                         </div>

@@ -64,7 +64,7 @@ export default function AgentAnalyticsDashboard() {
     document.body.removeChild(link);
   };
 
-  const dynamicStages = (tenant?.pipeline_stages?.length ? tenant.pipeline_stages.map(s => s.name) : null) || (tenant?.stages?.length ? tenant.stages : null) || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
+  const dynamicStages = (tenant?.pipeline_stages?.length ? tenant.pipeline_stages.map(s => s.name) : null) || (tenant?.stages?.length ? tenant.stages : null) || ['NUEVO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
 
   return (
     <div className="slds-grid slds-grid_vertical slds-p-around_none slds-m-bottom_large">
@@ -135,8 +135,8 @@ export default function AgentAnalyticsDashboard() {
                 {dynamicStages.map(s => (
                   <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                 ))}
-                {!dynamicStages.some(s => s.toUpperCase() === 'PERDIDO') && (
-                  <option value="PERDIDO">PERDIDO</option>
+                {!dynamicStages.some(s => s.toUpperCase() === 'DESCARTADO') && (
+                  <option value="DESCARTADO">DESCARTADO</option>
                 )}
               </select>
             </div>

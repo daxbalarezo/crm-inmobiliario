@@ -8,7 +8,7 @@ const LOSS_REASONS = ['Precio / Presupuesto', 'Perdido ante competidor', 'No hay
 const INTEREST_LEVELS = ['Alto', 'Medio', 'Bajo'];
 
 // Official Pipeline Stages
-const STAGES = ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO', 'PERDIDO'];
+const STAGES = ['NUEVO', 'CONTACTADO', 'NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO', 'DESCARTADO'];
 
 // Helper to generate UUID v4
 const uuidv4 = () => {
@@ -22,7 +22,6 @@ const randomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const randomDate = (start: Date, end: Date) => new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 
-// Weighted random stage selector
 const getWeightedStageIndex = (totalStages: number) => {
   const rand = Math.random() * 100;
   if (totalStages === 0) return 0;
@@ -31,13 +30,14 @@ const getWeightedStageIndex = (totalStages: number) => {
     return Math.floor(Math.random() * totalStages);
   }
   
-  if (rand < 25) return 0; // 25% Primera columna
-  if (rand < 40) return 1; // 15% Segunda columna
-  if (rand < 55) return 2; // 15% Tercera columna (Negociación)
-  if (rand < 65 && totalStages > 3) return 3; // 10% Cuarta columna
-  if (rand < 75 && totalStages > 4) return totalStages - 3; // 10% Antepenúltima (Separación)
-  if (rand < 85 && totalStages > 5) return totalStages - 2; // 10% Penúltima (Vendido)
-  return totalStages - 1; // 15% Última (Perdidos)
+  // Real Estate Realistic Funnel Distribution
+  if (rand < 35) return 0; // 35% Prospectos
+  if (rand < 60) return 1; // 25% Contactados
+  if (rand < 70) return 2; // 10% Negociación
+  if (rand < 80 && totalStages > 3) return 3; // 10% Visita
+  if (rand < 83 && totalStages > 4) return totalStages - 3; // 3% Separación
+  if (rand < 85 && totalStages > 5) return totalStages - 2; // 2% Vendido
+  return totalStages - 1; // 15% Descartados
 };
 
 export async function clearTestData(tenantId: string) {
@@ -59,14 +59,15 @@ export const seedTestData = async (tenantId: string, users: any[], stages: any[]
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(now.getMonth() - 6);
 
-  const numLeads = 400;
   const leadsToInsert = [];
   const activitiesToInsert = [];
   
-  for (let i = 0; i < numLeads; i++) {
-    const assignedUser = randomItem(users);
-    const createdAt = randomDate(sixMonthsAgo, now);
-    const stageObj = stages[getWeightedStageIndex(stages.length)];
+  let i = 0;
+  for (const assignedUser of users) {
+    for (let userLeadCount = 0; userLeadCount < 30; userLeadCount++) {
+      i++;
+      const createdAt = randomDate(sixMonthsAgo, now);
+      const stageObj = stages[getWeightedStageIndex(stages.length)];
     const status = stageObj.name;
     const isLost = status.toUpperCase().includes('PERDID');
     const isVendido = status.toUpperCase().includes('VENDID') || status.toUpperCase().includes('CERRAD');
@@ -88,6 +89,11 @@ export const seedTestData = async (tenantId: string, users: any[], stages: any[]
       created_at: createdAt.toISOString(),
       updated_at: createdAt.toISOString(),
     };
+
+    if (status.toUpperCase() !== 'NUEVO') {
+      const contactTime = new Date(createdAt.getTime() + randomInt(60000, 86400000 * 2)); // Contacted between 1 min and 2 days later
+      leadData.first_contact_at = contactTime.toISOString();
+    }
 
     if (isLost) {
       leadData.loss_reason = randomItem(LOSS_REASONS);
@@ -119,15 +125,25 @@ export const seedTestData = async (tenantId: string, users: any[], stages: any[]
     const actionTypes = ['note', 'call', 'whatsapp', 'status_change', 'meeting', 'proforma'];
     
     for (let a = 0; a < numActivities; a++) {
-      const actDate = new Date(createdAt.getTime() + (a * 3600000) + randomInt(1000, 3600000));
+      const actDate = new Date(createdAt.getTime() + (a * 86400000) + randomInt(3600000, 86400000));
+      const aType = randomItem(actionTypes);
+      
+      let desc = "Seguimiento general realizado";
+      if (aType === 'call') desc = randomItem(["Llamada de presentación, cliente pide info", "No contestó, dejé buzón de voz", "Cliente agendó visita por teléfono", "Llamada para seguimiento de proforma"]);
+      if (aType === 'whatsapp') desc = randomItem(["Envié brochure del proyecto", "Cliente confirma recepción de proforma", "Haciendo seguimiento por WhatsApp, sin respuesta", "Envió voucher de pago por WhatsApp"]);
+      if (aType === 'meeting') desc = randomItem(["Reunión en sala de ventas exitosa", "Cliente vino con su pareja a ver los acabados", "Visita presencial, pide evaluación crediticia"]);
+      if (aType === 'note') desc = randomItem(["Perfil del cliente: Inversionista (compra para alquilar)", "Busca mudarse en 6 meses máximo", "Tiene crédito pre-aprobado con el BCP", "Busca piso bajo preferentemente"]);
+      if (aType === 'proforma') desc = "Generé cotización formal para el cliente";
+      if (aType === 'status_change') desc = `Cambió el estado del lead a ${status}`;
+
       activitiesToInsert.push({
         id: uuidv4(),
         tenant_id: tenantId,
         lead_id: leadId,
         user_id: assignedUser.uid || assignedUser.id,
         user_name: assignedUser.name || 'Asesor',
-        action_type: randomItem(actionTypes),
-        description: `Actividad generada automáticamente (Seeder)`,
+        action_type: aType,
+        description: desc,
         status: 'completed',
         created_at: actDate.toISOString()
       });
@@ -135,6 +151,7 @@ export const seedTestData = async (tenantId: string, users: any[], stages: any[]
 
     leadsToInsert.push(leadData);
   }
+}
 
   // Insert in chunks of 100
   for (let i = 0; i < leadsToInsert.length; i += 100) {

@@ -4,7 +4,9 @@
 - **Punto de Entrada:** `main.tsx` carga el proveedor global y los estilos de SLDS.
 - **Enrutamiento (`App.tsx`):** Controla el acceso público (`/login`) y las rutas protegidas envueltas en `<AuthGuard>`. Las rutas protegidas se renderizan dentro de `<CorporateLayout>`, el cual provee el menú de navegación lateral.
 - **Gestión de Estado Global:**
+  - `TanStack Query (React Query)`: Actúa como el caché centralizado (`QueryClientProvider` en `main.tsx`) para gestionar el estado del servidor asíncrono, reduciendo drásticamente lecturas redundantes a la base de datos y ofreciendo navegación instantánea con un `staleTime` configurado (10s).
   - `CRMContext.tsx`: Maneja la sesión del usuario (Auth), lee su perfil desde `public.users`, e identifica su `tenant_id` y permisos.
+  - `GlobalDataProvider.tsx`: Orquesta los datos dependientes del negocio (ej. Leads). Combina `useQuery` de TanStack con suscripciones WebSockets de Supabase (`channel.on('postgres_changes')`) para actualizar el caché de forma proactiva.
 
 ## Backend (Supabase)
 - **Autenticación:** Proveedor OAuth de Google (`auth.users`).

@@ -169,13 +169,13 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
     let projectedRevenue = 0;
 
     const stageCounts = {
-      'PROSPECTO': 0,
-      'SIN_CONTACTAR': 0,
+      'NUEVO': 0,
+      'CONTACTADO': 0,
       'EN_NEGOCIACION': 0,
       'VISITA': 0,
       'SEPARACION': 0,
       'VENDIDO': 0,
-      'PERDIDO': 0
+      'DESCARTADO': 0
     };
 
     rangedLeads.forEach(l => {
@@ -197,12 +197,12 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
         stageCounts['VISITA']++;
       } else if (statusStr === 'EN_NEGOCIACION' || statusStr === 'EN NEGOCIACION' || statusStr === 'NEGOCIACION' || statusStr === 'NEGOCIACIONES') {
         stageCounts['EN_NEGOCIACION']++;
-      } else if (statusStr === 'SIN_CONTACTAR' || statusStr === 'SIN CONTACTAR' || statusStr === 'CONTACTADO') {
-        stageCounts['SIN_CONTACTAR']++;
-      } else if (statusStr === 'PROSPECTO' || statusStr === 'NUEVO') {
-        stageCounts['PROSPECTO']++;
-      } else if (statusStr === 'PERDIDO') {
-        stageCounts['PERDIDO']++;
+      } else if (statusStr === 'CONTACTADO' || statusStr === 'CONTACTAR') {
+        stageCounts['CONTACTADO']++;
+      } else if (statusStr === 'PROSPECTO' || statusStr === 'NUEVO' || statusStr === 'SIN_CONTACTAR' || statusStr === 'SIN CONTACTAR') {
+        stageCounts['NUEVO']++;
+      } else if (statusStr === 'DESCARTADO') {
+        stageCounts['DESCARTADO']++;
       }
     });
 
@@ -216,13 +216,13 @@ export function useAgentAnalytics(agentId: string, timeRange: string, stageFilte
     });
 
     setFunnelData([
-      { name: 'Prospectos', value: stageCounts['PROSPECTO'] },
-      { name: 'Sin Contactar', value: stageCounts['SIN_CONTACTAR'] },
+      { name: 'Nuevos', value: stageCounts['NUEVO'] },
+      { name: 'Contactados', value: stageCounts['CONTACTADO'] },
       { name: 'En Negociación', value: stageCounts['EN_NEGOCIACION'] },
       { name: 'Visitas', value: stageCounts['VISITA'] },
       { name: 'Separaciones', value: stageCounts['SEPARACION'] },
       { name: 'Vendidos', value: stageCounts['VENDIDO'] },
-      { name: 'Perdidos', value: stageCounts['PERDIDO'] }
+      { name: 'Descartados', value: stageCounts['DESCARTADO'] }
     ]);
 
     // Tabla de leads

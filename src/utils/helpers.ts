@@ -42,3 +42,12 @@ export const formatDateShort = (isoString: string) => {
 export const formatDate = (isoString: string) => {
     try { return new Date(isoString).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return isoString; }
 };
+
+export const formatPhoneNumber = (phone?: string) => {
+    if (!phone) return '';
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 9) {
+        return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6)}`;
+    }
+    return phone;
+};

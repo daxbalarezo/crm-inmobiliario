@@ -10,8 +10,8 @@ export default function ForecastDashboard() {
 
   // Probability Mapping for Forecast
   const defaultProbabilities: Record<string, number> = {
-    'PROSPECTO': 10,
-    'SIN_CONTACTAR': 5,
+    'NUEVO': 10,
+    'CONTACTADO': 20,
     'EN_NEGOCIACION': 40,
     'VISITA': 60,
     'SEPARACION': 90,

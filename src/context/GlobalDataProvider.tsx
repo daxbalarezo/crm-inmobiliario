@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { supabase } from '../config/supabase';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCRM } from './CRMContext';
 import type { Lead } from '../types/definitions';
 
@@ -15,67 +16,39 @@ const GlobalDataContext = createContext<GlobalDataContextType | null>(null);
 
 export function GlobalDataProvider({ children }: { children: ReactNode }) {
   const { tenantId, userProfile } = useCRM();
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const queryKey = ['global_leads', tenantId];
+
+  const { data: leads = [], isLoading: loading, error: queryError } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const { data, error: fetchError } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('tenant_id', tenantId);
+
+      if (fetchError) throw fetchError;
+      
+      const mappedLeads: Lead[] = (data || []).map(row => ({
+        id: row.id, tenantId: row.tenant_id, projectId: row.project_id, assignedTo: row.assigned_to,
+        name: row.name, phone: row.phone, email: row.email, dni: row.dni, source: row.source, status: row.status,
+        interestLevel: row.interest_level, interactions: row.interactions, nextFollowUpDate: row.next_follow_up_date,
+        nextFollowUpNote: row.next_follow_up_note, lastCampaignDate: row.last_campaign_date, contactDate: row.contact_date,
+        firstContactAt: row.first_contact_at, createdAt: row.created_at, updatedAt: row.updated_at, savedProforma: row.saved_proforma,
+        lossReason: row.loss_reason, lossNotes: row.loss_notes, customData: row.custom_data,
+        isConverted: row.is_converted, convertedAccountId: row.converted_account_id,
+        convertedContactId: row.converted_contact_id, convertedOpportunityId: row.converted_opportunity_id,
+        convertedAt: row.converted_at
+      }));
+      return mappedLeads;
+    },
+    enabled: !!tenantId && !!userProfile,
+  });
+
+  const error = queryError ? queryError.message : null;
 
   useEffect(() => {
-    if (!tenantId || !userProfile) {
-      setLeads([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-
-    const fetchInitialData = async () => {
-      try {
-        // En una base SQL real con millones de registros, aquí pondríamos:
-        // .gte('updated_at', 'hace_30_dias') para los cerrados, o cargar todo si es pequeño.
-        // Para este MVP vamos a cargar todo el tenant en memoria (Caché global).
-        const { data, error: fetchError } = await supabase
-          .from('leads')
-          .select('*')
-          .eq('tenant_id', tenantId);
-
-        if (fetchError) throw fetchError;
-        
-        // Transformar de snake_case (SQL) a camelCase (Frontend)
-        const mappedLeads: Lead[] = (data || []).map(row => ({
-          id: row.id,
-          tenantId: row.tenant_id,
-          projectId: row.project_id,
-          assignedTo: row.assigned_to,
-          name: row.name,
-          phone: row.phone,
-          email: row.email,
-          dni: row.dni,
-          source: row.source,
-          status: row.status,
-          interestLevel: row.interest_level,
-          interactions: row.interactions,
-          nextFollowUpDate: row.next_follow_up_date,
-          nextFollowUpNote: row.next_follow_up_note,
-          lastCampaignDate: row.last_campaign_date,
-          contactDate: row.contact_date,
-          firstContactAt: row.first_contact_at,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-          savedProforma: row.saved_proforma,
-          lossReason: row.loss_reason,
-          customData: row.custom_data
-        }));
-
-        setLeads(mappedLeads);
-      } catch (err: any) {
-        console.error("Error fetching global leads:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInitialData();
+    if (!tenantId || !userProfile) return;
 
     // Supabase Realtime Subscription (El único caño vivo)
     const channel = supabase.channel('global_leads')
@@ -91,21 +64,44 @@ export function GlobalDataProvider({ children }: { children: ReactNode }) {
               interestLevel: row.interest_level, interactions: row.interactions, nextFollowUpDate: row.next_follow_up_date,
               nextFollowUpNote: row.next_follow_up_note, lastCampaignDate: row.last_campaign_date, contactDate: row.contact_date,
               firstContactAt: row.first_contact_at, createdAt: row.created_at, updatedAt: row.updated_at, savedProforma: row.saved_proforma,
-              lossReason: row.loss_reason, customData: row.custom_data
+              lossReason: row.loss_reason, lossNotes: row.loss_notes, customData: row.custom_data,
+              isConverted: row.is_converted, convertedAccountId: row.converted_account_id,
+              convertedContactId: row.converted_contact_id, convertedOpportunityId: row.converted_opportunity_id,
+              convertedAt: row.converted_at
             };
-            setLeads(prev => [...prev, newLead]);
+            queryClient.setQueryData(queryKey, (old: Lead[] = []) => [...old, newLead]);
           } else if (payload.eventType === 'UPDATE') {
             const row = payload.new;
-            setLeads(prev => prev.map(l => l.id === row.id ? {
+            queryClient.setQueryData(queryKey, (old: Lead[] = []) => old.map(l => l.id === row.id ? {
               ...l,
-              projectId: row.project_id, assignedTo: row.assigned_to, name: row.name, phone: row.phone, email: row.email,
-              dni: row.dni, source: row.source, status: row.status, interestLevel: row.interest_level, interactions: row.interactions,
-              nextFollowUpDate: row.next_follow_up_date, nextFollowUpNote: row.next_follow_up_note, lastCampaignDate: row.last_campaign_date,
-              contactDate: row.contact_date, firstContactAt: row.first_contact_at, createdAt: row.created_at, updatedAt: row.updated_at,
-              savedProforma: row.saved_proforma, lossReason: row.loss_reason, customData: row.custom_data
+              projectId: row.project_id,
+              assignedTo: row.assigned_to,
+              name: row.name,
+              phone: row.phone,
+              email: row.email,
+              dni: row.dni,
+              source: row.source,
+              status: row.status,
+              interestLevel: row.interest_level,
+              interactions: row.interactions,
+              nextFollowUpDate: row.next_follow_up_date,
+              nextFollowUpNote: row.next_follow_up_note,
+              lastCampaignDate: row.last_campaign_date,
+              contactDate: row.contact_date,
+              firstContactAt: row.first_contact_at,
+              updatedAt: row.updated_at,
+              savedProforma: row.saved_proforma,
+              lossReason: row.loss_reason,
+              lossNotes: row.loss_notes,
+              customData: row.custom_data,
+              isConverted: row.is_converted,
+              convertedAccountId: row.converted_account_id,
+              convertedContactId: row.converted_contact_id,
+              convertedOpportunityId: row.converted_opportunity_id,
+              convertedAt: row.converted_at
             } : l));
           } else if (payload.eventType === 'DELETE') {
-            setLeads(prev => prev.filter(l => l.id !== payload.old.id));
+            queryClient.setQueryData(queryKey, (old: Lead[] = []) => old.filter(l => l.id !== payload.old.id));
           }
         }
       )
@@ -118,14 +114,11 @@ export function GlobalDataProvider({ children }: { children: ReactNode }) {
   }, [tenantId, userProfile]);
 
   const updateLeadOptimistically = (id: string, patch: Partial<Lead>) => {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
+    queryClient.setQueryData(queryKey, (old: Lead[] = []) => old.map(l => l.id === id ? { ...l, ...patch } : l));
   };
 
   const addLeadOptimistically = (lead: Lead) => {
-    setLeads(prev => {
-      if (prev.some(l => l.id === lead.id)) return prev;
-      return [lead, ...prev];
-    });
+    queryClient.setQueryData(queryKey, (old: Lead[] = []) => [lead, ...old]);
   };
 
   return (

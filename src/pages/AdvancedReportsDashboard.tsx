@@ -40,7 +40,7 @@ export default function AdvancedReportsDashboard() {
     setSelectedSubFilter(null);
   }, [timeRange, selectedAgent, stageFilter, reportType]);
 
-  const dynamicStages = (tenant?.pipeline_stages?.length ? tenant.pipeline_stages.map(s => s.name) : null) || (tenant?.stages?.length ? tenant.stages : null) || ['PROSPECTO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
+  const dynamicStages = (tenant?.pipeline_stages?.length ? tenant.pipeline_stages.map(s => s.name) : null) || (tenant?.stages?.length ? tenant.stages : null) || ['NUEVO', 'SIN_CONTACTAR', 'EN_NEGOCIACION', 'VISITA', 'SEPARACION', 'VENDIDO'];
 
   // Apply filters
   const filteredLeads = useMemo(() => {
@@ -61,11 +61,11 @@ export default function AdvancedReportsDashboard() {
       // Solo activos
       result = result.filter(l => {
         const s = (l.status || '').toUpperCase();
-        return s !== 'VENDIDO' && s !== 'CERRADO' && s !== 'PERDIDO';
+        return s !== 'VENDIDO' && s !== 'CERRADO' && s !== 'DESCARTADO';
       });
     } else if (reportType === 'loss_reasons') {
       // Solo perdidos
-      result = result.filter(l => (l.status || '').toUpperCase() === 'PERDIDO');
+      result = result.filter(l => (l.status || '').toUpperCase() === 'DESCARTADO');
     }
 
     return result;
@@ -224,7 +224,7 @@ export default function AdvancedReportsDashboard() {
       return (
         <div className={agentStyles.highlightsPanel}>
           <div className={agentStyles.highlightItem}>
-            <p className={agentStyles.highlightLabel}>Total Perdidos</p>
+            <p className={agentStyles.highlightLabel}>Total Descartados</p>
             <p className={agentStyles.highlightValue}>{filteredLeads.length}</p>
           </div>
           <div className={agentStyles.highlightItem}>
@@ -424,8 +424,8 @@ export default function AdvancedReportsDashboard() {
         <table className="slds-table slds-table_cell-buffer slds-table_bordered">
           <thead>
             <tr>
-              <th className="">Motivo de Pérdida</th>
-              <th className="">Total Prospectos Perdidos</th>
+              <th className="">Motivo de Descarte</th>
+              <th className="">Total Prospectos Descartados</th>
             </tr>
           </thead>
           <tbody>
@@ -602,8 +602,8 @@ export default function AdvancedReportsDashboard() {
                 {dynamicStages.map(s => (
                   <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                 ))}
-                {!dynamicStages.some(s => s.toUpperCase() === 'PERDIDO') && (
-                  <option value="PERDIDO">PERDIDO</option>
+                {!dynamicStages.some(s => s.toUpperCase() === 'DESCARTADO') && (
+                  <option value="DESCARTADO">DESCARTADO</option>
                 )}
               </select>
             </div>
